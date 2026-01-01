@@ -71,10 +71,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Create or get customer
-    // Check if we're in test mode to handle customer ID mode mismatch
-    const settings = await import("@/lib/settings").then(m => m.getSettings());
-    const isTestMode = settings.useTestMode ?? false;
-    
     let customerId = user.mollieCustomerId;
     
     // Try to use existing customer, but create new one if it fails (mode mismatch)
@@ -131,7 +127,7 @@ export async function POST(request: NextRequest) {
       selectedPaymentMethod = PaymentMethod.paypal;
     } else if (paymentMethod === "creditcard") {
       selectedPaymentMethod = PaymentMethod.creditcard;
-    } else if (isTestMode) {
+    } else if (isLocalTestMode) {
       // Fallback to iDEAL in test mode if no method specified
       selectedPaymentMethod = PaymentMethod.ideal;
     } else {

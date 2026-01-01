@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const isLocalhost = baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1");
     const webhookUrl = isLocalhost ? undefined : `${baseUrl}/api/payment/webhook`;
-    const isTestMode = isLocalhost || process.env.NODE_ENV === "development";
+    const isLocalTestMode = isLocalhost || process.env.NODE_ENV === "development";
     
     // Get payment method from request body, default to creditcard
     const requestedPaymentMethod = paymentMethod;
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
       selectedPaymentMethod = PaymentMethod.paypal;
     } else if (requestedPaymentMethod === "creditcard") {
       selectedPaymentMethod = PaymentMethod.creditcard;
-    } else if (isTestMode) {
+    } else if (isLocalTestMode) {
       // Fallback to iDEAL in test mode if no method specified
       selectedPaymentMethod = PaymentMethod.ideal;
     } else {
