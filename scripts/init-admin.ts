@@ -8,7 +8,7 @@ async function initAdmin() {
 
     // Check if admin already exists
     const { getUserByEmail } = await import("../lib/users");
-    const existingUser = getUserByEmail(email);
+    const existingUser = await getUserByEmail(email);
 
     if (existingUser) {
       console.log("Admin account already exists!");
