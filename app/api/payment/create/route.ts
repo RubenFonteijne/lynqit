@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
         pageId, // Store pageId in metadata
         userId: user.email,
         createSubscription: "true", // Flag to create subscription after payment
-        isTestMode: isTestMode.toString(), // Track if this is a test payment
+        isTestMode: isLocalTestMode.toString(), // Track if this is a test payment
       },
     });
 
