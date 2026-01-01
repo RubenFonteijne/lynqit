@@ -111,7 +111,32 @@ export async function POST(request: NextRequest) {
     }
 
     // Get or create customer
+    // Check if we're in test mode to handle customer ID mode mismatch
+    const settings = await import("@/lib/settings").then(m => m.getSettings());
+    const isTestMode = settings.useTestMode ?? false;
+    
     let customerId = user.mollieCustomerId;
+    
+    // Try to use existing customer, but create new one if it fails (mode mismatch)
+    if (customerId) {
+      try {
+        // Try to get the customer to verify it exists in current mode
+        await mollieClient.customers.get(customerId);
+      } catch (error: any) {
+        // If customer doesn't exist or wrong mode, reset and create new one
+        if (error.message?.includes("wrong mode") || error.message?.includes("not found")) {
+          console.log(`Customer ${customerId} not available in current mode, creating new customer`);
+          customerId = undefined; // Reset to create new customer
+          // Clear the old customer ID from user
+          await updateUser(user.email, {
+            mollieCustomerId: undefined,
+          });
+        } else {
+          throw error; // Re-throw if it's a different error
+        }
+      }
+    }
+    
     if (!customerId) {
       const customer = await mollieClient.customers.create({
         name: user.email.split("@")[0],
