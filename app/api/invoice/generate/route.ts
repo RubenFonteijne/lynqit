@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = getUserByEmail(email);
+    const user = await getUserByEmail(email);
     if (!user) {
       return NextResponse.json(
         { error: "User not found" },
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Get all pages for this user
-    const allPages = getPagesByUser(email);
+    const allPages = await getPagesByUser(email);
 
     // Filter paid pages
     const paidPages = allPages

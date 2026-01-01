@@ -20,9 +20,10 @@ export async function POST(request: NextRequest) {
     const mollieClient = await getMollieClient();
     const payment = await mollieClient.payments.get(paymentId);
 
-    const email = payment.metadata?.email as string;
-    const plan = payment.metadata?.plan as SubscriptionPlan;
-    const pageId = payment.metadata?.pageId as string;
+    const metadata = payment.metadata as { email?: string; plan?: SubscriptionPlan; pageId?: string; subscriptionId?: string } | undefined;
+    const email = metadata?.email;
+    const plan = metadata?.plan;
+    const pageId = metadata?.pageId;
 
     if (!email || !plan || !pageId) {
       return NextResponse.json(
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = getUserByEmail(email);
+    const user = await getUserByEmail(email);
     if (!user) {
       return NextResponse.json(
         { error: "User not found" },
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const page = getPageById(pageId);
+    const page = await getPageById(pageId);
     if (!page || page.userId !== email) {
       return NextResponse.json(
         { error: "Page not found or does not belong to user" },
@@ -54,9 +55,9 @@ export async function POST(request: NextRequest) {
       const subscriptionEndDate = new Date(now);
       subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1); // 1 month from now
 
-      const subscriptionId = payment.metadata?.subscriptionId as string | undefined;
+      const subscriptionId = metadata?.subscriptionId;
 
-      updatePage(pageId, {
+      await updatePage(pageId, {
         subscriptionPlan: plan,
         subscriptionStatus: "active",
         subscriptionStartDate: now.toISOString(),
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
       });
     } else if (payment.status === "failed" || payment.status === "canceled" || payment.status === "expired") {
       // Payment failed - revert page to free plan
-      updatePage(pageId, {
+      await updatePage(pageId, {
         subscriptionPlan: "free",
         subscriptionStatus: "expired",
       });

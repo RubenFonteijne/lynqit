@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMollieClient } from "@/lib/mollie";
-import { getUserByEmail, isAdminUser } from "@/lib/users";
+import { getUserByEmail, isAdminUserAsync } from "@/lib/users";
 import { getPageById, updatePage } from "@/lib/lynqit-pages";
 
 export async function POST(request: NextRequest) {
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = getUserByEmail(email);
+    const user = await getUserByEmail(email);
     if (!user) {
       return NextResponse.json(
         { error: "User not found" },
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify page exists and belongs to user
-    const page = getPageById(pageId);
+    const page = await getPageById(pageId);
     if (!page) {
       return NextResponse.json(
         { error: "Page not found" },
@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user owns the page or is admin
-    if (page.userId !== email && !isAdminUser(email)) {
+    const isAdmin = await isAdminUserAsync(email);
+    if (page.userId !== email && !isAdmin) {
       return NextResponse.json(
         { error: "Page does not belong to user" },
         { status: 403 }
@@ -68,9 +69,9 @@ export async function POST(request: NextRequest) {
 
     // Cancel subscription in Mollie
     try {
-      await mollieClient.customerSubscriptions.cancel(
-        user.mollieCustomerId,
-        page.mollieSubscriptionId
+      await (mollieClient.customerSubscriptions as any).cancel(
+        user.mollieCustomerId!,
+        page.mollieSubscriptionId!
       );
     } catch (error: any) {
       // If subscription is already cancelled or doesn't exist, continue
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
     // Update page to mark subscription as cancelled
     // The subscription will remain active until the end of the billing period
     // We'll keep the plan but mark status as cancelled
-    updatePage(pageId, {
+    await updatePage(pageId, {
       subscriptionStatus: "cancelled",
       // Keep the plan and dates so user can still use until end of period
     });

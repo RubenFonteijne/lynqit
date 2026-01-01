@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Update page with new plan (will be confirmed by webhook)
-    updatePage(pageId, {
+    await updatePage(pageId, {
       subscriptionPlan: newPlan as SubscriptionPlan,
       subscriptionStatus: "active",
     });

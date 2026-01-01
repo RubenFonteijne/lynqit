@@ -21,9 +21,10 @@ export async function POST(request: NextRequest) {
     const mollieClient = await getMollieClient();
     const subscription = await mollieClient.customerSubscriptions.get(customerId, subscriptionId);
 
-    const email = subscription.metadata?.email as string;
-    const plan = subscription.metadata?.plan as SubscriptionPlan;
-    const pageId = subscription.metadata?.pageId as string;
+    const metadata = subscription.metadata as { email?: string; plan?: SubscriptionPlan; pageId?: string } | undefined;
+    const email = metadata?.email;
+    const plan = metadata?.plan;
+    const pageId = metadata?.pageId;
 
     if (!email || !plan || !pageId) {
       return NextResponse.json(
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = getUserByEmail(email);
+    const user = await getUserByEmail(email);
     if (!user) {
       return NextResponse.json(
         { error: "User not found" },
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find page by ID and verify ownership
-    const pages = getPages();
+    const pages = await getPages();
     const page = pages.find((p) => p.id === pageId && p.userId === email);
 
     if (!page) {
@@ -58,16 +59,16 @@ export async function POST(request: NextRequest) {
       const subscriptionEndDate = new Date(now);
       subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
 
-      updatePage(pageId, {
+      await updatePage(pageId, {
         subscriptionPlan: plan,
         subscriptionStatus: "active",
         subscriptionStartDate: now.toISOString(),
         subscriptionEndDate: subscriptionEndDate.toISOString(),
         mollieSubscriptionId: subscription.id,
       });
-    } else if (subscription.status === "canceled" || subscription.status === "suspended" || subscription.status === "expired") {
+    } else if (subscription.status === "canceled" || subscription.status === "suspended") {
       // Subscription cancelled or suspended - revert to free
-      updatePage(pageId, {
+      await updatePage(pageId, {
         subscriptionPlan: "free",
         subscriptionStatus: "expired",
         mollieSubscriptionId: undefined,
