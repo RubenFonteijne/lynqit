@@ -19,6 +19,7 @@ interface AnalyticsData {
   previousMonthViews: number;
   percentageChange: number;
   referrerSources: Record<string, number>;
+  otherReferrers?: Record<string, number>; // Individual referrer URLs for "Other" category
   dailyViews: Array<{ date: string; views: number }>;
   totalClicks: number;
   clicksByType: Record<string, number>;
@@ -323,6 +324,33 @@ export default function InsightsPage() {
                                   </div>
                                 ))}
                               </div>
+                              
+                              {/* Show individual referrer URLs for "Other" category */}
+                              {analytics.otherReferrers && Object.keys(analytics.otherReferrers).length > 0 && (
+                                <div className="mt-4">
+                                  <h4 className="text-md font-semibold text-white mb-3">
+                                    Other referrers
+                                  </h4>
+                                  <div className="space-y-2">
+                                    {Object.entries(analytics.otherReferrers)
+                                      .sort(([, a], [, b]) => b - a)
+                                      .map(([referrer, count]) => (
+                                        <div
+                                          key={referrer}
+                                          className="p-3 rounded-lg flex items-center justify-between" 
+                                          style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}
+                                        >
+                                          <p className="text-sm text-zinc-300 break-all">
+                                            {referrer}
+                                          </p>
+                                          <p className="text-sm font-bold text-[#2E47FF] dark:text-[#00F0EE] ml-4 flex-shrink-0">
+                                            {count.toLocaleString()}
+                                          </p>
+                                        </div>
+                                      ))}
+                                  </div>
+                                </div>
+                              )}
                               </div>
 
                               {/* Click Statistics */}

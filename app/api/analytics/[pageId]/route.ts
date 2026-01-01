@@ -52,9 +52,24 @@ export async function GET(
 
     // Group by referrer source
     const referrerCounts: Record<string, number> = {};
+    const otherReferrers: Record<string, number> = {}; // Store individual referrer URLs for "Other"
+    
     pageViews.forEach((pv) => {
       const source = categorizeReferrer(pv.referrer);
       referrerCounts[source] = (referrerCounts[source] || 0) + 1;
+      
+      // If it's "Other", also track the individual referrer URL
+      if (source === "Other" && pv.referrer) {
+        try {
+          const url = new URL(pv.referrer);
+          const hostname = url.hostname;
+          otherReferrers[hostname] = (otherReferrers[hostname] || 0) + 1;
+        } catch {
+          // If URL parsing fails, use the referrer as-is (truncated if too long)
+          const displayReferrer = pv.referrer.length > 50 ? pv.referrer.substring(0, 50) + "..." : pv.referrer;
+          otherReferrers[displayReferrer] = (otherReferrers[displayReferrer] || 0) + 1;
+        }
+      }
     });
 
     // Group by day for the last 30 days
@@ -109,6 +124,7 @@ export async function GET(
       previousMonthViews: previousMonthCount,
       percentageChange: Math.round(percentageChange * 10) / 10, // Round to 1 decimal
       referrerSources: referrerCounts,
+      otherReferrers, // Individual referrer URLs for "Other" category
       dailyViews,
       totalClicks,
       clicksByType,
