@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserByEmail, updateUser, verifyPassword } from "@/lib/users";
-import bcrypt from "bcryptjs";
+import { createServerClient } from "@/lib/supabase-server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,22 +20,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify current password
-    const user = await verifyPassword(email, currentPassword);
-    if (!user) {
+    const supabase = createServerClient();
+
+    // Verify current password by attempting to sign in
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.toLowerCase(),
+      password: currentPassword,
+    });
+
+    if (signInError || !signInData.user) {
       return NextResponse.json(
         { error: "Huidig wachtwoord is onjuist" },
         { status: 401 }
       );
     }
 
-    // Hash new password
-    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    // Update password using Supabase Auth
+    const { error: updateError } = await supabase.auth.admin.updateUserById(
+      signInData.user.id,
+      { password: newPassword }
+    );
 
-    // Update password
-    const updatedUser = updateUser(email, { passwordHash: newPasswordHash });
-    
-    if (!updatedUser) {
+    if (updateError) {
+      console.error("Error updating password:", updateError);
       return NextResponse.json(
         { error: "Failed to update password" },
         { status: 500 }
