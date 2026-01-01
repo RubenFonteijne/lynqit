@@ -1,28 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-export default function Home() {
-  const router = useRouter();
-
+export default function HomeNL() {
   useEffect(() => {
     document.title = "Lynqit - ONE LINK TO RULE THEM ALL";
-    
-    // Check if there's a password reset token in the hash
-    // Supabase sends recovery tokens in the hash fragment
-    if (typeof window !== "undefined" && window.location.hash) {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get("access_token");
-      const type = hashParams.get("type");
-      
-      // If it's a recovery token, redirect to reset password page
-      if (accessToken && type === "recovery") {
-        router.replace(`/reset-password${window.location.hash}`);
-      }
-    }
-  }, [router]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-dark font-sans">
@@ -33,9 +17,8 @@ export default function Home() {
             {/* Left side - Text content */}
             <div className="text-center z-10">
               <h1 className="text-6xl md:text-8xl font-bold mb-8 leading-tight">
-                <span className="block text-white font-bold leading-[1]">
-                  <span
-                  style={{
+                <span className="block text-white font-bold">
+                  <span style={{
                     backgroundImage: 'linear-gradient(90deg, #3045FF, #07F2EE 100%)',
                     backgroundClip: 'text',
                     WebkitBackgroundClip: 'text',
@@ -47,7 +30,7 @@ export default function Home() {
               <img 
                 src="https://lynqit.nl/wp-content/uploads/2025/06/phones.png" 
                 alt="Lynqit Phone" 
-                className="w-1/2 mx-auto mb-8 -mt-12"
+                className="w-1/2 mx-auto mb-8"
               />
             </div>
           </div>
@@ -58,9 +41,9 @@ export default function Home() {
       <section className="py-20 px-4 bg-black">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-4xl md:text-5xl font-bold text-center text-white mb-16">
-            Discover Lynqit's
+            Ontdek Lynqit's
             <br />
-            key features
+            belangrijkste features
           </h2>
 
           <div className="grid md:grid-cols-3 gap-8 md:gap-12">
@@ -84,19 +67,19 @@ export default function Home() {
                 </div>
               </div>
               <h3 className="text-2xl font-bold mb-4">
-                The <span className="font-extrabold">power</span> of one link
+                De <span className="font-extrabold">kracht</span> van één link
               </h3>
               <p className="leading-relaxed mb-6">
-                With Lynqit, you bundle all your important links on one professional page in your own style. Website, socials, contact details and featured services, locations or actions. Everything organized clearly.
+                Met Lynqit bundel je al je belangrijke links op één professionele pagina in jouw eigen stijl. Website, socials, contactgegevens en uitgelichte diensten, locaties of acties. Alles overzichtelijk geordend.
                 <br />
                 <br />
-                <span className="font-bold">One link for maximum impact.</span>
+                <span className="font-bold">Eén link voor maximale impact.</span>
               </p>
               <Link
-                href="/pricing"
+                href="/prijzen"
                 className="inline-block px-6 py-3 bg-white text-[#2E47FF] rounded-lg font-semibold text-sm hover:bg-gray-100 transition-colors"
               >
-                Start with Lynqit
+                Start met Lynqit
               </Link>
             </div>
 
@@ -120,11 +103,11 @@ export default function Home() {
                 </div>
               </div>
               <h3 className="text-2xl font-bold mb-4">
-                <span className="font-extrabold">Convert</span> and{" "}
-                <span className="font-extrabold">grow</span>
+                <span className="font-extrabold">Converteer</span> en{" "}
+                <span className="font-extrabold">groei</span>
               </h3>
               <p className="leading-relaxed">
-                Turn every click into real results. Transform your links into actions that grow your followers, increase engagement and boost your revenue. Make it easy for your audience to find what they're looking for.
+                Verander elke klik in echte resultaten. Zet je links om in acties die je volgers laten groeien, de betrokkenheid verhogen en je omzet stimuleren. Maak het je publiek makkelijk om te vinden wat ze zoeken.
               </p>
             </div>
 
@@ -148,10 +131,10 @@ export default function Home() {
                 </div>
               </div>
               <h3 className="text-2xl font-bold mb-4">
-                Go for <span className="font-extrabold">more</span>
+                Ga voor <span className="font-extrabold">meer</span>
               </h3>
               <p className="leading-relaxed">
-                Bring your brand to life with a powerful video header, a real eye-catcher that enhances the complete brand experience. Promote products, launches or events with strong visuals and a clear focus on clicks. Get insights with real-time data from Lynqit.
+                Breng je merk tot leven met een krachtige videoheader, een echte blikvanger die de volledige merkbeleving versterkt. Promoot producten, lanceringen of events met sterke visuals en een duidelijke focus op clicks. Krijg inzicht met realtime data van Lynqit.
               </p>
             </div>
           </div>
@@ -174,16 +157,16 @@ export default function Home() {
             <div className="text-2xl font-bold">Lynqit</div>
             <div className="flex flex-wrap gap-6 justify-center">
               <Link
-                href="/terms"
+                href="/algemene-voorwaarden"
                 className="text-gray-400 hover:text-white transition-colors"
               >
-                Terms & Conditions
+                Algemene voorwaarden
               </Link>
               <Link
-                href="/privacy"
+                href="/privacybeleid"
                 className="text-gray-400 hover:text-white transition-colors"
               >
-                Privacy Policy
+                Privacybeleid
               </Link>
               <Link
                 href="/support"
@@ -195,7 +178,7 @@ export default function Home() {
           </div>
           <div className="border-t border-gray-800 pt-8 text-center font-sm">
             <p className="text-gray-400 text-sm">
-              Copyright © 2025 Lynqit. All rights reserved.
+              Copyright © 2025 Lynqit. Alle rechten voorbehouden.
             </p>
           </div>
         </div>

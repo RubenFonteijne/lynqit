@@ -1,0 +1,86 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getMollieClient } from "@/lib/mollie";
+import { getUserByEmail } from "@/lib/users";
+import { getPages, updatePage } from "@/lib/lynqit-pages";
+import type { SubscriptionPlan } from "@/lib/lynqit-pages";
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const subscriptionId = body.id;
+    const customerId = body.customerId;
+
+    if (!subscriptionId || !customerId) {
+      return NextResponse.json(
+        { error: "Subscription ID and Customer ID are required" },
+        { status: 400 }
+      );
+    }
+
+    // Get subscription from Mollie
+    const mollieClient = await getMollieClient();
+    const subscription = await mollieClient.customerSubscriptions.get(customerId, subscriptionId);
+
+    const email = subscription.metadata?.email as string;
+    const plan = subscription.metadata?.plan as SubscriptionPlan;
+    const pageId = subscription.metadata?.pageId as string;
+
+    if (!email || !plan || !pageId) {
+      return NextResponse.json(
+        { error: "Invalid subscription metadata" },
+        { status: 400 }
+      );
+    }
+
+    const user = getUserByEmail(email);
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    // Find page by ID and verify ownership
+    const pages = getPages();
+    const page = pages.find((p) => p.id === pageId && p.userId === email);
+
+    if (!page) {
+      return NextResponse.json(
+        { error: "Page not found or does not belong to user" },
+        { status: 404 }
+      );
+    }
+
+    // Update page subscription based on subscription status
+    if (subscription.status === "active") {
+      // Subscription is active
+      const now = new Date();
+      const subscriptionEndDate = new Date(now);
+      subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
+
+      updatePage(pageId, {
+        subscriptionPlan: plan,
+        subscriptionStatus: "active",
+        subscriptionStartDate: now.toISOString(),
+        subscriptionEndDate: subscriptionEndDate.toISOString(),
+        mollieSubscriptionId: subscription.id,
+      });
+    } else if (subscription.status === "canceled" || subscription.status === "suspended" || subscription.status === "expired") {
+      // Subscription cancelled or suspended - revert to free
+      updatePage(pageId, {
+        subscriptionPlan: "free",
+        subscriptionStatus: "expired",
+        mollieSubscriptionId: undefined,
+      });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Subscription webhook error:", error);
+    return NextResponse.json(
+      { error: error.message || "An error occurred processing subscription webhook" },
+      { status: 500 }
+    );
+  }
+}
+

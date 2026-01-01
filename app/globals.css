@@ -3,6 +3,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --e-global-color-primary: #2E47FF;
+  --e-global-color-accent: #00F0EE;
 }
 
 @theme inline {
@@ -12,15 +14,52 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Dark mode via class, not media query */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+.light {
+  --background: #ffffff;
+  --foreground: #171717;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter-tight), -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* Admin bar padding - only when admin bar is visible */
+body.has-admin-bar {
+  padding-top: 32px;
+}
+
+/* Hide scrollbar but keep functionality */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes neonGlow {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(46, 71, 255, 0.5), 0 0 60px rgba(0, 240, 238, 0.4), 0 0 90px rgba(46, 71, 255, 0.3), 0 0 120px rgba(0, 240, 238, 0.2), 0 0 150px rgba(46, 71, 255, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(46, 71, 255, 0.7), 0 0 80px rgba(0, 240, 238, 0.6), 0 0 120px rgba(46, 71, 255, 0.5), 0 0 160px rgba(0, 240, 238, 0.4), 0 0 200px rgba(46, 71, 255, 0.3);
+  }
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
