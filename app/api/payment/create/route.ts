@@ -3,12 +3,12 @@ import { getMollieClient, SUBSCRIPTION_PRICES, calculatePriceWithBTW } from "@/l
 import { getUserByEmail, updateUser, isAdminUserAsync } from "@/lib/users";
 import { getPageById, updatePage } from "@/lib/lynqit-pages";
 import type { SubscriptionPlan } from "@/lib/lynqit-pages";
-import { SequenceType, PaymentMethod } from "@mollie/api-client";
+import { PaymentMethod } from "@mollie/api-client";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, plan, pageId } = body;
+    const { email, plan, pageId, paymentMethod } = body;
 
     if (!email || !plan || !pageId) {
       return NextResponse.json(
@@ -88,8 +88,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Create first payment to get mandate for SEPA Direct Debit
-    // For SEPA subscriptions, we need to create the first payment to get the mandate
+    // Create payment for subscription
     // The subscription will be created after the first payment is successful (in webhook)
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const isLocalhost = baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1");
@@ -98,13 +97,22 @@ export async function POST(request: NextRequest) {
     // For local development, use a tunneling service like ngrok or skip webhook
     const webhookUrl = isLocalhost ? undefined : `${baseUrl}/api/payment/webhook`;
     
-    // For test/localhost: use iDEAL or creditcard (which work better in test mode)
-    // For production: use directdebit with sequenceType.first for SEPA subscriptions
+    // Determine payment method: use provided method or default to creditcard
+    // For test mode, allow iDEAL as fallback
     const isTestMode = isLocalhost || process.env.NODE_ENV === "development";
-    const paymentMethod = isTestMode ? PaymentMethod.ideal : PaymentMethod.directdebit;
+    let selectedPaymentMethod: PaymentMethod;
     
-    // Only use sequenceType for SEPA Direct Debit (not for other payment methods)
-    const useSequenceType = !isTestMode && paymentMethod === PaymentMethod.directdebit;
+    if (paymentMethod === "paypal") {
+      selectedPaymentMethod = PaymentMethod.paypal;
+    } else if (paymentMethod === "creditcard") {
+      selectedPaymentMethod = PaymentMethod.creditcard;
+    } else if (isTestMode) {
+      // Fallback to iDEAL in test mode if no method specified
+      selectedPaymentMethod = PaymentMethod.ideal;
+    } else {
+      // Default to creditcard in production
+      selectedPaymentMethod = PaymentMethod.creditcard;
+    }
     
     const firstPayment = await mollieClient.payments.create({
       amount: {
@@ -113,8 +121,7 @@ export async function POST(request: NextRequest) {
       },
       description: `Lynqit ${plan} subscription - First payment`,
       customerId: customerId,
-      ...(useSequenceType && { sequenceType: SequenceType.first }), // Only include sequenceType for SEPA Direct Debit
-      method: paymentMethod,
+      method: selectedPaymentMethod,
       redirectUrl: `${baseUrl}/payment/success?email=${encodeURIComponent(email)}&plan=${plan}&pageId=${pageId}`,
       ...(webhookUrl && { webhookUrl }), // Only include webhookUrl if it's set
       metadata: {

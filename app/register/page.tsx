@@ -21,6 +21,7 @@ function RegisterContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [slug, setSlug] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<"free" | "start" | "pro">(planParam || "free");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"creditcard" | "paypal">("creditcard");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -166,6 +167,7 @@ function RegisterContent() {
             email,
             plan: selectedPlan,
             pageId: pageId,
+            paymentMethod: selectedPaymentMethod,
           }),
         });
 
@@ -397,6 +399,49 @@ function RegisterContent() {
                   </button>
                 </div>
               </div>
+
+              {/* Payment Method Selection - Only show for paid plans */}
+              {selectedPlan !== "free" && (
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    Betaalmethode
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPaymentMethod("creditcard")}
+                      className={`px-4 py-3 rounded-lg border-2 transition-colors ${
+                        selectedPaymentMethod === "creditcard"
+                          ? "border-[#2E47FF] bg-blue-50 dark:bg-blue-900/20"
+                          : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
+                      }`}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <i className="fas fa-credit-card text-lg"></i>
+                        <div className="text-sm font-semibold text-black dark:text-zinc-50">
+                          Creditcard
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPaymentMethod("paypal")}
+                      className={`px-4 py-3 rounded-lg border-2 transition-colors ${
+                        selectedPaymentMethod === "paypal"
+                          ? "border-[#2E47FF] bg-blue-50 dark:bg-blue-900/20"
+                          : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
+                      }`}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <i className="fab fa-paypal text-lg"></i>
+                        <div className="text-sm font-semibold text-black dark:text-zinc-50">
+                          PayPal
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {error && (
                 <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">

@@ -16,6 +16,7 @@ export default function PagesManagementPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newSlug, setNewSlug] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<"free" | "start" | "pro">("free");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"creditcard" | "paypal">("creditcard");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [error, setError] = useState("");
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -196,6 +197,7 @@ export default function PagesManagementPage() {
             email: userEmail,
             plan: selectedPlan,
             pageId: pageId,
+            paymentMethod: selectedPaymentMethod,
           }),
         });
 

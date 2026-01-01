@@ -3,12 +3,12 @@ import { getMollieClient, SUBSCRIPTION_PRICES, calculatePriceWithBTW } from "@/l
 import { getUserByEmail, isAdminUserAsync, updateUser } from "@/lib/users";
 import { getPageById, updatePage } from "@/lib/lynqit-pages";
 import type { SubscriptionPlan } from "@/lib/lynqit-pages";
-import { SequenceType, PaymentMethod } from "@mollie/api-client";
+import { PaymentMethod } from "@mollie/api-client";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, pageId, newPlan } = body;
+    const { email, pageId, newPlan, paymentMethod } = body;
 
     if (!email || !pageId || !newPlan) {
       return NextResponse.json(
@@ -143,10 +143,22 @@ export async function POST(request: NextRequest) {
     const isLocalhost = baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1");
     const webhookUrl = isLocalhost ? undefined : `${baseUrl}/api/payment/webhook`;
     const isTestMode = isLocalhost || process.env.NODE_ENV === "development";
-    const paymentMethod = isTestMode ? PaymentMethod.ideal : PaymentMethod.directdebit;
     
-    // Only use sequenceType for SEPA Direct Debit (not for other payment methods)
-    const useSequenceType = !isTestMode && paymentMethod === PaymentMethod.directdebit;
+    // Get payment method from request body, default to creditcard
+    const requestedPaymentMethod = paymentMethod;
+    let selectedPaymentMethod: PaymentMethod;
+    
+    if (requestedPaymentMethod === "paypal") {
+      selectedPaymentMethod = PaymentMethod.paypal;
+    } else if (requestedPaymentMethod === "creditcard") {
+      selectedPaymentMethod = PaymentMethod.creditcard;
+    } else if (isTestMode) {
+      // Fallback to iDEAL in test mode if no method specified
+      selectedPaymentMethod = PaymentMethod.ideal;
+    } else {
+      // Default to creditcard in production
+      selectedPaymentMethod = PaymentMethod.creditcard;
+    }
 
     const payment = await mollieClient.payments.create({
       amount: {
@@ -155,8 +167,7 @@ export async function POST(request: NextRequest) {
       },
       description: `Lynqit ${newPlan} subscription - Plan change`,
       customerId: customerId,
-      ...(useSequenceType && { sequenceType: SequenceType.first }), // Only include sequenceType for SEPA Direct Debit
-      method: paymentMethod,
+      method: selectedPaymentMethod,
       redirectUrl: `${baseUrl}/payment/success?email=${encodeURIComponent(email)}&plan=${newPlan}&pageId=${pageId}`,
       ...(webhookUrl && { webhookUrl }),
       metadata: {

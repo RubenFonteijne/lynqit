@@ -187,10 +187,10 @@ export default function DashboardPage() {
                     <div className="flex gap-2">
                       <Link
                         href={`/dashboard/pages/${page.id}/edit`}
-                        className="p-3 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors flex items-center justify-center"
+                        className="p-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-black dark:text-zinc-50 rounded-lg text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center"
                         title="Bewerken"
                       >
-                        Bewerken <i className="pl-4 fas fa-edit"></i>
+                        Bewerken <i className="pl-2 fas fa-edit"></i>
                       </Link>
                       <Link
                         href={`/${page.slug}`}
