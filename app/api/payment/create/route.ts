@@ -102,7 +102,9 @@ export async function POST(request: NextRequest) {
     // For production: use directdebit with sequenceType.first for SEPA subscriptions
     const isTestMode = isLocalhost || process.env.NODE_ENV === "development";
     const paymentMethod = isTestMode ? PaymentMethod.ideal : PaymentMethod.directdebit;
-    const sequenceType = isTestMode ? undefined : SequenceType.first;
+    
+    // Only use sequenceType for SEPA Direct Debit (not for other payment methods)
+    const useSequenceType = !isTestMode && paymentMethod === PaymentMethod.directdebit;
     
     const firstPayment = await mollieClient.payments.create({
       amount: {
@@ -111,7 +113,7 @@ export async function POST(request: NextRequest) {
       },
       description: `Lynqit ${plan} subscription - First payment`,
       customerId: customerId,
-      ...(sequenceType && { sequenceType }), // Only include sequenceType if set
+      ...(useSequenceType && { sequenceType: SequenceType.first }), // Only include sequenceType for SEPA Direct Debit
       method: paymentMethod,
       redirectUrl: `${baseUrl}/payment/success?email=${encodeURIComponent(email)}&plan=${plan}&pageId=${pageId}`,
       ...(webhookUrl && { webhookUrl }), // Only include webhookUrl if it's set

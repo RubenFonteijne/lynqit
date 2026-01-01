@@ -144,7 +144,9 @@ export async function POST(request: NextRequest) {
     const webhookUrl = isLocalhost ? undefined : `${baseUrl}/api/payment/webhook`;
     const isTestMode = isLocalhost || process.env.NODE_ENV === "development";
     const paymentMethod = isTestMode ? PaymentMethod.ideal : PaymentMethod.directdebit;
-    const sequenceType = isTestMode ? undefined : SequenceType.first;
+    
+    // Only use sequenceType for SEPA Direct Debit (not for other payment methods)
+    const useSequenceType = !isTestMode && paymentMethod === PaymentMethod.directdebit;
 
     const payment = await mollieClient.payments.create({
       amount: {
@@ -153,7 +155,7 @@ export async function POST(request: NextRequest) {
       },
       description: `Lynqit ${newPlan} subscription - Plan change`,
       customerId: customerId,
-      ...(sequenceType && { sequenceType }),
+      ...(useSequenceType && { sequenceType: SequenceType.first }), // Only include sequenceType for SEPA Direct Debit
       method: paymentMethod,
       redirectUrl: `${baseUrl}/payment/success?email=${encodeURIComponent(email)}&plan=${newPlan}&pageId=${pageId}`,
       ...(webhookUrl && { webhookUrl }),
