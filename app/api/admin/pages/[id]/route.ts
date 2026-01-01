@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPageById, updatePage, getPageBySlug } from "@/lib/lynqit-pages";
-import { isAdminUser } from "@/lib/users";
+import { isAdminUserAsync } from "@/lib/users";
 
 // PUT - Update page slug and title (admin only)
 export async function PUT(
@@ -21,7 +21,8 @@ export async function PUT(
     }
 
     // Verify user is admin
-    if (!isAdminUser(userId)) {
+    const isAdmin = await isAdminUserAsync(userId);
+    if (!isAdmin) {
       return NextResponse.json(
         { error: "Admin access required" },
         { status: 403 }
@@ -29,7 +30,7 @@ export async function PUT(
     }
 
     // Get the page
-    const page = getPageById(resolvedParams.id);
+    const page = await getPageById(resolvedParams.id);
     if (!page) {
       return NextResponse.json({ error: "Page not found" }, { status: 404 });
     }
@@ -44,7 +45,7 @@ export async function PUT(
         );
       }
 
-      const existingPage = getPageBySlug(slug);
+      const existingPage = await getPageBySlug(slug);
       if (existingPage && existingPage.id !== page.id) {
         return NextResponse.json(
           { error: "Deze URL is al bezet. Kies een andere URL." },
@@ -62,7 +63,7 @@ export async function PUT(
       updates.title = title;
     }
 
-    const updatedPage = updatePage(resolvedParams.id, updates);
+    const updatedPage = await updatePage(resolvedParams.id, updates);
     return NextResponse.json({ page: updatedPage });
   } catch (error: any) {
     console.error("Error updating page:", error);
