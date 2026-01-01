@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     
     // Determine payment method: use provided method or default to creditcard
     // For test mode, allow iDEAL as fallback
-    const isTestMode = isLocalhost || process.env.NODE_ENV === "development";
+    const isLocalTestMode = isLocalhost || process.env.NODE_ENV === "development";
     let selectedPaymentMethod: PaymentMethod;
     
     if (paymentMethod === "paypal") {
