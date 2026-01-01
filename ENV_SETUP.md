@@ -21,9 +21,18 @@ Deze applicatie heeft de volgende environment variables nodig om te werken:
    - Vind je in Supabase Dashboard → Settings → API → Project API keys → `service_role` `secret`
    - Deze key bypasses Row Level Security (RLS) - alleen gebruiken in server-side code
 
+### Base URL (Verplicht voor productie)
+
+4. **NEXT_PUBLIC_BASE_URL**
+   - Je publieke website URL (zonder trailing slash)
+   - Voor productie: `https://lynqit.io` (of je eigen domain)
+   - Voor development: `http://localhost:3000` (standaard)
+   - Wordt gebruikt voor redirect URLs na betalingen en password reset emails
+   - **BELANGRIJK:** Zonder deze variabele worden gebruikers na betaling doorgestuurd naar localhost!
+
 ### Mollie (Optioneel - voor betalingen)
 
-4. **MOLLIE_API_KEY** (optioneel)
+5. **MOLLIE_API_KEY** (optioneel)
    - Je Mollie API key voor betalingen
    - Kan ook worden ingesteld via de admin interface
 
@@ -37,6 +46,7 @@ Maak een `.env.local` bestand in de root van je project met:
 NEXT_PUBLIC_SUPABASE_URL=https://jouw-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=jouw-anon-key
 SUPABASE_SERVICE_ROLE_KEY=jouw-service-role-key
+NEXT_PUBLIC_BASE_URL=https://lynqit.io
 ```
 
 **Let op:** Dit bestand staat in `.gitignore` en wordt niet naar Git gepusht.
@@ -51,6 +61,7 @@ Als je hosting provider environment variables ondersteunt (zoals Vercel, Railway
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
+   - `NEXT_PUBLIC_BASE_URL`
 
 ### Optie 3: Via Shell/SSH
 
@@ -61,11 +72,13 @@ Als je via SSH op je server werkt:
 export NEXT_PUBLIC_SUPABASE_URL="https://jouw-project.supabase.co"
 export NEXT_PUBLIC_SUPABASE_ANON_KEY="jouw-anon-key"
 export SUPABASE_SERVICE_ROLE_KEY="jouw-service-role-key"
+export NEXT_PUBLIC_BASE_URL="https://lynqit.io"
 
 # Of voeg ze toe aan je ~/.bashrc of ~/.zshrc voor permanente configuratie
 echo 'export NEXT_PUBLIC_SUPABASE_URL="https://jouw-project.supabase.co"' >> ~/.bashrc
 echo 'export NEXT_PUBLIC_SUPABASE_ANON_KEY="jouw-anon-key"' >> ~/.bashrc
 echo 'export SUPABASE_SERVICE_ROLE_KEY="jouw-service-role-key"' >> ~/.bashrc
+echo 'export NEXT_PUBLIC_BASE_URL="https://lynqit.io"' >> ~/.bashrc
 ```
 
 ## Verificatie
@@ -77,6 +90,15 @@ Na het instellen van de environment variables:
 3. Test of je kunt inloggen en pagina's kunt bekijken
 
 ## Troubleshooting
+
+### Gebruikers worden doorgestuurd naar localhost na betaling
+
+Dit betekent dat `NEXT_PUBLIC_BASE_URL` niet is ingesteld of nog op localhost staat. 
+
+**Oplossing:**
+1. Zet `NEXT_PUBLIC_BASE_URL` op je productie server naar je live URL (bijv. `https://lynqit.io`)
+2. Herstart je Next.js server
+3. Test opnieuw een betaling
 
 ### Foutmelding: "Missing Supabase client environment variables"
 
