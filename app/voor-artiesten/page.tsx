@@ -16,7 +16,7 @@ export default function VoorArtiestenPage() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             {/* Left column - Text */}
             <div className="z-10">
-              <h1 className="text-5xl md:text-7xl font-bold mb-8 leading-tight">
+              <h1 className="text-6xl md:text-8xl font-bold mb-8 leading-tight">
                 <span className="block text-white font-bold leading-[1]">
                   <span
                     style={{
