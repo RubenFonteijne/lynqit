@@ -47,7 +47,7 @@ function ConfirmRegistrationContent() {
               </p>
             )}
             <p className="text-center">
-              After confirmation, you can log in and create your page.
+              After confirmation, you can log in. Your Lynqit page has already been created and is ready to edit.
             </p>
           </div>
 

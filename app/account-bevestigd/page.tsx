@@ -4,13 +4,14 @@ import { useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
-function BevestigRegistratieContent() {
+function AccountBevestigdContent() {
   useEffect(() => {
-    document.title = "Bevestig Registratie - Lynqit";
+    document.title = "Account Bevestigd - Lynqit";
   }, []);
 
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
+  const pageId = searchParams.get("pageId");
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
@@ -28,27 +29,29 @@ function BevestigRegistratieContent() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  d="M5 13l4 4L19 7"
                 />
               </svg>
             </div>
             <h1 className="text-2xl font-bold mb-2 bg-gradient-to-r from-[#2E47FF] to-[#00F0EE] bg-clip-text text-transparent">
-              Check Je Email
+              Account Bevestigd
             </h1>
           </div>
 
           <div className="space-y-4 text-zinc-300">
             <p className="text-center">
-              Je moet eerst je email bevestigen. Check je inbox voor de bevestigingsmail van Supabase.
+              Je account is bevestigd! Je kunt nu inloggen en je Lynqit pagina is al aangemaakt.
             </p>
             {email && (
               <p className="text-center text-sm text-zinc-400">
-                We hebben een bevestigingsmail gestuurd naar: <span className="text-[#00F0EE]">{email}</span>
+                Bevestigde email: <span className="text-[#00F0EE]">{email}</span>
               </p>
             )}
-            <p className="text-center">
-              Na bevestiging kun je inloggen. Je Lynqit pagina is al aangemaakt en klaar om te bewerken.
-            </p>
+            {pageId && (
+              <p className="text-center text-sm text-zinc-400">
+                Je pagina is klaar! Je kunt deze bewerken na het inloggen.
+              </p>
+            )}
           </div>
 
           <div className="mt-8 space-y-3">
@@ -58,6 +61,14 @@ function BevestigRegistratieContent() {
             >
               Naar Inloggen
             </Link>
+            {pageId && (
+              <Link
+                href={`/dashboard/pages/${pageId}/edit`}
+                className="block w-full text-center py-3 px-4 border border-zinc-700 text-zinc-300 rounded-lg font-medium hover:bg-zinc-800 transition-colors"
+              >
+                Bewerk Je Pagina
+              </Link>
+            )}
             <Link
               href="/"
               className="block w-full text-center py-3 px-4 border border-zinc-700 text-zinc-300 rounded-lg font-medium hover:bg-zinc-800 transition-colors"
@@ -71,7 +82,7 @@ function BevestigRegistratieContent() {
   );
 }
 
-export default function BevestigRegistratiePage() {
+export default function AccountBevestigdPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -80,7 +91,8 @@ export default function BevestigRegistratiePage() {
         </div>
       </div>
     }>
-      <BevestigRegistratieContent />
+      <AccountBevestigdContent />
     </Suspense>
   );
 }
+

@@ -6,7 +6,7 @@ import { createPage } from "@/lib/lynqit-pages";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password } = body;
+    const { email, password, slug } = body;
 
     if (!email || !password) {
       return NextResponse.json(
@@ -46,6 +46,23 @@ export async function POST(request: NextRequest) {
     // Create user in database (without password, as Supabase Auth handles it)
     const user = await createUser(email, password, "user");
 
+    // Create page if slug is provided (using service role key, so no auth needed)
+    let page = null;
+    if (slug && slug.trim()) {
+      try {
+        // Clean up slug
+        const cleanedSlug = slug.trim().toLowerCase().replace(/^-+|-+$/g, "");
+        
+        if (cleanedSlug && /^[a-z0-9-]+$/.test(cleanedSlug)) {
+          page = await createPage(email, cleanedSlug);
+        }
+      } catch (pageError: any) {
+        // Log error but don't fail registration if page creation fails
+        console.error("Error creating page during registration:", pageError);
+        // Continue with registration even if page creation fails
+      }
+    }
+
     // Return user info
     // Note: session might be null if email confirmation is required
     return NextResponse.json({
@@ -58,6 +75,7 @@ export async function POST(request: NextRequest) {
       session: authData.session,
       // Include access token if available (for immediate use)
       accessToken: authData.session?.access_token || null,
+      page: page ? { id: page.id, slug: page.slug } : null,
     });
   } catch (error: any) {
     console.error("Registration error:", error);

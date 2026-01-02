@@ -97,15 +97,26 @@ function RegisterContent() {
         }
       }
 
-      // Register user if they don't exist
+      // Get slug from sessionStorage if available (from payment flow), otherwise use form value
+      const finalSlug = fromPayment && sessionStorage.getItem("pending_slug") 
+        ? sessionStorage.getItem("pending_slug")!
+        : cleanedSlug.trim().toLowerCase();
+
+      // Register user if they don't exist (and create page in the same call)
       let accessToken: string | null = null;
+      let pageId: string | null = null;
+      
       if (!userExists) {
         const registerResponse = await fetch("/api/auth/register", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ 
+            email, 
+            password,
+            slug: finalSlug, // Send slug to create page during registration
+          }),
         });
 
         const registerData = await registerResponse.json();
@@ -121,88 +132,80 @@ function RegisterContent() {
           localStorage.setItem("lynqit_user", JSON.stringify(registerData.user));
         }
 
+        // Get page ID if page was created
+        if (registerData.page) {
+          pageId = registerData.page.id;
+        }
+
         // Get access token from session if available
         if (registerData.accessToken) {
           accessToken = registerData.accessToken;
         } else if (registerData.session?.access_token) {
           accessToken = registerData.session.access_token;
         } else {
-          // If no session from registration (email confirmation required), 
-          // try to sign in to get a session
-          try {
-            const supabase = createClientClient();
-            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-              email: email.toLowerCase(),
-              password,
-            });
-            
-            if (!signInError && signInData.session) {
-              accessToken = signInData.session.access_token;
-            } else {
-              // Email confirmation required - redirect to confirmation page
-              const confirmPage = isDutch ? "/bevestig-registratie" : "/confirm-registration";
-              router.push(`${confirmPage}?email=${encodeURIComponent(email)}`);
-              return;
-            }
-          } catch (err) {
-            console.error("Error signing in after registration:", err);
-            // Email confirmation required - redirect to confirmation page
-            const confirmPage = isDutch ? "/bevestig-registratie" : "/confirm-registration";
-            router.push(`${confirmPage}?email=${encodeURIComponent(email)}`);
-            return;
-          }
+          // Email confirmation required - redirect to confirmation page
+          const confirmPage = isDutch ? "/bevestig-registratie" : "/confirm-registration";
+          router.push(`${confirmPage}?email=${encodeURIComponent(email)}${pageId ? `&pageId=${pageId}` : ''}`);
+          return;
         }
       } else {
-        // User already exists, try to get session
+        // User already exists, try to get session and create page if needed
         try {
-          const { createClientClient } = await import("@/lib/supabase-client");
           const supabase = createClientClient();
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
             accessToken = session.access_token;
           }
+          
+          // If we have a slug and no page yet, create it
+          if (finalSlug && !fromPayment) {
+            const pageHeaders: HeadersInit = {
+              "Content-Type": "application/json",
+            };
+            
+            if (accessToken) {
+              pageHeaders["Authorization"] = `Bearer ${accessToken}`;
+            }
+
+            const pageResponse = await fetch("/api/pages", {
+              method: "POST",
+              headers: pageHeaders,
+              body: JSON.stringify({
+                userId: email,
+                slug: finalSlug,
+              }),
+            });
+
+            if (pageResponse.ok) {
+              const pageData = await pageResponse.json();
+              pageId = pageData.page?.id;
+            }
+          }
         } catch (err) {
-          console.error("Error getting session:", err);
+          console.error("Error getting session or creating page:", err);
         }
       }
 
-      // Get slug from sessionStorage if available (from payment flow), otherwise use form value
-      const finalSlug = fromPayment && sessionStorage.getItem("pending_slug") 
-        ? sessionStorage.getItem("pending_slug")!
-        : cleanedSlug.trim().toLowerCase();
+      // If we still don't have a page ID and we have a slug, try to create it
+      if (!pageId && finalSlug && accessToken) {
+        const pageHeaders: HeadersInit = {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+        };
 
-      // Always create the Lynqit page first (with free plan by default)
-      const pageHeaders: HeadersInit = {
-        "Content-Type": "application/json",
-      };
-      
-      // Add Authorization header if we have an access token
-      if (accessToken) {
-        pageHeaders["Authorization"] = `Bearer ${accessToken}`;
-      }
+        const pageResponse = await fetch("/api/pages", {
+          method: "POST",
+          headers: pageHeaders,
+          body: JSON.stringify({
+            userId: email,
+            slug: finalSlug,
+          }),
+        });
 
-      const pageResponse = await fetch("/api/pages", {
-        method: "POST",
-        headers: pageHeaders,
-        body: JSON.stringify({
-          userId: email,
-          slug: finalSlug,
-        }),
-      });
-
-      const pageData = await pageResponse.json();
-
-      if (!pageResponse.ok) {
-        setError(pageData.error || "Kon pagina niet aanmaken");
-        setIsLoading(false);
-        return;
-      }
-
-      const pageId = pageData.page?.id;
-      if (!pageId) {
-        setError("Pagina aangemaakt maar kon ID niet ophalen");
-        setIsLoading(false);
-        return;
+        if (pageResponse.ok) {
+          const pageData = await pageResponse.json();
+          pageId = pageData.page?.id;
+        }
       }
 
       // Clear pending slug from sessionStorage
@@ -287,9 +290,9 @@ function RegisterContent() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-8">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-8 bg-zinc-900">
         <div className="w-full max-w-md">
-          <div className="dark:bg-zinc-900 p-0">
+          <div className="p-0">
             <div className="mb-8">
               <h1 className="text-3xl font-semibold text-black dark:text-zinc-50 mb-2">
                 Create Account

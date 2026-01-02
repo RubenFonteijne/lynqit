@@ -10,7 +10,7 @@ export default function Home() {
   useEffect(() => {
     document.title = "Lynqit - ONE LINK TO RULE THEM ALL";
     
-    // Check if there's a password reset token in the hash
+    // Check if there's a password reset token or email confirmation token in the hash
     // Supabase sends recovery tokens in the hash fragment
     if (typeof window !== "undefined" && window.location.hash) {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -20,6 +20,24 @@ export default function Home() {
       // If it's a recovery token, redirect to reset password page
       if (accessToken && type === "recovery") {
         router.replace(`/reset-password${window.location.hash}`);
+      }
+      
+      // If it's an email confirmation token, redirect to account confirmed page
+      if (accessToken && type === "signup") {
+        // Extract email from URL if available, or get it from the token
+        const email = hashParams.get("email") || new URLSearchParams(window.location.search).get("email");
+        const pageId = new URLSearchParams(window.location.search).get("pageId");
+        
+        // Determine language (default to EN)
+        const pathname = window.location.pathname;
+        const isDutch = pathname?.startsWith("/nl") || pathname?.startsWith("/prijzen") || pathname?.startsWith("/hoe-werkt-het") || pathname?.startsWith("/voor-artiesten");
+        const confirmPage = isDutch ? "/account-bevestigd" : "/account-confirmed";
+        
+        const params = new URLSearchParams();
+        if (email) params.set("email", email);
+        if (pageId) params.set("pageId", pageId);
+        
+        router.replace(`${confirmPage}?${params.toString()}`);
       }
     }
   }, [router]);
