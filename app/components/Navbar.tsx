@@ -95,7 +95,7 @@ export default function Navbar() {
     // Listen for Supabase auth state changes
     try {
       const supabase = createClientClient();
-      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (!isMounted) return;
         
         if (event === "SIGNED_IN" && session) {
@@ -110,8 +110,8 @@ export default function Navbar() {
         }
       });
       
-      if (data) {
-        subscription = data;
+      if (authSubscription) {
+        subscription = authSubscription;
       }
     } catch (error) {
       console.error("Error setting up auth state listener:", error);
