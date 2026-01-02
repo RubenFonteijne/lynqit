@@ -56,13 +56,15 @@ export async function POST(request: NextRequest) {
     if (subscription.status === "active") {
       // Subscription is active - calculate next payment date
       const now = new Date();
-      const subscriptionEndDate = new Date(now);
-      subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1); // 1 month from now
+      // Use nextPaymentDate from subscription if available, otherwise calculate 1 month from now
+      const subscriptionEndDate = subscription.nextPaymentDate 
+        ? new Date(subscription.nextPaymentDate)
+        : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
 
       await updatePage(pageId, {
         subscriptionPlan: plan,
         subscriptionStatus: "active",
-        subscriptionStartDate: subscription.startDate || now.toISOString(),
+        subscriptionStartDate: subscription.startDate || page.subscriptionStartDate || now.toISOString(),
         subscriptionEndDate: subscriptionEndDate.toISOString(),
         mollieSubscriptionId: subscription.id,
       });

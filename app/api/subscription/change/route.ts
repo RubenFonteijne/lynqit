@@ -163,10 +163,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create new payment for the new plan
+    // Create new subscription for the new plan (monthly recurring)
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const isLocalhost = baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1");
-    const webhookUrl = isLocalhost ? undefined : `${baseUrl}/api/payment/webhook`;
+    const webhookUrl = isLocalhost ? undefined : `${baseUrl}/api/subscription/webhook`;
     const isLocalTestMode = isLocalhost || process.env.NODE_ENV === "development";
     
     // Get payment method from request body, default to creditcard
@@ -185,34 +185,35 @@ export async function POST(request: NextRequest) {
       selectedPaymentMethod = PaymentMethod.creditcard;
     }
 
-    const payment = await mollieClient.payments.create({
+    // Create new subscription with monthly interval
+    const subscription = await (mollieClient.customerSubscriptions as any).create(customerId!, {
       amount: {
         currency: "EUR",
         value: priceWithBTW.toFixed(2),
       },
-      description: `Lynqit ${newPlan} subscription - Plan change`,
-      customerId: customerId,
+      interval: "1 month", // Monthly subscription
+      description: `Lynqit ${newPlan} subscription`,
       method: selectedPaymentMethod,
+      webhookUrl: webhookUrl,
       redirectUrl: `${baseUrl}/payment/success?email=${encodeURIComponent(email)}&plan=${newPlan}&pageId=${pageId}`,
-      ...(webhookUrl && { webhookUrl }),
       metadata: {
         email,
         plan: newPlan,
         pageId,
         userId: user.email,
-        createSubscription: "true",
-        isTestMode: isTestMode.toString(),
         isPlanChange: "true",
       },
     });
 
-    // Update page with new plan (will be confirmed by webhook)
+    // Update page with new plan (will be confirmed by webhook after first payment)
     await updatePage(pageId, {
       subscriptionPlan: newPlan as SubscriptionPlan,
-      subscriptionStatus: "active",
+      subscriptionStatus: "expired", // Will be set to "active" by webhook after successful payment
+      mollieSubscriptionId: subscription.id,
     });
 
-    const checkoutUrl = payment._links?.checkout?.href;
+    // Get checkout URL from subscription links (for first payment)
+    const checkoutUrl = subscription._links?.payment?.href || subscription._links?.checkout?.href;
     
     if (!checkoutUrl) {
       return NextResponse.json(
