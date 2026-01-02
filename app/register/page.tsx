@@ -484,14 +484,7 @@ function RegisterContent() {
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-screen font-sans bg-zinc-50 dark:bg-black items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-zinc-900 dark:border-white mx-auto mb-4"></div>
-          <p className="text-zinc-600 dark:text-zinc-400">Laden...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={null}>
       <RegisterContent />
     </Suspense>
   );
