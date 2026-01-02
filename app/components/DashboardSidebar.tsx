@@ -3,14 +3,26 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createClientClient } from "@/lib/supabase-client";
 
 export default function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      // Sign out from Supabase
+      const supabase = createClientClient();
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Error signing out from Supabase:", error);
+    }
+    
+    // Remove local storage
     localStorage.removeItem("lynqit_user");
+    
+    // Redirect to homepage
     router.push("/");
   };
 

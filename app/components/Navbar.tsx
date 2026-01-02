@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { createClientClient } from "@/lib/supabase-client";
 
 export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -53,10 +54,21 @@ export default function Navbar() {
     };
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      // Sign out from Supabase
+      const supabase = createClientClient();
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Error signing out from Supabase:", error);
+    }
+    
+    // Remove local storage
     localStorage.removeItem("lynqit_user");
     setIsLoggedIn(false);
     setShowAccountDropdown(false);
+    
+    // Redirect to homepage
     router.push("/");
   };
 
