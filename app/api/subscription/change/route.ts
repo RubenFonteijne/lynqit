@@ -145,6 +145,15 @@ export async function POST(request: NextRequest) {
           userId: user.email,
         },
       });
+      
+      if (!customer || !customer.id) {
+        console.error("Failed to create customer - customer or customer.id is undefined", customer);
+        return NextResponse.json(
+          { error: "Failed to create customer in Mollie" },
+          { status: 500 }
+        );
+      }
+      
       customerId = customer.id;
 
       // Save customer ID to user
@@ -163,13 +172,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Ensure customerId is set before creating subscription
-    if (!customerId) {
+    // Ensure customerId is set and is a string before creating subscription
+    if (!customerId || typeof customerId !== "string") {
+      console.error("Customer ID is invalid before creating subscription:", customerId, typeof customerId);
       return NextResponse.json(
         { error: "Customer ID is required but was not found or created" },
         { status: 500 }
       );
     }
+
+    console.log("Creating subscription with customerId:", customerId);
 
     // Create new subscription for the new plan (monthly recurring)
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
