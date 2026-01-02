@@ -21,26 +21,74 @@ export default function Navbar() {
   const currentLang = pathname?.startsWith("/nl") || pathname?.startsWith("/prijzen") || pathname?.startsWith("/hoe-werkt-het") ? "nl" : "en";
 
   useEffect(() => {
-    // Check if user is logged in
-    const checkLoginStatus = () => {
-      const userData = localStorage.getItem("lynqit_user");
-      if (userData) {
-        try {
-          const user = JSON.parse(userData);
-          setIsLoggedIn(true);
-          setIsAdmin(user.email === "rubenfonteijne@gmail.com" && user.role === "admin");
-        } catch (error) {
+    // Check if user is logged in (check both localStorage and Supabase session)
+    const checkLoginStatus = async () => {
+      try {
+        const supabase = createClientClient();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error || !session || !session.user) {
           setIsLoggedIn(false);
           setIsAdmin(false);
+          return;
         }
-      } else {
+
+        // User has active Supabase session
+        setIsLoggedIn(true);
+
+        // Try to get user data from localStorage first (faster)
+        const userData = localStorage.getItem("lynqit_user");
+        if (userData) {
+          try {
+            const user = JSON.parse(userData);
+            setIsAdmin(user.email === "rubenfonteijne@gmail.com" && user.role === "admin");
+          } catch (error) {
+            // Invalid cache, fetch from API
+            fetchUserData(session.user.email!);
+          }
+        } else {
+          // No cached data, fetch from API
+          fetchUserData(session.user.email!);
+        }
+      } catch (error) {
+        console.error("Error checking login status:", error);
         setIsLoggedIn(false);
         setIsAdmin(false);
       }
     };
 
+    const fetchUserData = async (email: string) => {
+      try {
+        const response = await fetch(`/api/user?email=${encodeURIComponent(email)}`);
+        if (response.ok) {
+          const userData = await response.json();
+          if (userData.user) {
+            setIsAdmin(userData.user.email === "rubenfonteijne@gmail.com" && userData.user.role === "admin");
+            localStorage.setItem("lynqit_user", JSON.stringify(userData.user));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
     // Check on mount
     checkLoginStatus();
+
+    // Listen for Supabase auth state changes
+    const supabase = createClientClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        setIsLoggedIn(true);
+        if (session.user.email) {
+          fetchUserData(session.user.email);
+        }
+      } else if (event === "SIGNED_OUT") {
+        setIsLoggedIn(false);
+        setIsAdmin(false);
+        localStorage.removeItem("lynqit_user");
+      }
+    });
 
     // Listen for storage changes (when user logs in/out in another tab)
     window.addEventListener("storage", checkLoginStatus);
@@ -49,6 +97,7 @@ export default function Navbar() {
     window.addEventListener("focus", checkLoginStatus);
 
     return () => {
+      subscription.unsubscribe();
       window.removeEventListener("storage", checkLoginStatus);
       window.removeEventListener("focus", checkLoginStatus);
     };
