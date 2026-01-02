@@ -21,11 +21,18 @@ export default function Navbar() {
   const currentLang = pathname?.startsWith("/nl") || pathname?.startsWith("/prijzen") || pathname?.startsWith("/hoe-werkt-het") ? "nl" : "en";
 
   useEffect(() => {
+    let isMounted = true;
+    let subscription: { unsubscribe: () => void } | null = null;
+
     // Check if user is logged in (check both localStorage and Supabase session)
     const checkLoginStatus = async () => {
+      if (!isMounted) return;
+      
       try {
         const supabase = createClientClient();
         const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
         
         if (error || !session || !session.user) {
           setIsLoggedIn(false);
@@ -41,28 +48,38 @@ export default function Navbar() {
         if (userData) {
           try {
             const user = JSON.parse(userData);
-            setIsAdmin(user.email === "rubenfonteijne@gmail.com" && user.role === "admin");
+            if (isMounted) {
+              setIsAdmin(user.email === "rubenfonteijne@gmail.com" && user.role === "admin");
+            }
           } catch (error) {
             // Invalid cache, fetch from API
-            fetchUserData(session.user.email!);
+            if (session.user.email) {
+              fetchUserData(session.user.email);
+            }
           }
         } else {
           // No cached data, fetch from API
-          fetchUserData(session.user.email!);
+          if (session.user.email) {
+            fetchUserData(session.user.email);
+          }
         }
       } catch (error) {
         console.error("Error checking login status:", error);
-        setIsLoggedIn(false);
-        setIsAdmin(false);
+        if (isMounted) {
+          setIsLoggedIn(false);
+          setIsAdmin(false);
+        }
       }
     };
 
     const fetchUserData = async (email: string) => {
+      if (!isMounted) return;
+      
       try {
         const response = await fetch(`/api/user?email=${encodeURIComponent(email)}`);
-        if (response.ok) {
+        if (response.ok && isMounted) {
           const userData = await response.json();
-          if (userData.user) {
+          if (userData.user && isMounted) {
             setIsAdmin(userData.user.email === "rubenfonteijne@gmail.com" && userData.user.role === "admin");
             localStorage.setItem("lynqit_user", JSON.stringify(userData.user));
           }
@@ -76,19 +93,29 @@ export default function Navbar() {
     checkLoginStatus();
 
     // Listen for Supabase auth state changes
-    const supabase = createClientClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        setIsLoggedIn(true);
-        if (session.user.email) {
-          fetchUserData(session.user.email);
+    try {
+      const supabase = createClientClient();
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        if (!isMounted) return;
+        
+        if (event === "SIGNED_IN" && session) {
+          setIsLoggedIn(true);
+          if (session.user.email) {
+            fetchUserData(session.user.email);
+          }
+        } else if (event === "SIGNED_OUT") {
+          setIsLoggedIn(false);
+          setIsAdmin(false);
+          localStorage.removeItem("lynqit_user");
         }
-      } else if (event === "SIGNED_OUT") {
-        setIsLoggedIn(false);
-        setIsAdmin(false);
-        localStorage.removeItem("lynqit_user");
+      });
+      
+      if (data) {
+        subscription = data;
       }
-    });
+    } catch (error) {
+      console.error("Error setting up auth state listener:", error);
+    }
 
     // Listen for storage changes (when user logs in/out in another tab)
     window.addEventListener("storage", checkLoginStatus);
@@ -97,7 +124,10 @@ export default function Navbar() {
     window.addEventListener("focus", checkLoginStatus);
 
     return () => {
-      subscription.unsubscribe();
+      isMounted = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
       window.removeEventListener("storage", checkLoginStatus);
       window.removeEventListener("focus", checkLoginStatus);
     };
