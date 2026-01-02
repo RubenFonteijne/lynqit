@@ -27,6 +27,12 @@ Deze applicatie heeft de volgende environment variables nodig om te werken:
    - Zet **Redirect URLs** op: `https://lynqit.io/account-confirmed`, `https://lynqit.io/account-bevestigd`, `https://lynqit.io/reset-password`
    - **BELANGRIJK:** Als dit niet is ingesteld, worden email confirmatie links naar localhost gestuurd!
 
+5. **Supabase Storage Bucket (BELANGRIJK voor afbeeldingen!)**
+   - Ga naar Supabase Dashboard → Storage
+   - Maak een nieuwe bucket aan met de naam: `lynqit-uploads`
+   - Zet **Public bucket** aan (zodat afbeeldingen publiek toegankelijk zijn)
+   - **BELANGRIJK:** Zonder deze bucket worden afbeeldingen niet opgeslagen en kunnen ze niet worden weergegeven!
+
 ### Base URL (Verplicht voor productie)
 
 5. **NEXT_PUBLIC_BASE_URL**
@@ -129,6 +135,20 @@ Dit betekent dat de environment variables niet correct zijn ingesteld. Controlee
 2. Zijn de variabelen ingesteld op de productie server?
 3. Is de Next.js server herstart na het instellen van de variabelen?
 4. Gebruik je `NEXT_PUBLIC_` prefix voor client-side variabelen?
+
+### Afbeeldingen worden niet geladen op productie
+
+Dit betekent dat de Supabase Storage bucket niet is aangemaakt of niet correct is geconfigureerd.
+
+**Oplossing:**
+1. Ga naar Supabase Dashboard → Storage
+2. Klik op **"New bucket"**
+3. Maak een bucket aan met de naam: `lynqit-uploads`
+4. Zet **Public bucket** aan (zodat afbeeldingen publiek toegankelijk zijn)
+5. Klik op **"Create bucket"**
+6. Test opnieuw het uploaden van een afbeelding
+
+**Belangrijk:** Zonder deze bucket worden afbeeldingen niet opgeslagen en kunnen ze niet worden weergegeven op de productie site.
 
 ### Waar vind ik mijn Supabase keys?
 

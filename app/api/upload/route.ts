@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { createServerClient } from "@/lib/supabase-server";
 
 // UUID generator
 function generateUUID() {
@@ -38,27 +37,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create uploads directory
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadsDir, { recursive: true });
+    // Get Supabase client
+    const supabase = createServerClient();
 
     // Generate unique filename
     const fileExtension = file.name.split(".").pop();
     const fileName = `${generateUUID()}.${fileExtension}`;
-    const filePath = path.join(uploadsDir, fileName);
+    const filePath = `uploads/${fileName}`;
 
-    // Convert file to buffer and save
+    // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(filePath, buffer);
 
-    // Return the public URL
-    const publicUrl = `/uploads/${fileName}`;
-    return NextResponse.json({ url: publicUrl });
-  } catch (error) {
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from('lynqit-uploads')
+      .upload(filePath, buffer, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (error) {
+      console.error("Error uploading to Supabase Storage:", error);
+      
+      // If bucket doesn't exist, try to create it
+      if (error.message?.includes('Bucket not found') || error.message?.includes('not found')) {
+        // Try to create the bucket (this might fail if user doesn't have permissions)
+        console.log("Attempting to create bucket 'lynqit-uploads'...");
+        // Note: Bucket creation typically needs to be done manually in Supabase Dashboard
+        return NextResponse.json(
+          { error: "Storage bucket not configured. Please create 'lynqit-uploads' bucket in Supabase Dashboard." },
+          { status: 500 }
+        );
+      }
+      
+      return NextResponse.json(
+        { error: error.message || "Failed to upload file" },
+        { status: 500 }
+      );
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('lynqit-uploads')
+      .getPublicUrl(filePath);
+
+    if (!urlData?.publicUrl) {
+      return NextResponse.json(
+        { error: "Failed to get public URL" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ url: urlData.publicUrl });
+  } catch (error: any) {
     console.error("Error uploading file:", error);
     return NextResponse.json(
-      { error: "Failed to upload file" },
+      { error: error.message || "Failed to upload file" },
       { status: 500 }
     );
   }

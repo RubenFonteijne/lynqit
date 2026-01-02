@@ -1,12 +1,69 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 interface ImageUploadProps {
   value?: string;
   onChange: (url: string) => void;
   label: string;
   accept?: string;
+}
+
+// Extract /uploads/[filename] from Supabase Storage URL
+function extractUploadPath(url: string | undefined): string {
+  if (!url) return "";
+  
+  // If it's already a relative path starting with /uploads/, return it
+  if (url.startsWith("/uploads/")) {
+    return url;
+  }
+  
+  // If it's a Supabase Storage URL, extract the /uploads/ part
+  const supabaseStorageMatch = url.match(/\/storage\/v1\/object\/public\/[^/]+\/(uploads\/[^?]+)/);
+  if (supabaseStorageMatch) {
+    return `/${supabaseStorageMatch[1]}`;
+  }
+  
+  // Otherwise return the full URL (for external URLs)
+  return url;
+}
+
+// Reconstruct full URL from relative path or keep external URL
+function reconstructFullUrl(path: string, originalUrl?: string): string {
+  // If it's already a full URL (starts with http:// or https://), return it
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+  
+  // If it's a relative path starting with /uploads/, try to reconstruct Supabase URL
+  if (path.startsWith("/uploads/")) {
+    // If we have the original URL and it was a Supabase URL, reconstruct it
+    if (originalUrl && originalUrl.includes("/storage/v1/object/public/")) {
+      // Extract the base URL and bucket name from the original URL
+      const urlMatch = originalUrl.match(/^(https?:\/\/[^/]+)\/storage\/v1\/object\/public\/([^/]+)\//);
+      if (urlMatch) {
+        const supabaseBaseUrl = urlMatch[1];
+        const bucketName = urlMatch[2];
+        const fileName = path.replace("/uploads/", "");
+        return `${supabaseBaseUrl}/storage/v1/object/public/${bucketName}/uploads/${fileName}`;
+      }
+    }
+    // If we can't reconstruct and original was a Supabase URL, keep the original
+    // This handles the case where user just edits the filename part
+    if (originalUrl && originalUrl.includes("/storage/v1/object/public/")) {
+      // Extract filename from new path and replace in original URL
+      const fileName = path.replace("/uploads/", "");
+      const originalMatch = originalUrl.match(/^(.*\/uploads\/)([^?]+)(.*)$/);
+      if (originalMatch) {
+        return `${originalMatch[1]}${fileName}${originalMatch[3]}`;
+      }
+    }
+    // If we can't reconstruct, return the relative path
+    return path;
+  }
+  
+  // Return as-is for other cases
+  return path;
 }
 
 export default function ImageUpload({
@@ -17,6 +74,9 @@ export default function ImageUpload({
 }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  
+  // Display value: show only /uploads/[filename] part
+  const displayValue = useMemo(() => extractUploadPath(value), [value]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -65,8 +125,13 @@ export default function ImageUpload({
         </div>
         <input
           type="text"
-          value={value || ""}
-          onChange={(e) => onChange(e.target.value)}
+          value={displayValue}
+          onChange={(e) => {
+            const newValue = e.target.value;
+            // Reconstruct full URL if needed, otherwise use the entered value
+            const fullUrl = reconstructFullUrl(newValue, value);
+            onChange(fullUrl);
+          }}
           placeholder="Of plak een URL hier..."
           className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 text-sm"
         />

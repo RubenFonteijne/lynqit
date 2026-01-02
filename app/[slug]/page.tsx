@@ -87,8 +87,19 @@ export default function PublicLynqitPage() {
     }
   };
 
-  // Don't show loading screen, just render empty state if needed
+  // Show loading state while fetching
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "#000", color: "#FFF" }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-gray-400">Laden...</p>
+        </div>
+      </div>
+    );
+  }
 
+  // Only show "not found" if we're done loading and page doesn't exist
   if (!page) {
     return (
       <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "#000", color: "#FFF" }}>
