@@ -45,6 +45,8 @@ export default function LanguageSwitcher() {
       "/pricing": { nl: "/prijzen", en: "/pricing" },
       "/hoe-werkt-het": { nl: "/hoe-werkt-het", en: "/how-it-works" },
       "/how-it-works": { nl: "/hoe-werkt-het", en: "/how-it-works" },
+      "/voor-artiesten": { nl: "/voor-artiesten", en: "/for-artists" },
+      "/for-artists": { nl: "/voor-artiesten", en: "/for-artists" },
       "/register": { nl: "/register", en: "/register" },
       "/login": { nl: "/login", en: "/login" },
       "/dashboard": { nl: "/dashboard", en: "/dashboard" },

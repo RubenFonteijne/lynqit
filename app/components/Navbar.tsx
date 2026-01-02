@@ -159,7 +159,7 @@ export default function Navbar() {
           </div>
           {!hasSidebar && (
             <>
-              <div className="hidden md:flex items-center gap-12">
+              <div className="hidden md:flex items-center gap-8">
                 <Link
                   href={currentLang === "en" ? "/" : "/nl"}
                   className="text-lg text-white font-bold hover:text-gray-400 transition-colors"
@@ -171,6 +171,12 @@ export default function Navbar() {
                   className="text-lg text-white font-bold hover:text-gray-400 transition-colors"
                 >
                   {currentLang === "en" ? "How it works" : "Hoe werkt het"}
+                </Link>
+                <Link
+                  href={currentLang === "en" ? "/for-artists" : "/voor-artiesten"}
+                  className="text-lg text-white font-bold hover:text-gray-400 transition-colors"
+                >
+                  {currentLang === "en" ? "For Artists" : "Voor Artiesten"}
                 </Link>
                 <Link
                   href={currentLang === "en" ? "/pricing" : "/prijzen"}
