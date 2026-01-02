@@ -59,13 +59,13 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-black font-sans dark:bg-black px-4">
       <div className="w-full max-w-md">
         <div 
-          className="bg-zinc-50 dark:bg-zinc-900 rounded-2xl shadow-lg p-8 border border-zinc-200 dark:border-zinc-800 relative"
+          className="bg-zinc-900 rounded-2xl shadow-lg p-8 border border-zinc-800 relative"
         >
           <div className="mb-8">
-            <h1 className="text-3xl font-semibold text-black dark:text-zinc-50 mb-2">
+            <h1 className="text-3xl font-semibold text-zinc-50 mb-2">
               Welcome back
             </h1>
-            <p className="text-zinc-600 dark:text-zinc-400">
+            <p className="text-zinc-400">
               Sign in to your account to continue
             </p>
           </div>
@@ -74,7 +74,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                className="block text-sm font-medium text-zinc-300 mb-2"
               >
                 Email address
               </label>
@@ -84,7 +84,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors"
+                className="w-full px-4 py-3 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-50 focus:border-transparent transition-colors"
                 placeholder="you@example.com"
               />
             </div>
@@ -92,7 +92,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                className="block text-sm font-medium text-zinc-300 mb-2"
               >
                 Password
               </label>
@@ -102,14 +102,14 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors"
+                className="w-full px-4 py-3 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-50 focus:border-transparent transition-colors"
                 placeholder="Enter your password"
               />
             </div>
 
             {error && (
-              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              <div className="p-3 rounded-lg bg-red-900/20 border border-red-800">
+                <p className="text-sm text-red-400">{error}</p>
               </div>
             )}
 
@@ -117,15 +117,15 @@ export default function LoginPage() {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700 text-black dark:text-zinc-50 focus:ring-2 focus:ring-black dark:focus:ring-zinc-50"
+                  className="w-4 h-4 rounded border-zinc-700 text-zinc-50 focus:ring-2 focus:ring-zinc-50"
                 />
-                <span className="ml-2 text-sm text-zinc-600 dark:text-zinc-400">
+                <span className="ml-2 text-sm text-zinc-400">
                   Remember me
                 </span>
               </label>
               <Link
                 href="/forgot-password"
-                className="text-sm font-medium text-black dark:text-zinc-50 hover:underline"
+                className="text-sm font-medium text-zinc-50 hover:underline"
               >
                 Forgot password?
               </Link>
@@ -144,11 +144,11 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-zinc-400">
               Don't have an account?{" "}
               <Link
                 href="/register"
-                className="font-medium text-black dark:text-zinc-50 hover:underline"
+                className="font-medium text-zinc-50 hover:underline"
               >
                 Sign up
               </Link>
