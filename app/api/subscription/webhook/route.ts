@@ -54,25 +54,33 @@ export async function POST(request: NextRequest) {
 
     // Update page subscription based on subscription status
     if (subscription.status === "active") {
-      // Subscription is active
+      // Subscription is active - calculate next payment date
       const now = new Date();
       const subscriptionEndDate = new Date(now);
-      subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1);
+      subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1); // 1 month from now
 
       await updatePage(pageId, {
         subscriptionPlan: plan,
         subscriptionStatus: "active",
-        subscriptionStartDate: now.toISOString(),
+        subscriptionStartDate: subscription.startDate || now.toISOString(),
         subscriptionEndDate: subscriptionEndDate.toISOString(),
         mollieSubscriptionId: subscription.id,
       });
     } else if (subscription.status === "canceled" || subscription.status === "suspended") {
       // Subscription cancelled or suspended - revert to free
-      await updatePage(pageId, {
-        subscriptionPlan: "free",
-        subscriptionStatus: "expired",
-        mollieSubscriptionId: undefined,
-      });
+      // Only delete page if it was just created (expired status with paid plan)
+      if (page.subscriptionStatus === "expired" && page.subscriptionPlan !== "free") {
+        const { deletePage } = await import("@/lib/lynqit-pages");
+        await deletePage(pageId);
+        console.log(`Deleted page ${pageId} due to cancelled subscription`);
+      } else {
+        // For existing pages, just revert to free plan
+        await updatePage(pageId, {
+          subscriptionPlan: "free",
+          subscriptionStatus: "expired",
+          mollieSubscriptionId: undefined,
+        });
+      }
     }
 
     return NextResponse.json({ success: true });

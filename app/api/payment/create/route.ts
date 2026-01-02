@@ -109,14 +109,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Create payment for subscription
-    // The subscription will be created after the first payment is successful (in webhook)
+    // Create monthly subscription (not a one-time payment)
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const isLocalhost = baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1");
     
     // Only set webhook URL if not localhost (Mollie can't reach localhost)
     // For local development, use a tunneling service like ngrok or skip webhook
-    const webhookUrl = isLocalhost ? undefined : `${baseUrl}/api/payment/webhook`;
+    const webhookUrl = isLocalhost ? undefined : `${baseUrl}/api/subscription/webhook`;
     
     // Determine payment method: use provided method or default to creditcard
     // For test mode, allow iDEAL as fallback
@@ -135,36 +134,39 @@ export async function POST(request: NextRequest) {
       selectedPaymentMethod = PaymentMethod.creditcard;
     }
     
-    const firstPayment = await mollieClient.payments.create({
+    // Create subscription with monthly interval
+    // Mollie subscriptions require a first payment to be authorized
+    // We'll create the subscription and get the payment URL for the first payment
+    const subscription = await (mollieClient.customerSubscriptions as any).create(customerId, {
       amount: {
         currency: "EUR",
         value: priceWithBTW.toFixed(2),
       },
-      description: `Lynqit ${plan} subscription - First payment`,
-      customerId: customerId,
+      interval: "1 month", // Monthly subscription
+      description: `Lynqit ${plan} subscription`,
       method: selectedPaymentMethod,
+      webhookUrl: webhookUrl,
       redirectUrl: `${baseUrl}/payment/success?email=${encodeURIComponent(email)}&plan=${plan}&pageId=${pageId}`,
-      ...(webhookUrl && { webhookUrl }), // Only include webhookUrl if it's set
       metadata: {
         email,
         plan,
-        pageId, // Store pageId in metadata
+        pageId,
         userId: user.email,
-        createSubscription: "true", // Flag to create subscription after payment
-        isTestMode: isLocalTestMode.toString(), // Track if this is a test payment
       },
     });
 
     // Update page with pending subscription info
-    // Subscription will be confirmed by webhook after payment
+    // Subscription will be confirmed by webhook after first payment
     // Don't set status to "active" yet - wait for successful payment
     await updatePage(pageId, {
       subscriptionPlan: plan as SubscriptionPlan,
       subscriptionStatus: "expired", // Will be set to "active" by webhook after successful payment
+      mollieSubscriptionId: subscription.id,
     });
 
-    // Get checkout URL from payment links
-    const checkoutUrl = firstPayment._links?.checkout?.href;
+    // Get checkout URL from subscription links (for first payment)
+    // Mollie subscriptions create a payment for the first charge
+    const checkoutUrl = subscription._links?.payment?.href || subscription._links?.checkout?.href;
     
     if (!checkoutUrl) {
       return NextResponse.json(
