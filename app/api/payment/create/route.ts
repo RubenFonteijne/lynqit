@@ -134,6 +134,14 @@ export async function POST(request: NextRequest) {
       selectedPaymentMethod = PaymentMethod.creditcard;
     }
     
+    // Ensure customerId is set before creating subscription
+    if (!customerId) {
+      return NextResponse.json(
+        { error: "Customer ID is required but was not found or created" },
+        { status: 500 }
+      );
+    }
+
     // Create subscription with monthly interval
     // Mollie subscriptions require a first payment to be authorized
     // We'll create the subscription and get the payment URL for the first payment

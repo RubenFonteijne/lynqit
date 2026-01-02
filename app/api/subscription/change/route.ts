@@ -163,6 +163,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Ensure customerId is set before creating subscription
+    if (!customerId) {
+      return NextResponse.json(
+        { error: "Customer ID is required but was not found or created" },
+        { status: 500 }
+      );
+    }
+
     // Create new subscription for the new plan (monthly recurring)
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const isLocalhost = baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1");
@@ -186,7 +194,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new subscription with monthly interval
-    const subscription = await (mollieClient.customerSubscriptions as any).create(customerId!, {
+    const subscription = await (mollieClient.customerSubscriptions as any).create(customerId, {
       amount: {
         currency: "EUR",
         value: priceWithBTW.toFixed(2),
