@@ -65,30 +65,48 @@ export default function LanguageSwitcher() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+        className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-800 transition-colors"
         aria-label="Select language"
       >
-        <span className="text-2xl">🇳🇱</span>
-        <span className="text-white font-medium text-sm">{currentLang.toUpperCase()}</span>
-        <i className={`fas fa-chevron-${isOpen ? "up" : "down"} text-white text-xs`}></i>
+        {currentLang === "nl" ? (
+          <img 
+            src="https://hatscripts.github.io/circle-flags/flags/nl.svg" 
+            alt="Nederlands" 
+            className="w-8 h-8 rounded-full"
+          />
+        ) : (
+          <img 
+            src="https://hatscripts.github.io/circle-flags/flags/gb.svg" 
+            alt="English" 
+            className="w-8 h-8 rounded-full"
+          />
+        )}
       </button>
       
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-gray-200 dark:border-zinc-700 py-1 z-50">
+        <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-gray-200 dark:border-zinc-700 py-1 z-50">
           <Link
             href={getTranslatedPath("nl")}
             onClick={() => setIsOpen(false)}
-            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+            className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
           >
-            <span className="text-xl">🇳🇱</span>
+            <img 
+              src="https://hatscripts.github.io/circle-flags/flags/nl.svg" 
+              alt="Nederlands" 
+              className="w-6 h-6 rounded-full"
+            />
             <span>Nederlands</span>
           </Link>
           <Link
             href={getTranslatedPath("en")}
             onClick={() => setIsOpen(false)}
-            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+            className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
           >
-            <span className="text-xl">🇬🇧</span>
+            <img 
+              src="https://hatscripts.github.io/circle-flags/flags/gb.svg" 
+              alt="English" 
+              className="w-6 h-6 rounded-full"
+            />
             <span>English</span>
           </Link>
         </div>
