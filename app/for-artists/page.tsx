@@ -12,7 +12,7 @@ export default function ForArtistsPage() {
     <div className="min-h-screen bg-dark font-sans">
       {/* Hero Section with Gradient Background */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden" style={{ background: 'radial-gradient(circle at 110%, #2F48FE, #000 50%)' }}>
-        <div className="container mx-auto px-4 py-20 md:py-32">
+        <div className="max-w-6xl mx-auto px-4 py-20 md:py-32">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             {/* Left column - Text */}
             <div className="z-10">
