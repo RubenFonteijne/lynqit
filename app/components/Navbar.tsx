@@ -162,12 +162,23 @@ export default function Navbar() {
                     Admin
                   </Link>
                 )}
-                <Link
-                  href={isLoggedIn ? "/dashboard" : "/login"}
-                  className="px-4 py-2 rounded-lg text-sm font-medium bg-[#2E47FF] text-white hover:bg-[#1E37E6] transition-colors"
-                >
-                  {isLoggedIn ? "Dashboard" : "Inloggen"}
-                </Link>
+                {!isLoggedIn && (
+                  <Link
+                    href="/login"
+                    className="px-4 py-2 rounded-lg text-sm font-medium text-white border border-white/30 hover:border-white/50 transition-colors flex items-center gap-2"
+                  >
+                    <i className="fas fa-user-circle"></i>
+                    Inloggen
+                  </Link>
+                )}
+                {isLoggedIn && (
+                  <Link
+                    href="/dashboard"
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-[#2E47FF] text-white hover:bg-[#1E37E6] transition-colors"
+                  >
+                    Dashboard
+                  </Link>
+                )}
                 {isLoggedIn && (
                   <div className="relative" ref={dropdownRef}>
                     <button
