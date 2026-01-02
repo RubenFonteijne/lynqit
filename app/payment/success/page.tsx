@@ -30,7 +30,11 @@ function PaymentSuccessContent() {
       }
 
       // Wait a moment for webhook to process payment
-      setTimeout(async () => {
+      // Retry multiple times in case webhook is slow
+      let retries = 0;
+      const maxRetries = 5;
+      
+      const checkPaymentStatus = async () => {
         try {
           // Wait for webhook to process, then check pages for active subscription
           const pagesResponse = await fetch(`/api/pages?userId=${encodeURIComponent(email)}`);
@@ -44,15 +48,31 @@ function PaymentSuccessContent() {
               );
               
               if (paidPage) {
-                // Redirect to edit the paid page
+                // Payment confirmed - redirect to edit the paid page
                 router.push(`/dashboard/pages/${paidPage.id}/edit`);
+                return;
+              } else if (pageId) {
+                // Check if the specific page still exists (might have been deleted if payment failed)
+                const specificPage = pagesData.pages.find((p: any) => p.id === pageId);
+                if (!specificPage) {
+                  // Page was deleted - payment must have failed
+                  setIsLoading(false);
+                  return;
+                }
+              }
+              
+              // Payment might still be processing, retry
+              if (retries < maxRetries) {
+                retries++;
+                setTimeout(checkPaymentStatus, 2000);
               } else {
-                // Payment might still be processing, redirect to first page
+                // Max retries reached, redirect to first page anyway
                 router.push(`/dashboard/pages/${pagesData.pages[0].id}/edit`);
               }
             } else {
-              // No pages yet, redirect to register to create one
-              router.push(`/register?email=${encodeURIComponent(email)}&plan=${plan}&fromPayment=true`);
+              // No pages - payment might have failed and page was deleted
+              // Or user needs to register
+              setIsLoading(false);
             }
           } else {
             setIsLoading(false);
@@ -61,7 +81,10 @@ function PaymentSuccessContent() {
           console.error("Error checking payment status:", error);
           setIsLoading(false);
         }
-      }, 3000); // Wait 3 seconds for webhook to process
+      };
+      
+      // Start checking after initial delay
+      setTimeout(checkPaymentStatus, 2000);
     } else {
       router.push("/");
     }
