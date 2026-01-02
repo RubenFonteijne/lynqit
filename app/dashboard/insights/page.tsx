@@ -189,13 +189,7 @@ export default function InsightsPage() {
     return date.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
   };
 
-  if (isLoading || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center font-sans" style={{ background: 'linear-gradient(#2F3441, #000)' }}>
-        <div className="text-zinc-400">Loading...</div>
-      </div>
-    );
-  }
+  // Don't show loading screen, just render empty state if needed
 
   return (
     <div className="min-h-screen font-sans flex" style={{ background: 'linear-gradient(#2F3441, #000)' }}>

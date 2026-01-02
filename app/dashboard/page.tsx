@@ -116,11 +116,6 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {isLoading && (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-zinc-400">Loading...</div>
-            </div>
-          )}
 
           {/* Empty State */}
           {pages.length === 0 && (

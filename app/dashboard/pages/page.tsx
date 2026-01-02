@@ -283,13 +283,7 @@ export default function PagesManagementPage() {
     return message;
   };
 
-  if (isLoading || !userEmail) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    );
-  }
+  // Don't show loading screen, just render empty state if needed
 
   return (
     <div className="min-h-screen font-sans flex" style={{ background: 'linear-gradient(#2F3441, #000)' }}>

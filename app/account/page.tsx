@@ -300,13 +300,7 @@ export default function AccountPage() {
     }
   };
 
-  if (isLoading || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-        <div className="text-zinc-400">Loading...</div>
-      </div>
-    );
-  }
+  // Don't show loading screen, just render empty state if needed
 
   // Filter paid pages
   const paidPages = pages.filter(

@@ -87,13 +87,7 @@ export default function PublicLynqitPage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "#000", color: "#FFF" }}>
-        <div>Loading...</div>
-      </div>
-    );
-  }
+  // Don't show loading screen, just render empty state if needed
 
   if (!page) {
     return (

@@ -179,13 +179,7 @@ export default function EditPagePage() {
     }
   };
 
-  if (isLoading || !userEmail) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    );
-  }
+  // Don't show loading screen, just render empty state if needed
 
   if (!page) {
     return (
