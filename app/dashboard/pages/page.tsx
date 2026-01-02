@@ -14,12 +14,16 @@ export default function PagesManagementPage() {
   const [pages, setPages] = useState<LynqitPage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const [newSlug, setNewSlug] = useState("");
+  const [demoSlug, setDemoSlug] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<"free" | "start" | "pro">("free");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"creditcard" | "paypal">("creditcard");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isCreatingDemo, setIsCreatingDemo] = useState(false);
   const [error, setError] = useState("");
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -57,6 +61,7 @@ export default function PagesManagementPage() {
           const userData = await response.json();
           if (userData.user && isMounted) {
             setUserEmail(userData.user.email);
+            setIsAdmin(userData.user.role === 'admin');
             // Store in localStorage for backward compatibility
             localStorage.setItem("lynqit_user", JSON.stringify(userData.user));
             // Fetch user's pages with access token
@@ -230,6 +235,90 @@ export default function PagesManagementPage() {
     }
   };
 
+  const handleCreateDemo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    
+    if (!demoSlug.trim() || !userEmail) return;
+
+    // Clean up slug: remove leading/trailing hyphens and validate
+    const cleanedSlug = demoSlug.trim().toLowerCase().replace(/\s+/g, "-").replace(/^-+|-+$/g, "");
+    
+    if (!cleanedSlug || cleanedSlug.trim() === "") {
+      setError("Slug mag niet alleen uit streepjes bestaan");
+      return;
+    }
+
+    // Validate slug format (lowercase letters, numbers, and hyphens only)
+    if (!/^[a-z0-9-]+$/.test(cleanedSlug)) {
+      setError("Slug mag alleen kleine letters, cijfers en streepjes bevatten");
+      return;
+    }
+    
+    // Ensure slug doesn't start or end with hyphen
+    if (cleanedSlug.startsWith("-") || cleanedSlug.endsWith("-")) {
+      setError("Slug mag niet beginnen of eindigen met een streepje");
+      return;
+    }
+
+    try {
+      setIsCreatingDemo(true);
+      
+      // Get access token from Supabase session
+      const supabase = createClientClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session || !session.access_token) {
+        setError("Je bent niet ingelogd. Log opnieuw in.");
+        setIsCreatingDemo(false);
+        return;
+      }
+
+      // Create demo page with Pro plan
+      const response = await fetch("/api/pages/demo", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          slug: cleanedSlug,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.error || "Kon demo pagina niet aanmaken");
+        setIsCreatingDemo(false);
+        return;
+      }
+
+      const data = await response.json();
+      const pageId = data.page?.id;
+      
+      if (!pageId) {
+        setError("Demo pagina aangemaakt maar kon ID niet ophalen");
+        setIsCreatingDemo(false);
+        return;
+      }
+
+      // Close modal and reset
+      setShowDemoModal(false);
+      setDemoSlug("");
+      setError("");
+
+      // Refresh pages list
+      await fetchPages();
+      
+      // Redirect to edit page
+      router.push(`/dashboard/pages/${pageId}/edit`);
+    } catch (error) {
+      console.error("Error creating demo page:", error);
+      setError("Er is een fout opgetreden bij het aanmaken van de demo pagina");
+      setIsCreatingDemo(false);
+    }
+  };
+
   const handleDeletePage = (page: LynqitPage) => {
     setDeleteModal({ isOpen: true, page });
   };
@@ -299,13 +388,25 @@ export default function PagesManagementPage() {
               Beheer je Lynqit pages
             </p>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-                    className="px-6 py-3 bg-[#2E47FF] text-white rounded-lg font-semibold hover:bg-[#1E37E6] transition-colors flex items-center gap-2"
-          >
-            <i className="fas fa-plus"></i>
-            Nieuwe Lynqit
-          </button>
+          <div className="flex gap-3">
+            {isAdmin && (
+              <button
+                onClick={() => setShowDemoModal(true)}
+                className="px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                style={{ border: '1px solid rgba(255, 255, 255, 0.2)', color: 'white' }}
+              >
+                <i className="fas fa-plus"></i>
+                Demo maken
+              </button>
+            )}
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-6 py-3 bg-[#2E47FF] text-white rounded-lg font-semibold hover:bg-[#1E37E6] transition-colors flex items-center gap-2"
+            >
+              <i className="fas fa-plus"></i>
+              Nieuwe Lynqit
+            </button>
+          </div>
         </div>
 
         {pages.length === 0 ? (
@@ -555,6 +656,76 @@ export default function PagesManagementPage() {
                     : selectedPlan !== "free"
                     ? "Aanmaken en betalen"
                     : "Aanmaken"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Demo Modal */}
+      {showDemoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-8 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-semibold text-black dark:text-zinc-50 mb-4">
+              Demo Page Aanmaken
+            </h2>
+            <form onSubmit={handleCreateDemo}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  URL Slug
+                </label>
+                <input
+                  type="text"
+                  value={demoSlug}
+                  onChange={(e) => {
+                    // Convert to lowercase and replace spaces with hyphens
+                    let value = e.target.value.toLowerCase().replace(/\s+/g, "-");
+                    
+                    // Remove invalid characters (keep only a-z, 0-9, and hyphens)
+                    value = value.replace(/[^a-z0-9-]/g, "");
+                    
+                    // Replace multiple consecutive hyphens with single hyphen
+                    value = value.replace(/-+/g, "-");
+                    
+                    setDemoSlug(value);
+                  }}
+                  placeholder="demo-pagina"
+                  className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  required
+                />
+                <p className="text-xs text-zinc-500 mt-1">
+                  Alleen kleine letters, cijfers en streepjes. Bijv: demo-pagina
+                </p>
+                <p className="text-xs text-zinc-500 mt-2">
+                  <strong>Let op:</strong> Deze pagina wordt aangemaakt met een Pro abonnement zonder betaling.
+                </p>
+              </div>
+
+              {error && (
+                <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                  <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDemoModal(false);
+                    setDemoSlug("");
+                    setError("");
+                  }}
+                  className="flex-1 px-4 py-3 border border-zinc-300 dark:border-zinc-700 text-black dark:text-zinc-50 rounded-lg font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  Annuleren
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingDemo}
+                  className="flex-1 px-4 py-3 bg-[#2E47FF] text-white rounded-lg font-medium hover:bg-[#1E37E6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCreatingDemo ? "Aanmaken..." : "Demo Aanmaken"}
                 </button>
               </div>
             </form>

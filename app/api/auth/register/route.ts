@@ -51,10 +51,18 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Determine redirect URL
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    // Determine redirect URL - use production URL if available, otherwise localhost
+    // IMPORTANT: Also set Site URL in Supabase Dashboard → Authentication → URL Configuration → Site URL to https://lynqit.io
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+                    (process.env.NODE_ENV === 'production' ? 'https://lynqit.io' : 'http://localhost:3000');
+    
+    // Log the base URL for debugging (only in development)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Using base URL for email redirect:', baseUrl);
+    }
     
     // Sign up with anon key (this automatically sends confirmation email when email confirmation is enabled)
+    // Note: Supabase uses the Site URL from Dashboard settings, but emailRedirectTo can override it if whitelisted
     const { data: authData, error: authError } = await supabaseAnon.auth.signUp({
       email: email.toLowerCase(),
       password,

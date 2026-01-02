@@ -39,7 +39,7 @@ export default function InsightsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [pages, setPages] = useState<PageWithAnalytics[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [expandedPages, setExpandedPages] = useState<Set<string>>(new Set());
+  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
   const router = useRouter();
 
   // Social platforms mapping
@@ -122,67 +122,56 @@ export default function InsightsPage() {
         const pagesData = data.pages || [];
         setPages(pagesData);
         
-        // If there's only one page, expand it by default
+        // If there's only one page, select it by default
         if (pagesData.length === 1) {
-          setExpandedPages(new Set([pagesData[0].id]));
+          setSelectedPageId(pagesData[0].id);
         }
-        
-        // Fetch analytics for each page
-        pagesData.forEach((page: PageWithAnalytics) => {
-          fetchAnalytics(page);
-        });
       }
     } catch (error) {
       console.error("Error fetching pages:", error);
     }
   };
 
-  const togglePage = (pageId: string) => {
-    setExpandedPages((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(pageId)) {
-        newSet.delete(pageId);
-      } else {
-        newSet.add(pageId);
-      }
-      return newSet;
+  // Load analytics when selectedPageId changes
+  useEffect(() => {
+    if (!selectedPageId) return;
+
+    // Mark as loading (using functional update to avoid dependency on pages)
+    setPages((prevPages) => {
+      const selectedPage = prevPages.find((p) => p.id === selectedPageId);
+      if (!selectedPage) return prevPages; // Don't update if page not found
+      
+      return prevPages.map((p) =>
+        p.id === selectedPageId ? { ...p, isLoadingAnalytics: true } : p
+      );
     });
-  };
 
-  const fetchAnalytics = async (page: PageWithAnalytics) => {
-    setPages((prevPages) =>
-      prevPages.map((p) =>
-        p.id === page.id ? { ...p, isLoadingAnalytics: true } : p
-      )
-    );
-
-    try {
-      const response = await fetch(`/api/analytics/${page.id}`);
-      if (response.ok) {
-        const analyticsData = await response.json();
+    // Fetch analytics
+    fetch(`/api/analytics/${selectedPageId}`)
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        }
+        throw new Error("Failed to fetch analytics");
+      })
+      .then((analyticsData) => {
         setPages((prevPages) =>
           prevPages.map((p) =>
-            p.id === page.id
+            p.id === selectedPageId
               ? { ...p, analytics: analyticsData, isLoadingAnalytics: false }
               : p
           )
         );
-      } else {
+      })
+      .catch((error) => {
+        console.error("Error fetching analytics:", error);
         setPages((prevPages) =>
           prevPages.map((p) =>
-            p.id === page.id ? { ...p, isLoadingAnalytics: false } : p
+            p.id === selectedPageId ? { ...p, isLoadingAnalytics: false } : p
           )
         );
-      }
-    } catch (error) {
-      console.error("Error fetching analytics:", error);
-      setPages((prevPages) =>
-        prevPages.map((p) =>
-          p.id === page.id ? { ...p, isLoadingAnalytics: false } : p
-        )
-      );
-    }
-  };
+      });
+  }, [selectedPageId]); // Only re-run when selectedPageId changes
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -200,9 +189,29 @@ export default function InsightsPage() {
             <h1 className="text-3xl font-semibold text-white mb-2">
               Insights
             </h1>
-            <p className="text-zinc-400">
+            <p className="text-zinc-400 mb-4">
               Bekijk statistieken en prestaties van je Lynqit pages
             </p>
+            
+            {pages.length > 0 && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-white mb-2">
+                  Selecteer een pagina
+                </label>
+                <select
+                  value={selectedPageId || ""}
+                  onChange={(e) => setSelectedPageId(e.target.value || null)}
+                  className="w-full md:w-96 px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white focus:outline-none focus:ring-2 focus:ring-[#2E47FF] focus:border-transparent"
+                >
+                  <option value="">Selecteer een pagina...</option>
+                  {pages.map((page) => (
+                    <option key={page.id} value={page.id}>
+                      {formatPageTitle(page.slug)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {pages.length === 0 ? (
@@ -211,40 +220,33 @@ export default function InsightsPage() {
                 Je hebt nog geen Lynqit pages. Maak er een aan om statistieken te zien.
               </p>
             </div>
+          ) : !selectedPageId ? (
+            <div className="rounded-xl p-8 text-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+              <p className="text-zinc-400">
+                Selecteer een pagina uit de dropdown om statistieken te bekijken.
+              </p>
+            </div>
           ) : (
-            <div className="space-y-4">
-                {pages.map((page) => {
-                  const analytics = page.analytics;
-                  const isLoading = page.isLoadingAnalytics;
-                  const isExpanded = expandedPages.has(page.id);
-                  const hasMultiplePages = pages.length > 1;
+            (() => {
+              const selectedPage = pages.find((p) => p.id === selectedPageId);
+              if (!selectedPage) {
+                return (
+                  <div className="rounded-xl p-8 text-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                    <p className="text-zinc-400">
+                      Pagina niet gevonden.
+                    </p>
+                  </div>
+                );
+              }
 
-                  return (
-                    <div
-                      key={page.id}
-                      className="rounded-xl overflow-hidden" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}
-                    >
-                      <div
-                        className={`flex items-center justify-between p-6 cursor-pointer transition-colors ${
-                          hasMultiplePages ? "" : "cursor-default"
-                        }`}
-                        style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)'}
-                        onClick={() => hasMultiplePages && togglePage(page.id)}
-                      >
-                        <h2 className="text-xl font-semibold text-white">
-                          {formatPageTitle(page.slug)}
-                        </h2>
-                        {hasMultiplePages && (
-                          <i
-                            className={`fas fa-chevron-${isExpanded ? "up" : "down"} text-zinc-400 transition-transform`}
-                          ></i>
-                        )}
-                      </div>
-                      
-                      {(isExpanded || !hasMultiplePages) && (
-                        <div className="px-6 pb-6">
+              const analytics = selectedPage.analytics;
+              const isLoading = selectedPage.isLoadingAnalytics;
+
+              return (
+                <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                  
+                  
+                  <div className="px-6 py-6">
                           {isLoading ? (
                             <div className="text-center py-8">
                               <p className="text-zinc-400">
@@ -401,7 +403,7 @@ export default function InsightsPage() {
                                             const match = clickType.match(/^featured_(\d+)$/);
                                             if (match) {
                                               const index = parseInt(match[1]) - 1;
-                                              const link = Object.values(page.featuredLinks)[index];
+                                              const link = Object.values(selectedPage.featuredLinks)[index];
                                               displayName = link?.title || `Featured Link ${index + 1}`;
                                             } else {
                                               displayName = clickType.replace(/^featured_/, "Featured ");
@@ -412,7 +414,7 @@ export default function InsightsPage() {
                                             const match = clickType.match(/^event_(\d+)$/);
                                             if (match) {
                                               const index = parseInt(match[1]);
-                                              const event = page.events?.[index];
+                                              const event = selectedPage.events?.[index];
                                               displayName = event?.text || `Event ${index}`;
                                             } else {
                                               displayName = clickType.replace(/^event_/, "Event ");
@@ -423,7 +425,7 @@ export default function InsightsPage() {
                                             const match = clickType.match(/^custom_link_(\d+)$/);
                                             if (match) {
                                               const index = parseInt(match[1]);
-                                              const link = page.customLinks?.[index];
+                                              const link = selectedPage.customLinks?.[index];
                                               displayName = link?.text || `Custom Link ${index}`;
                                             } else {
                                               displayName = clickType.replace(/^custom_link_/, "Custom Link ");
@@ -434,7 +436,7 @@ export default function InsightsPage() {
                                             const match = clickType.match(/^show_(\d+)$/);
                                             if (match) {
                                               const index = parseInt(match[1]);
-                                              const show = page.shows?.[index];
+                                              const show = selectedPage.shows?.[index];
                                               displayName = show?.show || `Show ${index}`;
                                             } else {
                                               displayName = clickType.replace(/^show_/, "Show ");
@@ -442,11 +444,11 @@ export default function InsightsPage() {
                                           }
                                           // Handle phone
                                           else if (clickType === "phone") {
-                                            displayName = page.telefoonnummer || "Telefoon";
+                                            displayName = selectedPage.telefoonnummer || "Telefoon";
                                           }
                                           // Handle email
                                           else if (clickType === "email") {
-                                            displayName = page.emailadres || "Email";
+                                            displayName = selectedPage.emailadres || "Email";
                                           }
                                           // Handle other types
                                           else {
@@ -576,11 +578,9 @@ export default function InsightsPage() {
                             </div>
                           )}
                         </div>
-                      )}
                     </div>
                   );
-                })}
-            </div>
+                })()
           )}
         </div>
       </div>

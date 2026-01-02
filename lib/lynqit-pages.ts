@@ -295,7 +295,14 @@ export async function getPagesByUser(userId: string): Promise<LynqitPage[]> {
 }
 
 // Create a new page
-export async function createPage(userId: string, slug: string): Promise<LynqitPage> {
+export async function createPage(
+  userId: string, 
+  slug: string, 
+  options?: { 
+    subscriptionPlan?: SubscriptionPlan; 
+    subscriptionStatus?: "active" | "cancelled" | "expired";
+  }
+): Promise<LynqitPage> {
   const supabase = createServerClient();
   
   // Check if slug already exists
@@ -314,8 +321,8 @@ export async function createPage(userId: string, slug: string): Promise<LynqitPa
   const insertData = {
     user_id: user.id,
     slug,
-    subscription_plan: 'free',
-    subscription_status: 'active',
+    subscription_plan: options?.subscriptionPlan || 'free',
+    subscription_status: options?.subscriptionStatus || 'active',
     template: 'default',
     theme: 'dark',
     brand_color: '#2E47FF',
@@ -361,15 +368,25 @@ export async function createPage(userId: string, slug: string): Promise<LynqitPa
 }
 
 // Update a page
-export async function updatePage(id: string, updates: Partial<LynqitPage>): Promise<LynqitPage> {
+export async function updatePage(id: string, updates: Partial<LynqitPage>, allowUserIdUpdate: boolean = false): Promise<LynqitPage> {
   const supabase = createServerClient();
   
-  // Don't allow updating id, userId, createdAt
+  // Don't allow updating id, userId, createdAt (unless explicitly allowed for admin)
   const { id: _, userId: __, createdAt: ___, ...allowedUpdates } = updates;
   
   const updateData: any = {
     updated_at: new Date().toISOString(),
   };
+  
+  // Allow userId update if explicitly allowed (for admin operations)
+  if (allowUserIdUpdate && updates.userId !== undefined) {
+    // Get user ID from email
+    const user = await getUserByEmail(updates.userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    updateData.user_id = user.id;
+  }
 
   // Map interface fields to database fields
   if (allowedUpdates.title !== undefined) updateData.title = allowedUpdates.title;

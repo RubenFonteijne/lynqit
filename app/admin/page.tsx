@@ -29,6 +29,8 @@ export default function AdminPage() {
   const [editPageForm, setEditPageForm] = useState({ slug: "", title: "" });
   const [editPageLoading, setEditPageLoading] = useState(false);
   const [editPageError, setEditPageError] = useState<string | null>(null);
+  const [transferringPageId, setTransferringPageId] = useState<string | null>(null);
+  const [transferPageLoading, setTransferPageLoading] = useState(false);
 
   useEffect(() => {
     document.title = "Admin - Lynqit";
@@ -179,7 +181,18 @@ export default function AdminPage() {
     return allPages.filter((page) => page.userId === userId);
   };
 
-  // Calculate total monthly revenue
+  // Create a map of user emails to their roles for quick lookup
+  const getUserRole = (userEmail: string): 'admin' | 'user' => {
+    const user = allUsers.find((u) => u.email === userEmail);
+    return user?.role || 'user';
+  };
+
+  // Check if a page belongs to an admin user
+  const isAdminPage = (page: LynqitPage): boolean => {
+    return getUserRole(page.userId) === 'admin';
+  };
+
+  // Calculate total monthly revenue (excluding admin pages)
   const calculateTotalRevenue = () => {
     // Ensure allPages is an array
     if (!Array.isArray(allPages)) {
@@ -189,8 +202,12 @@ export default function AdminPage() {
       };
     }
 
+    // Filter out admin pages and only count active paid pages
     const activePaidPages = allPages.filter(
-      (p) => p.subscriptionPlan !== "free" && p.subscriptionStatus === "active"
+      (p) => 
+        p.subscriptionPlan !== "free" && 
+        p.subscriptionStatus === "active" &&
+        !isAdminPage(p) // Exclude admin pages
     );
 
     let totalExBTW = 0;
@@ -326,6 +343,41 @@ export default function AdminPage() {
     }
   };
 
+  const handleTransferPage = async (pageId: string, newUserEmail: string) => {
+    if (!user) return;
+
+    setTransferPageLoading(true);
+    try {
+      const response = await fetch(`/api/admin/pages/${pageId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: user.email,
+          newUserId: newUserEmail,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || "Fout bij overdragen van pagina");
+        return;
+      }
+
+      // Refresh data
+      await fetchData();
+      setTransferringPageId(null);
+      alert("Pagina succesvol overgedragen!");
+    } catch (error) {
+      console.error("Error transferring page:", error);
+      alert("Er is een fout opgetreden bij het overdragen van de pagina");
+    } finally {
+      setTransferPageLoading(false);
+    }
+  };
+
   // Don't show loading screen, just render empty state if needed
 
   return (
@@ -448,7 +500,7 @@ export default function AdminPage() {
               Betaalde Abonnementen
             </h3>
             <p className="text-3xl font-bold text-white">
-              {Array.isArray(allPages) ? allPages.filter((p) => p.subscriptionPlan !== "free" && p.subscriptionStatus === "active").length : 0}
+              {Array.isArray(allPages) ? allPages.filter((p) => p.subscriptionPlan !== "free" && p.subscriptionStatus === "active" && !isAdminPage(p)).length : 0}
             </p>
           </div>
           <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
@@ -602,30 +654,72 @@ export default function AdminPage() {
                         Aangemaakt: {formatDate(page.createdAt)}
                       </p>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditPage(page);
-                        }}
-                        className="px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors"
-                      >
-                        URL/Titel
-                      </button>
-                      <Link
-                        href={`/dashboard/pages/${page.id}/edit`}
-                        className="px-4 py-2 bg-zinc-600 text-white rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors"
-                        target="_blank"
-                      >
-                        Bewerken
-                      </Link>
-                      <Link
-                        href={`/${page.slug}`}
-                        target="_blank"
-                        className="px-4 py-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-black dark:text-zinc-50 rounded-lg text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-                      >
-                        Bekijken
-                      </Link>
+                    <div className="flex gap-2 items-center">
+                      {transferringPageId === page.id ? (
+                        <div className="flex gap-2 items-center">
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleTransferPage(page.id, e.target.value);
+                              } else {
+                                setTransferringPageId(null);
+                              }
+                            }}
+                            disabled={transferPageLoading}
+                            className="px-3 py-2 rounded-lg text-sm border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-black dark:text-zinc-50"
+                            defaultValue=""
+                          >
+                            <option value="">Selecteer gebruiker...</option>
+                            {allUsers.map((u) => (
+                              <option key={u.email} value={u.email}>
+                                {u.email}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => setTransferringPageId(null)}
+                            className="px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+                          >
+                            Annuleren
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditPage(page);
+                            }}
+                            className="px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors"
+                          >
+                            URL/Titel
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTransferringPageId(page.id);
+                            }}
+                            className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+                            title="Koppel pagina aan andere gebruiker"
+                          >
+                            Koppelen
+                          </button>
+                          <Link
+                            href={`/dashboard/pages/${page.id}/edit`}
+                            className="px-4 py-2 bg-zinc-600 text-white rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors"
+                            target="_blank"
+                          >
+                            Bewerken
+                          </Link>
+                          <Link
+                            href={`/${page.slug}`}
+                            target="_blank"
+                            className="px-4 py-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-black dark:text-zinc-50 rounded-lg text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                          >
+                            Bekijken
+                          </Link>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}

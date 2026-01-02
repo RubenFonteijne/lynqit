@@ -10,7 +10,7 @@ export async function PUT(
   try {
     const resolvedParams = await Promise.resolve(params);
     const body = await request.json();
-    const { userId, slug, title } = body;
+    const { userId, slug, title, newUserId } = body;
 
     // Check if userId is provided (from authenticated user)
     if (!userId) {
@@ -62,8 +62,12 @@ export async function PUT(
     if (title !== undefined) {
       updates.title = title;
     }
+    if (newUserId !== undefined) {
+      updates.userId = newUserId; // Email of the new user
+    }
 
-    const updatedPage = await updatePage(resolvedParams.id, updates);
+    // Allow userId update for admin operations
+    const updatedPage = await updatePage(resolvedParams.id, updates, true);
     return NextResponse.json({ page: updatedPage });
   } catch (error: any) {
     console.error("Error updating page:", error);

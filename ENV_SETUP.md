@@ -21,9 +21,15 @@ Deze applicatie heeft de volgende environment variables nodig om te werken:
    - Vind je in Supabase Dashboard → Settings → API → Project API keys → `service_role` `secret`
    - Deze key bypasses Row Level Security (RLS) - alleen gebruiken in server-side code
 
+4. **Supabase Site URL (BELANGRIJK voor email confirmaties!)**
+   - Ga naar Supabase Dashboard → Authentication → URL Configuration
+   - Zet **Site URL** op je productie URL: `https://lynqit.io`
+   - Zet **Redirect URLs** op: `https://lynqit.io/account-confirmed`, `https://lynqit.io/account-bevestigd`, `https://lynqit.io/reset-password`
+   - **BELANGRIJK:** Als dit niet is ingesteld, worden email confirmatie links naar localhost gestuurd!
+
 ### Base URL (Verplicht voor productie)
 
-4. **NEXT_PUBLIC_BASE_URL**
+5. **NEXT_PUBLIC_BASE_URL**
    - Je publieke website URL (zonder trailing slash)
    - Voor productie: `https://lynqit.io` (of je eigen domain)
    - Voor development: `http://localhost:3000` (standaard)
@@ -32,7 +38,7 @@ Deze applicatie heeft de volgende environment variables nodig om te werken:
 
 ### Mollie (Optioneel - voor betalingen)
 
-5. **MOLLIE_API_KEY** (optioneel)
+6. **MOLLIE_API_KEY** (optioneel)
    - Je Mollie API key voor betalingen
    - Kan ook worden ingesteld via de admin interface
 
@@ -90,6 +96,21 @@ Na het instellen van de environment variables:
 3. Test of je kunt inloggen en pagina's kunt bekijken
 
 ## Troubleshooting
+
+### Email confirmatie links gaan naar localhost
+
+Dit betekent dat de **Site URL** in Supabase Dashboard niet correct is ingesteld.
+
+**Oplossing:**
+1. Ga naar Supabase Dashboard → Authentication → URL Configuration
+2. Zet **Site URL** op `https://lynqit.io` (of je productie URL)
+3. Voeg toe aan **Redirect URLs**:
+   - `https://lynqit.io/account-confirmed`
+   - `https://lynqit.io/account-bevestigd`
+   - `https://lynqit.io/reset-password`
+4. Zorg ook dat `NEXT_PUBLIC_BASE_URL` is ingesteld op je productie server
+5. Herstart je Next.js server
+6. Test opnieuw een registratie
 
 ### Gebruikers worden doorgestuurd naar localhost na betaling
 
