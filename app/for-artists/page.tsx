@@ -13,9 +13,10 @@ export default function ForArtistsPage() {
       {/* Hero Section with Gradient Background */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden" style={{ background: 'radial-gradient(circle at 110%, #2F48FE, #000 50%)' }}>
         <div className="container mx-auto px-4 py-20 md:py-32">
-          <div className="items-center">
-            <div className="text-center z-10">
-              <h1 className="text-6xl md:text-8xl font-bold mb-8 leading-tight">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            {/* Left column - Text */}
+            <div className="z-10">
+              <h1 className="text-5xl md:text-7xl font-bold mb-8 leading-tight">
                 <span className="block text-white font-bold leading-[1]">
                   <span
                     style={{
@@ -26,9 +27,17 @@ export default function ForArtistsPage() {
                     }}>FOR ARTISTS</span>
                 </span>
               </h1>
-              <p className="text-xl md:text-2xl text-white/80 mb-12 max-w-3xl mx-auto">
+              <p className="text-xl md:text-2xl text-white/80 mb-8">
                 Everything you need to connect with your fans, promote your music, and grow your audience—all in one powerful link.
               </p>
+            </div>
+            {/* Right column - Image */}
+            <div className="z-10 flex justify-center md:justify-end">
+              <img 
+                src="https://lynqit.nl/wp-content/uploads/2025/06/phones.png" 
+                alt="Lynqit for Artists" 
+                className="w-full max-w-md md:max-w-lg"
+              />
             </div>
           </div>
         </div>
