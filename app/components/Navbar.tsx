@@ -129,15 +129,26 @@ export default function Navbar() {
                 >
                   {currentLang === "en" ? "Pricing" : "Prijzen"}
                 </Link>
-                <Link
-                  href={isLoggedIn ? "/dashboard" : "/login"}
-                  className="px-5 py-2.5 rounded-lg text-md font-bold text-white transition-colors"
-                  style={{
-                    backgroundImage: 'linear-gradient(90deg, #2E47FF 0%, #00F0EE 100%)'
-                  }}
-                >
-                  {isLoggedIn ? "Dashboard" : (currentLang === "en" ? "Login" : "Inloggen")}
-                </Link>
+                {!isLoggedIn && (
+                  <Link
+                    href="/login"
+                    className="px-5 py-2.5 rounded-lg text-md font-bold text-white border border-white/30 hover:border-white/50 transition-colors flex items-center gap-2"
+                  >
+                    <i className="fas fa-user-circle"></i>
+                    {currentLang === "en" ? "Login" : "Inloggen"}
+                  </Link>
+                )}
+                {isLoggedIn && (
+                  <Link
+                    href="/dashboard"
+                    className="px-5 py-2.5 rounded-lg text-md font-bold text-white transition-colors"
+                    style={{
+                      backgroundImage: 'linear-gradient(90deg, #2E47FF 0%, #00F0EE 100%)'
+                    }}
+                  >
+                    Dashboard
+                  </Link>
+                )}
                 <LanguageSwitcher />
               </div>
               {/* Mobile menu button */}
