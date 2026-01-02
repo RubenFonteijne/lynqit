@@ -188,7 +188,7 @@ export default function PublicLynqitPage() {
   };
 
   const ctaButtonColor = page.brandColor || "#2E47FF";
-  const ctaTextColor = getContrastTextColor(ctaButtonColor);
+  const ctaTextColor = page.ctaTextColor || getContrastTextColor(ctaButtonColor);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: bgColor, color: textColor, overflowX: "hidden" }}>
@@ -502,8 +502,8 @@ export default function PublicLynqitPage() {
               )}
               {page.promoBanner.description && (
                 <p 
-                  className="text-sm mb-3"
-                  style={{ color: isDark ? "#FFF" : "#000", opacity: 0.9 }}
+                  className="mb-3"
+                  style={{ color: isDark ? "#FFF" : "#000", opacity: 0.9, fontSize: "16px" }}
                 >
                   {page.promoBanner.description}
                 </p>
@@ -515,7 +515,7 @@ export default function PublicLynqitPage() {
                   className="inline-block px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90"
                   style={{
                     backgroundColor: page.brandColor || "#2E47FF",
-                    color: getContrastTextColor(page.brandColor || "#2E47FF"),
+                    color: page.ctaTextColor || getContrastTextColor(page.brandColor || "#2E47FF"),
                   }}
                 >
                   {page.promoBanner.buttonText}
@@ -652,6 +652,9 @@ export default function PublicLynqitPage() {
                   </div>
                 );
 
+                const brandColor = page.brandColor || "#2E47FF";
+                const buttonTextColor = page.ctaTextColor || "#FFFFFF";
+                
                 return (
                   show.link ? (
                     <Link
@@ -660,7 +663,8 @@ export default function PublicLynqitPage() {
                       onClick={() => trackClick(`show_${index}`, show.link)}
                       className="block w-full p-4 transition-opacity hover:opacity-90"
                       style={{
-                        backgroundColor: hasCustomBackground ? 'rgba(0, 0, 0, 0.1)' : (isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'),
+                        backgroundColor: brandColor,
+                        color: buttonTextColor,
                         borderRadius: '12px',
                         border: '1px solid rgba(255, 255, 255, 0.1)',
                       }}
@@ -672,7 +676,8 @@ export default function PublicLynqitPage() {
                       key={index}
                       className="block w-full p-4"
                       style={{
-                        backgroundColor: hasCustomBackground ? 'rgba(0, 0, 0, 0.1)' : (isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'),
+                        backgroundColor: brandColor,
+                        color: buttonTextColor,
                         borderRadius: '12px',
                         border: '1px solid rgba(255, 255, 255, 0.1)',
                       }}

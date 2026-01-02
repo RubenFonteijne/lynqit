@@ -393,7 +393,30 @@ export default function EditPagePage() {
                         />
                       </div>
                       <p className="text-xs text-zinc-500 mt-1">
-                        Deze kleur wordt gebruikt voor de CTA button
+                        Deze kleur wordt gebruikt voor de CTA button, promobanner knop, events knoppen en shows knoppen
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                        Tekst Kleur op CTA Kleur
+                      </label>
+                      <div className="flex gap-3 items-center">
+                        <input
+                          type="color"
+                          value={page.ctaTextColor || "#FFFFFF"}
+                          onChange={(e) => updatePage({ ctaTextColor: e.target.value })}
+                          className="w-20 h-10 rounded-lg border border-zinc-300 dark:border-zinc-700 cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={page.ctaTextColor || "#FFFFFF"}
+                          onChange={(e) => updatePage({ ctaTextColor: e.target.value })}
+                          placeholder="#FFFFFF"
+                          className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 font-mono"
+                        />
+                      </div>
+                      <p className="text-xs text-zinc-500 mt-1">
+                        Deze kleur wordt gebruikt voor de tekst op de CTA button, promobanner knop, events knoppen en shows knoppen
                       </p>
                     </div>
                     <div>
@@ -1972,7 +1995,7 @@ export default function EditPagePage() {
                   };
 
                   const ctaButtonColor = page.brandColor || "#2E47FF";
-                  const ctaTextColor = getContrastTextColor(ctaButtonColor);
+                  const ctaTextColor = page.ctaTextColor || getContrastTextColor(ctaButtonColor);
 
                   return (
                     <div style={{ minHeight: "100%" }}>
@@ -2263,8 +2286,8 @@ export default function EditPagePage() {
                                 )}
                                 {page.promoBanner.description && (
                                   <p 
-                                    className="text-sm mb-3"
-                                    style={{ color: isDark ? "#FFF" : "#000", opacity: 0.9 }}
+                                    className="mb-3"
+                                    style={{ color: isDark ? "#FFF" : "#000", opacity: 0.9, fontSize: "16px" }}
                                   >
                                     {page.promoBanner.description}
                                   </p>
@@ -2274,7 +2297,7 @@ export default function EditPagePage() {
                                     className="inline-block px-4 py-2 rounded-lg text-sm font-semibold transition-opacity"
                                     style={{
                                       backgroundColor: page.brandColor || "#2E47FF",
-                                      color: getContrastTextColor(page.brandColor || "#2E47FF"),
+                                      color: page.ctaTextColor || getContrastTextColor(page.brandColor || "#2E47FF"),
                                     }}
                                   >
                                     {page.promoBanner.buttonText}

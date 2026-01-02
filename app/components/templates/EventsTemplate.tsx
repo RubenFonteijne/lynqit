@@ -116,6 +116,7 @@ export default function EventsTemplate({
               );
 
               const brandColor = page.brandColor || "#2E47FF";
+              const buttonTextColor = page.ctaTextColor || "#FFFFFF";
               
               return (
                 event.link ? (
@@ -126,6 +127,7 @@ export default function EventsTemplate({
                     className="block w-full p-4 transition-opacity hover:opacity-90"
                     style={{
                       backgroundColor: brandColor,
+                      color: buttonTextColor,
                       borderRadius: '12px',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                     }}
@@ -138,6 +140,7 @@ export default function EventsTemplate({
                     className="block w-full p-4"
                     style={{
                       backgroundColor: brandColor,
+                      color: buttonTextColor,
                       borderRadius: '12px',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                     }}

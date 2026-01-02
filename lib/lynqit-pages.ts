@@ -87,6 +87,7 @@ export interface LynqitPage {
   template?: TemplateType;
   theme?: "dark" | "light";
   brandColor?: string;
+  ctaTextColor?: string;
   backgroundColor?: string;
   header: {
     type: "video" | "image";
@@ -398,6 +399,7 @@ export async function updatePage(id: string, updates: Partial<LynqitPage>, allow
   if (allowedUpdates.template !== undefined) updateData.template = allowedUpdates.template;
   if (allowedUpdates.theme !== undefined) updateData.theme = allowedUpdates.theme;
   if (allowedUpdates.brandColor !== undefined) updateData.brand_color = allowedUpdates.brandColor;
+  if (allowedUpdates.ctaTextColor !== undefined) updateData.cta_text_color = allowedUpdates.ctaTextColor;
   if (allowedUpdates.backgroundColor !== undefined) updateData.background_color = allowedUpdates.backgroundColor;
   if (allowedUpdates.header !== undefined) {
     updateData.header_type = allowedUpdates.header.type;
@@ -492,6 +494,7 @@ function mapDbPageToPage(dbPage: any): LynqitPage {
     template: dbPage.template,
     theme: dbPage.theme,
     brandColor: dbPage.brand_color,
+    ctaTextColor: dbPage.cta_text_color,
     backgroundColor: dbPage.background_color,
     header: {
       type: dbPage.header_type,
