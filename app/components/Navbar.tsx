@@ -18,7 +18,18 @@ export default function Navbar() {
   const hasSidebar = pathname?.startsWith("/dashboard") || pathname === "/account" || pathname === "/admin";
 
   // Determine current language from pathname
-  const currentLang = pathname?.startsWith("/nl") || pathname?.startsWith("/prijzen") || pathname?.startsWith("/hoe-werkt-het") ? "nl" : "en";
+  const currentLang = pathname?.startsWith("/nl") || pathname?.startsWith("/prijzen") || pathname?.startsWith("/hoe-werkt-het") || pathname?.startsWith("/voor-artiesten") ? "nl" : "en";
+
+  // Helper function to check if a link is active
+  const isActiveLink = (href: string) => {
+    if (!pathname) return false;
+    // For home page, check exact match or /nl
+    if (href === "/" || href === "/nl") {
+      return pathname === "/" || pathname === "/nl";
+    }
+    // For other pages, check if pathname starts with the href
+    return pathname === href || pathname.startsWith(href + "/");
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -192,25 +203,81 @@ export default function Navbar() {
               <div className="hidden md:flex items-center gap-8">
                 <Link
                   href={currentLang === "en" ? "/" : "/nl"}
-                  className="text-lg text-white font-bold hover:text-gray-400 transition-colors"
+                  className={`text-lg font-bold transition-colors ${
+                    isActiveLink(currentLang === "en" ? "/" : "/nl")
+                      ? ""
+                      : "text-white hover:text-gray-400"
+                  }`}
+                  style={
+                    isActiveLink(currentLang === "en" ? "/" : "/nl")
+                      ? {
+                          backgroundImage: 'linear-gradient(90deg, #3045FF, #07F2EE 100%)',
+                          backgroundClip: 'text',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent'
+                        }
+                      : {}
+                  }
                 >
                   {currentLang === "en" ? "Home" : "Home"}
                 </Link>
                 <Link
                   href={currentLang === "en" ? "/how-it-works" : "/hoe-werkt-het"}
-                  className="text-lg text-white font-bold hover:text-gray-400 transition-colors"
+                  className={`text-lg font-bold transition-colors ${
+                    isActiveLink(currentLang === "en" ? "/how-it-works" : "/hoe-werkt-het")
+                      ? ""
+                      : "text-white hover:text-gray-400"
+                  }`}
+                  style={
+                    isActiveLink(currentLang === "en" ? "/how-it-works" : "/hoe-werkt-het")
+                      ? {
+                          backgroundImage: 'linear-gradient(90deg, #3045FF, #07F2EE 100%)',
+                          backgroundClip: 'text',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent'
+                        }
+                      : {}
+                  }
                 >
                   {currentLang === "en" ? "How it works" : "Hoe werkt het"}
                 </Link>
                 <Link
                   href={currentLang === "en" ? "/for-artists" : "/voor-artiesten"}
-                  className="text-lg text-white font-bold hover:text-gray-400 transition-colors"
+                  className={`text-lg font-bold transition-colors ${
+                    isActiveLink(currentLang === "en" ? "/for-artists" : "/voor-artiesten")
+                      ? ""
+                      : "text-white hover:text-gray-400"
+                  }`}
+                  style={
+                    isActiveLink(currentLang === "en" ? "/for-artists" : "/voor-artiesten")
+                      ? {
+                          backgroundImage: 'linear-gradient(90deg, #3045FF, #07F2EE 100%)',
+                          backgroundClip: 'text',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent'
+                        }
+                      : {}
+                  }
                 >
                   {currentLang === "en" ? "For Artists" : "Voor Artiesten"}
                 </Link>
                 <Link
                   href={currentLang === "en" ? "/pricing" : "/prijzen"}
-                  className="text-lg text-white font-bold hover:text-gray-400 transition-colors"
+                  className={`text-lg font-bold transition-colors ${
+                    isActiveLink(currentLang === "en" ? "/pricing" : "/prijzen")
+                      ? ""
+                      : "text-white hover:text-gray-400"
+                  }`}
+                  style={
+                    isActiveLink(currentLang === "en" ? "/pricing" : "/prijzen")
+                      ? {
+                          backgroundImage: 'linear-gradient(90deg, #3045FF, #07F2EE 100%)',
+                          backgroundClip: 'text',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent'
+                        }
+                      : {}
+                  }
                 >
                   {currentLang === "en" ? "Pricing" : "Prijzen"}
                 </Link>
