@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
-import { createUser } from "@/lib/users";
+import { getUserByEmail } from "@/lib/users";
 import { createPage } from "@/lib/lynqit-pages";
 
 export async function POST(request: NextRequest) {
@@ -22,16 +22,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createServerClient();
+    // Check if user already exists
+    const existingUser = await getUserByEmail(email.toLowerCase());
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "An account with this email already exists" },
+        { status: 400 }
+      );
+    }
 
-    // Sign up with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // Use anon key for signUp (this automatically sends confirmation emails)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json(
+        { error: "Missing Supabase configuration" },
+        { status: 500 }
+      );
+    }
+
+    // Create a client with anon key for signUp (this triggers confirmation email automatically)
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    // Determine redirect URL
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    
+    // Sign up with anon key (this automatically sends confirmation email when email confirmation is enabled)
+    const { data: authData, error: authError } = await supabaseAnon.auth.signUp({
       email: email.toLowerCase(),
       password,
+      options: {
+        emailRedirectTo: `${baseUrl}/account-confirmed`,
+      },
     });
 
     if (authError || !authData.user) {
-      if (authError?.message?.includes("already registered")) {
+      if (authError?.message?.includes("already registered") || authError?.message?.includes("already exists")) {
         return NextResponse.json(
           { error: "An account with this email already exists" },
           { status: 400 }
@@ -44,27 +77,56 @@ export async function POST(request: NextRequest) {
     }
 
     // Create user in database (without password, as Supabase Auth handles it)
-    const user = await createUser(email, password, "user");
+    // Use the auth user ID to link the user record
+    const supabaseAdmin = createServerClient();
+    const { data: newUser, error: createError } = await supabaseAdmin
+      .from('users')
+      .insert({
+        id: authData.user.id, // Use the auth user ID
+        email: email.toLowerCase(),
+        role: 'user',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+    
+    if (createError) {
+      console.error("Error creating user in database:", createError);
+      throw new Error(`Failed to create user in database: ${createError.message}`);
+    }
 
-    // Create page if slug is provided (using service role key, so no auth needed)
+    const user = {
+      id: newUser.id,
+      email: newUser.email,
+      role: newUser.role as 'admin' | 'user',
+      mollieCustomerId: newUser.mollie_customer_id,
+      companyName: newUser.company_name,
+      firstName: newUser.first_name,
+      lastName: newUser.last_name,
+      vatNumber: newUser.vat_number,
+      phoneNumber: newUser.phone_number,
+      createdAt: newUser.created_at,
+      updatedAt: newUser.updated_at,
+    };
+
+    // Create page if slug is provided
     let page = null;
     if (slug && slug.trim()) {
       try {
-        // Clean up slug
         const cleanedSlug = slug.trim().toLowerCase().replace(/^-+|-+$/g, "");
         
         if (cleanedSlug && /^[a-z0-9-]+$/.test(cleanedSlug)) {
           page = await createPage(email, cleanedSlug);
         }
       } catch (pageError: any) {
-        // Log error but don't fail registration if page creation fails
         console.error("Error creating page during registration:", pageError);
         // Continue with registration even if page creation fails
       }
     }
 
     // Return user info
-    // Note: session might be null if email confirmation is required
+    // Note: session will be null if email confirmation is required
     return NextResponse.json({
       success: true,
       user: {
@@ -73,7 +135,7 @@ export async function POST(request: NextRequest) {
         id: user.id,
       },
       session: authData.session,
-      // Include access token if available (for immediate use)
+      // Include access token if available (for immediate use if email confirmation is disabled)
       accessToken: authData.session?.access_token || null,
       page: page ? { id: page.id, slug: page.slug } : null,
     });
@@ -86,7 +148,10 @@ export async function POST(request: NextRequest) {
       );
     }
     return NextResponse.json(
-      { error: "An error occurred during registration" },
+      { 
+        error: error.message || "An error occurred during registration",
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      },
       { status: 500 }
     );
   }

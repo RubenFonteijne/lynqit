@@ -169,14 +169,52 @@ export async function updateUser(email: string, updates: Partial<User>): Promise
 export async function deleteUser(email: string): Promise<void> {
   const supabase = createServerClient();
   
+  // First, get the user from database to get their ID
+  const user = await getUserByEmail(email);
+  if (!user) {
+    throw new Error('User not found in database');
+  }
+  
+  // Get the user's ID from Supabase Auth by listing users and finding by email
+  // Since getUserByEmail might not be available, we'll use listUsers
+  let authUserId: string | null = null;
+  try {
+    const { data: authUsers, error: listError } = await supabase.auth.admin.listUsers();
+    if (!listError && authUsers?.users) {
+      const authUser = authUsers.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      if (authUser) {
+        authUserId = authUser.id;
+      }
+    }
+  } catch (listError) {
+    console.warn('Could not list users to find auth user ID:', listError);
+    // Continue with deletion - we'll try to delete by the user.id from database
+    authUserId = user.id;
+  }
+  
+  // Delete user from Supabase Auth if we found the ID
+  if (authUserId) {
+    try {
+      const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(authUserId);
+      if (deleteAuthError) {
+        console.error('Error deleting user from Supabase Auth:', deleteAuthError);
+        // Don't throw - continue with database deletion
+      }
+    } catch (deleteError) {
+      console.error('Error deleting user from Supabase Auth:', deleteError);
+      // Continue with database deletion
+    }
+  }
+  
+  // Delete user from users table
   const { error } = await supabase
     .from('users')
     .delete()
     .eq('email', email.toLowerCase());
 
   if (error) {
-    console.error('Error deleting user:', error);
-    throw new Error('Failed to delete user');
+    console.error('Error deleting user from database:', error);
+    throw new Error('Failed to delete user from database');
   }
 }
 
