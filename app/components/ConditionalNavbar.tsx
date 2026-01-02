@@ -20,6 +20,8 @@ export default function ConditionalNavbar() {
     "/how-it-works",
     "/prijzen",
     "/pricing",
+    "/for-artists",
+    "/voor-artiesten",
     "/account",
     "/admin",
   ];
