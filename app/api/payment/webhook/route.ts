@@ -50,20 +50,33 @@ export async function POST(request: NextRequest) {
 
     // Update page subscription based on payment status
     if (payment.status === "paid") {
-      // Payment successful - activate subscription for this page
+      // Payment successful - this is likely the first payment for a subscription
+      // If there's a subscription ID, the subscription webhook will handle the activation
+      // Otherwise, activate the page directly
       const now = new Date();
       const subscriptionEndDate = new Date(now);
       subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1); // 1 month from now
 
-      const subscriptionId = metadata?.subscriptionId;
+      // Check if this payment is linked to a subscription
+      const subscriptionId = payment.subscriptionId || metadata?.subscriptionId || page.mollieSubscriptionId;
 
-      await updatePage(pageId, {
-        subscriptionPlan: plan,
-        subscriptionStatus: "active",
-        subscriptionStartDate: now.toISOString(),
-        subscriptionEndDate: subscriptionEndDate.toISOString(),
-        mollieSubscriptionId: subscriptionId || page.mollieSubscriptionId,
-      });
+      if (subscriptionId) {
+        // Payment is part of a subscription - subscription webhook will handle activation
+        // Just ensure the subscription ID is stored
+        if (!page.mollieSubscriptionId) {
+          await updatePage(pageId, {
+            mollieSubscriptionId: subscriptionId,
+          });
+        }
+      } else {
+        // No subscription ID - this might be a legacy payment, activate directly
+        await updatePage(pageId, {
+          subscriptionPlan: plan,
+          subscriptionStatus: "active",
+          subscriptionStartDate: now.toISOString(),
+          subscriptionEndDate: subscriptionEndDate.toISOString(),
+        });
+      }
     } else if (payment.status === "failed" || payment.status === "canceled" || payment.status === "expired") {
       // Payment failed - delete the page since payment was not completed
       // Only delete if this was a new page creation (not an upgrade)
