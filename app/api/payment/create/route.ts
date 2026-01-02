@@ -157,9 +157,10 @@ export async function POST(request: NextRequest) {
 
     // Update page with pending subscription info
     // Subscription will be confirmed by webhook after payment
+    // Don't set status to "active" yet - wait for successful payment
     await updatePage(pageId, {
       subscriptionPlan: plan as SubscriptionPlan,
-      subscriptionStatus: "active", // Will be confirmed by webhook after payment
+      subscriptionStatus: "expired", // Will be set to "active" by webhook after successful payment
     });
 
     // Get checkout URL from payment links

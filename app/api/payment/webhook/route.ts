@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMollieClient } from "@/lib/mollie";
 import { getUserByEmail } from "@/lib/users";
-import { getPageById, updatePage } from "@/lib/lynqit-pages";
+import { getPageById, updatePage, deletePage } from "@/lib/lynqit-pages";
 import type { SubscriptionPlan } from "@/lib/lynqit-pages";
 
 export async function POST(request: NextRequest) {
@@ -65,11 +65,19 @@ export async function POST(request: NextRequest) {
         mollieSubscriptionId: subscriptionId || page.mollieSubscriptionId,
       });
     } else if (payment.status === "failed" || payment.status === "canceled" || payment.status === "expired") {
-      // Payment failed - revert page to free plan
-      await updatePage(pageId, {
-        subscriptionPlan: "free",
-        subscriptionStatus: "expired",
-      });
+      // Payment failed - delete the page since payment was not completed
+      // Only delete if this was a new page creation (not an upgrade)
+      // Check if page was just created (has expired status and paid plan)
+      if (page.subscriptionStatus === "expired" && page.subscriptionPlan !== "free") {
+        await deletePage(pageId);
+        console.log(`Deleted page ${pageId} due to failed payment`);
+      } else {
+        // For existing pages (upgrades), just revert to free plan
+        await updatePage(pageId, {
+          subscriptionPlan: "free",
+          subscriptionStatus: "expired",
+        });
+      }
     }
 
     return NextResponse.json({ success: true });
