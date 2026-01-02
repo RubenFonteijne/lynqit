@@ -71,7 +71,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Create or get customer
-    let customerId = user.mollieCustomerId;
+    let customerId: string | undefined = user.mollieCustomerId;
+    
+    // Ensure customerId is a valid string (not empty)
+    if (customerId && customerId.trim() === "") {
+      customerId = undefined;
+    }
     
     // Try to use existing customer, but create new one if it fails (mode mismatch)
     if (customerId) {
