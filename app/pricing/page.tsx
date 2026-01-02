@@ -55,7 +55,7 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="min-h-screen text-zinc-50 dark:text-white py-16 px-4" style={{ background: 'radial-gradient(ellipse at top, #222, transparent)' }}>
+    <div className="min-h-screen text-zinc-50 dark:text-white py-16 px-4" style={{ background: 'linear-gradient(#2F3441, #000)' }}>
       <div className="max-w-7xl mx-auto">
         {/* Page Header */}
         <h1 className="text-6xl md:text-8xl font-bold mb-8 leading-tight text-center">

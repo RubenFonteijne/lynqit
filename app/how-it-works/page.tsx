@@ -9,7 +9,7 @@ export default function HowItWorksPage() {
   }, []);
 
   return (
-    <div className="min-h-screen text-zinc-50 dark:text-white font-sans" style={{ background: 'radial-gradient(ellipse at top, #222, transparent)' }}>
+    <div className="min-h-screen text-zinc-50 dark:text-white font-sans" style={{ background: 'linear-gradient(#2F3441, #000)' }}>
       {/* Hero Section */}
       <section className="relative py-20 md:py-32 px-4">
         <div className="max-w-7xl mx-auto">
