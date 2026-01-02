@@ -51,23 +51,24 @@ export async function POST(request: NextRequest) {
     // Update page subscription based on payment status
     if (payment.status === "paid") {
       // Payment successful - this is likely the first payment for a subscription
-      // If there's a subscription ID, the subscription webhook will handle the activation
-      // Otherwise, activate the page directly
       const now = new Date();
       const subscriptionEndDate = new Date(now);
       subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1); // 1 month from now
 
       // Check if this payment is linked to a subscription
-      const subscriptionId = payment.subscriptionId || metadata?.subscriptionId || page.mollieSubscriptionId;
+      // Mollie payments for subscriptions have a subscriptionId property
+      const subscriptionId = (payment as any).subscriptionId || metadata?.subscriptionId || page.mollieSubscriptionId;
 
       if (subscriptionId) {
-        // Payment is part of a subscription - subscription webhook will handle activation
-        // Just ensure the subscription ID is stored
-        if (!page.mollieSubscriptionId) {
-          await updatePage(pageId, {
-            mollieSubscriptionId: subscriptionId,
-          });
-        }
+        // Payment is part of a subscription - activate the subscription
+        // The subscription webhook will handle future monthly payments
+        await updatePage(pageId, {
+          subscriptionPlan: plan,
+          subscriptionStatus: "active",
+          subscriptionStartDate: now.toISOString(),
+          subscriptionEndDate: subscriptionEndDate.toISOString(),
+          mollieSubscriptionId: subscriptionId,
+        });
       } else {
         // No subscription ID - this might be a legacy payment, activate directly
         await updatePage(pageId, {
