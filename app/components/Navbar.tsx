@@ -20,30 +20,12 @@ export default function Navbar() {
   // Determine current language from pathname
   const currentLang = pathname?.startsWith("/nl") || pathname?.startsWith("/prijzen") || pathname?.startsWith("/hoe-werkt-het") || pathname?.startsWith("/voor-artiesten") ? "nl" : "en";
 
-  // Helper function to check if a link is active
-  const isActiveLink = (href: string) => {
-    if (!pathname) return false;
-    // For home page, check exact match or /nl
-    if (href === "/" || href === "/nl") {
-      return pathname === "/" || pathname === "/nl";
-    }
-    // For other pages, check if pathname starts with the href
-    return pathname === href || pathname.startsWith(href + "/");
-  };
-
   useEffect(() => {
-    let isMounted = true;
-    let subscription: { unsubscribe: () => void } | null = null;
-
     // Check if user is logged in (check both localStorage and Supabase session)
     const checkLoginStatus = async () => {
-      if (!isMounted) return;
-      
       try {
         const supabase = createClientClient();
         const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (!isMounted) return;
         
         if (error || !session || !session.user) {
           setIsLoggedIn(false);
@@ -59,38 +41,28 @@ export default function Navbar() {
         if (userData) {
           try {
             const user = JSON.parse(userData);
-            if (isMounted) {
-              setIsAdmin(user.email === "rubenfonteijne@gmail.com" && user.role === "admin");
-            }
+            setIsAdmin(user.email === "rubenfonteijne@gmail.com" && user.role === "admin");
           } catch (error) {
             // Invalid cache, fetch from API
-            if (session.user.email) {
-              fetchUserData(session.user.email);
-            }
+            fetchUserData(session.user.email!);
           }
         } else {
           // No cached data, fetch from API
-          if (session.user.email) {
-            fetchUserData(session.user.email);
-          }
+          fetchUserData(session.user.email!);
         }
       } catch (error) {
         console.error("Error checking login status:", error);
-        if (isMounted) {
-          setIsLoggedIn(false);
-          setIsAdmin(false);
-        }
+        setIsLoggedIn(false);
+        setIsAdmin(false);
       }
     };
 
     const fetchUserData = async (email: string) => {
-      if (!isMounted) return;
-      
       try {
         const response = await fetch(`/api/user?email=${encodeURIComponent(email)}`);
-        if (response.ok && isMounted) {
+        if (response.ok) {
           const userData = await response.json();
-          if (userData.user && isMounted) {
+          if (userData.user) {
             setIsAdmin(userData.user.email === "rubenfonteijne@gmail.com" && userData.user.role === "admin");
             localStorage.setItem("lynqit_user", JSON.stringify(userData.user));
           }
@@ -104,29 +76,19 @@ export default function Navbar() {
     checkLoginStatus();
 
     // Listen for Supabase auth state changes
-    try {
-      const supabase = createClientClient();
-      const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (!isMounted) return;
-        
-        if (event === "SIGNED_IN" && session) {
-          setIsLoggedIn(true);
-          if (session.user.email) {
-            fetchUserData(session.user.email);
-          }
-        } else if (event === "SIGNED_OUT") {
-          setIsLoggedIn(false);
-          setIsAdmin(false);
-          localStorage.removeItem("lynqit_user");
+    const supabase = createClientClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        setIsLoggedIn(true);
+        if (session.user.email) {
+          fetchUserData(session.user.email);
         }
-      });
-      
-      if (authSubscription) {
-        subscription = authSubscription;
+      } else if (event === "SIGNED_OUT") {
+        setIsLoggedIn(false);
+        setIsAdmin(false);
+        localStorage.removeItem("lynqit_user");
       }
-    } catch (error) {
-      console.error("Error setting up auth state listener:", error);
-    }
+    });
 
     // Listen for storage changes (when user logs in/out in another tab)
     window.addEventListener("storage", checkLoginStatus);
@@ -135,10 +97,7 @@ export default function Navbar() {
     window.addEventListener("focus", checkLoginStatus);
 
     return () => {
-      isMounted = false;
-      if (subscription) {
-        subscription.unsubscribe();
-      }
+      subscription.unsubscribe();
       window.removeEventListener("storage", checkLoginStatus);
       window.removeEventListener("focus", checkLoginStatus);
     };
@@ -203,81 +162,25 @@ export default function Navbar() {
               <div className="hidden md:flex items-center gap-8">
                 <Link
                   href={currentLang === "en" ? "/" : "/nl"}
-                  className={`text-lg font-bold transition-colors ${
-                    isActiveLink(currentLang === "en" ? "/" : "/nl")
-                      ? ""
-                      : "text-white hover:text-gray-400"
-                  }`}
-                  style={
-                    isActiveLink(currentLang === "en" ? "/" : "/nl")
-                      ? {
-                          backgroundImage: 'linear-gradient(90deg, #3045FF, #07F2EE 100%)',
-                          backgroundClip: 'text',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent'
-                        }
-                      : {}
-                  }
+                  className="text-lg text-white font-bold hover:text-gray-400 transition-colors"
                 >
                   {currentLang === "en" ? "Home" : "Home"}
                 </Link>
                 <Link
                   href={currentLang === "en" ? "/how-it-works" : "/hoe-werkt-het"}
-                  className={`text-lg font-bold transition-colors ${
-                    isActiveLink(currentLang === "en" ? "/how-it-works" : "/hoe-werkt-het")
-                      ? ""
-                      : "text-white hover:text-gray-400"
-                  }`}
-                  style={
-                    isActiveLink(currentLang === "en" ? "/how-it-works" : "/hoe-werkt-het")
-                      ? {
-                          backgroundImage: 'linear-gradient(90deg, #3045FF, #07F2EE 100%)',
-                          backgroundClip: 'text',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent'
-                        }
-                      : {}
-                  }
+                  className="text-lg text-white font-bold hover:text-gray-400 transition-colors"
                 >
                   {currentLang === "en" ? "How it works" : "Hoe werkt het"}
                 </Link>
                 <Link
                   href={currentLang === "en" ? "/for-artists" : "/voor-artiesten"}
-                  className={`text-lg font-bold transition-colors ${
-                    isActiveLink(currentLang === "en" ? "/for-artists" : "/voor-artiesten")
-                      ? ""
-                      : "text-white hover:text-gray-400"
-                  }`}
-                  style={
-                    isActiveLink(currentLang === "en" ? "/for-artists" : "/voor-artiesten")
-                      ? {
-                          backgroundImage: 'linear-gradient(90deg, #3045FF, #07F2EE 100%)',
-                          backgroundClip: 'text',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent'
-                        }
-                      : {}
-                  }
+                  className="text-lg text-white font-bold hover:text-gray-400 transition-colors"
                 >
                   {currentLang === "en" ? "For Artists" : "Voor Artiesten"}
                 </Link>
                 <Link
                   href={currentLang === "en" ? "/pricing" : "/prijzen"}
-                  className={`text-lg font-bold transition-colors ${
-                    isActiveLink(currentLang === "en" ? "/pricing" : "/prijzen")
-                      ? ""
-                      : "text-white hover:text-gray-400"
-                  }`}
-                  style={
-                    isActiveLink(currentLang === "en" ? "/pricing" : "/prijzen")
-                      ? {
-                          backgroundImage: 'linear-gradient(90deg, #3045FF, #07F2EE 100%)',
-                          backgroundClip: 'text',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent'
-                        }
-                      : {}
-                  }
+                  className="text-lg text-white font-bold hover:text-gray-400 transition-colors"
                 >
                   {currentLang === "en" ? "Pricing" : "Prijzen"}
                 </Link>

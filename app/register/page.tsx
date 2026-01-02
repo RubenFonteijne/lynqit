@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
+import { createClientClient } from "@/lib/supabase-client";
 
 function RegisterContent() {
   useEffect(() => {
@@ -11,10 +12,14 @@ function RegisterContent() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const planParam = searchParams.get("plan") as "free" | "start" | "pro" | null;
   const prefillEmail = searchParams.get("email");
   const fromSubscription = searchParams.get("fromSubscription") === "true";
   const fromPayment = searchParams.get("fromPayment") === "true";
+  
+  // Determine current language from pathname
+  const isDutch = pathname?.startsWith("/nl") || pathname?.startsWith("/prijzen") || pathname?.startsWith("/hoe-werkt-het") || pathname?.startsWith("/voor-artiesten");
   
   const [email, setEmail] = useState(prefillEmail || "");
   const [password, setPassword] = useState("");
@@ -93,6 +98,7 @@ function RegisterContent() {
       }
 
       // Register user if they don't exist
+      let accessToken: string | null = null;
       if (!userExists) {
         const registerResponse = await fetch("/api/auth/register", {
           method: "POST",
@@ -114,6 +120,50 @@ function RegisterContent() {
         if (registerData.user) {
           localStorage.setItem("lynqit_user", JSON.stringify(registerData.user));
         }
+
+        // Get access token from session if available
+        if (registerData.accessToken) {
+          accessToken = registerData.accessToken;
+        } else if (registerData.session?.access_token) {
+          accessToken = registerData.session.access_token;
+        } else {
+          // If no session from registration (email confirmation required), 
+          // try to sign in to get a session
+          try {
+            const supabase = createClientClient();
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email: email.toLowerCase(),
+              password,
+            });
+            
+            if (!signInError && signInData.session) {
+              accessToken = signInData.session.access_token;
+            } else {
+              // Email confirmation required - redirect to confirmation page
+              const confirmPage = isDutch ? "/bevestig-registratie" : "/confirm-registration";
+              router.push(`${confirmPage}?email=${encodeURIComponent(email)}`);
+              return;
+            }
+          } catch (err) {
+            console.error("Error signing in after registration:", err);
+            // Email confirmation required - redirect to confirmation page
+            const confirmPage = isDutch ? "/bevestig-registratie" : "/confirm-registration";
+            router.push(`${confirmPage}?email=${encodeURIComponent(email)}`);
+            return;
+          }
+        }
+      } else {
+        // User already exists, try to get session
+        try {
+          const { createClientClient } = await import("@/lib/supabase-client");
+          const supabase = createClientClient();
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            accessToken = session.access_token;
+          }
+        } catch (err) {
+          console.error("Error getting session:", err);
+        }
       }
 
       // Get slug from sessionStorage if available (from payment flow), otherwise use form value
@@ -122,11 +172,18 @@ function RegisterContent() {
         : cleanedSlug.trim().toLowerCase();
 
       // Always create the Lynqit page first (with free plan by default)
+      const pageHeaders: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      
+      // Add Authorization header if we have an access token
+      if (accessToken) {
+        pageHeaders["Authorization"] = `Bearer ${accessToken}`;
+      }
+
       const pageResponse = await fetch("/api/pages", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: pageHeaders,
         body: JSON.stringify({
           userId: email,
           slug: finalSlug,

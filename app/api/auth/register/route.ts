@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
 import { createUser } from "@/lib/users";
+import { createPage } from "@/lib/lynqit-pages";
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,6 +47,7 @@ export async function POST(request: NextRequest) {
     const user = await createUser(email, password, "user");
 
     // Return user info
+    // Note: session might be null if email confirmation is required
     return NextResponse.json({
       success: true,
       user: {
@@ -54,6 +56,8 @@ export async function POST(request: NextRequest) {
         id: user.id,
       },
       session: authData.session,
+      // Include access token if available (for immediate use)
+      accessToken: authData.session?.access_token || null,
     });
   } catch (error: any) {
     console.error("Registration error:", error);

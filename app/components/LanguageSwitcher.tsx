@@ -11,7 +11,7 @@ export default function LanguageSwitcher() {
   const pathname = usePathname();
 
   // Determine current language from pathname
-  const currentLang = pathname?.startsWith("/nl") || pathname?.startsWith("/prijzen") || pathname?.startsWith("/hoe-werkt-het") ? "nl" : "en";
+  const currentLang = pathname?.startsWith("/nl") || pathname?.startsWith("/prijzen") || pathname?.startsWith("/hoe-werkt-het") || pathname?.startsWith("/voor-artiesten") ? "nl" : "en";
 
   // Close dropdown when clicking outside
   useEffect(() => {
