@@ -18,7 +18,7 @@ export default function Navbar() {
   const hasSidebar = pathname?.startsWith("/dashboard") || pathname === "/account" || pathname === "/admin";
 
   // Determine current language from pathname
-  const currentLang = pathname?.startsWith("/nl") || pathname?.startsWith("/prijzen") || pathname?.startsWith("/hoe-werkt-het") || pathname?.startsWith("/voor-artiesten") ? "nl" : "en";
+  const currentLang = pathname?.startsWith("/nl") || pathname?.startsWith("/prijzen") || pathname?.startsWith("/voor-artiesten") || pathname?.startsWith("/voor-bedrijven") || pathname?.startsWith("/voor-evenementen") ? "nl" : "en";
 
   useEffect(() => {
     // Check if user is logged in (check both localStorage and Supabase session)
@@ -167,16 +167,22 @@ export default function Navbar() {
                   {currentLang === "en" ? "Home" : "Home"}
                 </Link>
                 <Link
-                  href={currentLang === "en" ? "/how-it-works" : "/hoe-werkt-het"}
-                  className="text-lg text-white font-bold hover:text-gray-400 transition-colors"
-                >
-                  {currentLang === "en" ? "How it works" : "Hoe werkt het"}
-                </Link>
-                <Link
                   href={currentLang === "en" ? "/for-artists" : "/voor-artiesten"}
                   className="text-lg text-white font-bold hover:text-gray-400 transition-colors"
                 >
                   {currentLang === "en" ? "For Artists" : "Voor Artiesten"}
+                </Link>
+                <Link
+                  href={currentLang === "en" ? "/for-businesses" : "/voor-bedrijven"}
+                  className="text-lg text-white font-bold hover:text-gray-400 transition-colors"
+                >
+                  {currentLang === "en" ? "For Businesses" : "Voor Bedrijven"}
+                </Link>
+                <Link
+                  href={currentLang === "en" ? "/for-events" : "/voor-evenementen"}
+                  className="text-lg text-white font-bold hover:text-gray-400 transition-colors"
+                >
+                  {currentLang === "en" ? "For Events" : "Voor Evenementen"}
                 </Link>
                 <Link
                   href={currentLang === "en" ? "/pricing" : "/prijzen"}

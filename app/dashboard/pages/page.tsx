@@ -64,6 +64,24 @@ export default function PagesManagementPage() {
             setIsAdmin(userData.user.role === 'admin');
             // Store in localStorage for backward compatibility
             localStorage.setItem("lynqit_user", JSON.stringify(userData.user));
+            
+            // Show cached pages immediately for instant UI
+            const cachedPages = localStorage.getItem("lynqit_pages");
+            if (cachedPages && isMounted) {
+              try {
+                const pages = JSON.parse(cachedPages);
+                const cacheTimestamp = localStorage.getItem("lynqit_pages_timestamp");
+                if (cacheTimestamp) {
+                  const age = Date.now() - parseInt(cacheTimestamp);
+                  if (age < 5 * 60 * 1000) { // 5 minutes
+                    setPages(pages);
+                  }
+                }
+              } catch (e) {
+                // Invalid cache, continue to fetch
+              }
+            }
+            
             // Fetch user's pages with access token
             const pagesResponse = await fetch(`/api/pages`, {
               headers: {
@@ -72,7 +90,11 @@ export default function PagesManagementPage() {
             });
             if (isMounted && pagesResponse.ok) {
               const pagesData = await pagesResponse.json();
-              setPages(pagesData.pages || []);
+              const freshPages = pagesData.pages || [];
+              setPages(freshPages);
+              // Cache pages for next time
+              localStorage.setItem("lynqit_pages", JSON.stringify(freshPages));
+              localStorage.setItem("lynqit_pages_timestamp", Date.now().toString());
             }
           }
         } else {
@@ -118,7 +140,11 @@ export default function PagesManagementPage() {
         throw new Error(`Failed to fetch pages: ${response.status}`);
       }
       const data = await response.json();
-      setPages(data.pages || []);
+      const freshPages = data.pages || [];
+      setPages(freshPages);
+      // Cache pages for next time
+      localStorage.setItem("lynqit_pages", JSON.stringify(freshPages));
+      localStorage.setItem("lynqit_pages_timestamp", Date.now().toString());
     } catch (error) {
       console.error("Error fetching pages:", error);
     } finally {
@@ -409,7 +435,7 @@ export default function PagesManagementPage() {
           </div>
         </div>
 
-        {pages.length === 0 ? (
+        {!isLoading && pages.length === 0 ? (
           <div className="rounded-xl p-12 text-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
             <p className="text-zinc-400 mb-4">
               Je hebt nog geen Lynqit pages. Maak er een aan om te beginnen!
@@ -421,70 +447,99 @@ export default function PagesManagementPage() {
               Eerste Page Aanmaken
             </button>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {pages.map((page) => (
-              <div
-                key={page.id}
-                className="rounded-xl p-6 transition-shadow" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}
-              >
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-xl font-semibold text-white">
-                      {formatPageTitle(page.slug)}
-                    </h3>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        !page.subscriptionPlan || page.subscriptionPlan === "free"
-                          ? "bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300"
-                          : page.subscriptionPlan === "start"
-                          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                          : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
-                      }`}
-                    >
-                      {!page.subscriptionPlan || page.subscriptionPlan === "free"
-                        ? "Basis"
-                        : page.subscriptionPlan === "start"
-                        ? "Start"
-                        : "Pro"}
-                    </span>
-                  </div>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono mb-2">
-                    /{page.slug}
-                  </p>
-                </div>
+        ) : !isLoading && pages.length > 0 ? (
+          <div className="space-y-3">
+            {pages.map((page) => {
+              const handleCopyLink = async () => {
+                const pageUrl = typeof window !== 'undefined' 
+                  ? `${window.location.origin}/${page.slug}`
+                  : `/${page.slug}`;
+                
+                try {
+                  await navigator.clipboard.writeText(pageUrl);
+                  alert("Link gekopieerd naar klembord!");
+                } catch (error) {
+                  console.error("Failed to copy link:", error);
+                  // Fallback for older browsers
+                  const textArea = document.createElement("textarea");
+                  textArea.value = pageUrl;
+                  document.body.appendChild(textArea);
+                  textArea.select();
+                  document.execCommand("copy");
+                  document.body.removeChild(textArea);
+                  alert("Link gekopieerd naar klembord!");
+                }
+              };
 
-                <div className="flex gap-3">
-                  <Link
-                    href={`/dashboard/pages/${page.id}/edit`}
-                    className="flex-1 px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors text-center"
-                  >
-                    Bewerken
-                  </Link>
-                  <Link
-                    href={`/${page.slug}`}
-                    target="_blank"
-                    className="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center" style={{ border: '1px solid rgba(255, 255, 255, 0.2)', color: 'white' }}
-                  >
-                    Bekijken
-                  </Link>
-                  <button
-                    onClick={() => handleDeletePage(page)}
-                    disabled={isDeleting === page.id}
-                    className="px-4 py-2 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Verwijderen"
-                  >
-                    {isDeleting === page.id ? (
-                      <i className="fas fa-spinner fa-spin"></i>
-                    ) : (
-                      <i className="fas fa-trash"></i>
+              return (
+                <div
+                  key={page.id}
+                  className="flex items-center justify-between px-5 py-4 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-medium text-white">{formatPageTitle(page.slug)}</p>
+                      {page.isDemo && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-900/30 text-orange-300">
+                          Demo
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-zinc-400 font-mono">
+                      /{page.slug}
+                    </p>
+                    {(!page.subscriptionPlan || page.subscriptionPlan === "free") && (
+                      <p className="text-xs text-[#2E47FF] dark:text-[#00F0EE] mt-1">
+                        Basis plan
+                      </p>
                     )}
-                  </button>
+                    {page.subscriptionPlan && page.subscriptionPlan !== "free" && (
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                        {page.subscriptionPlan === "start" ? "Start plan" : "Pro plan"}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/dashboard/pages/${page.id}/edit`}
+                      className="p-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-black dark:text-zinc-50 rounded-lg text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center"
+                      title="Bewerken"
+                    >
+                      Bewerken <i className="pl-2 fas fa-edit"></i>
+                    </Link>
+                    <Link
+                      href={`/${page.slug}`}
+                      target="_blank"
+                      className="p-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-black dark:text-zinc-50 rounded-lg text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center"
+                      title="Bekijken"
+                    >
+                      Bekijken <i className="pl-2 fas fa-eye"></i> 
+                    </Link>
+                    <button
+                      onClick={handleCopyLink}
+                      className="p-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-black dark:text-zinc-50 rounded-lg text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center"
+                      title="Copy link"
+                    >
+                      Link kopieren <i className="pl-2 fas fa-copy"></i>
+                    </button>
+                    <button
+                      onClick={() => handleDeletePage(page)}
+                      disabled={isDeleting === page.id}
+                      className="p-3 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                      title="Verwijderen"
+                    >
+                      {isDeleting === page.id ? (
+                        <i className="fas fa-spinner fa-spin"></i>
+                      ) : (
+                        <i className="fas fa-trash"></i>
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        )}
+        ) : null}
 
       {/* Create Modal */}
       {showCreateModal && (

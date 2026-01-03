@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import TabsSection from "@/app/components/TabsSection";
 
 export default function HomeNL() {
   useEffect(() => {
@@ -140,6 +141,59 @@ export default function HomeNL() {
           </div>
         </div>
       </section>
+
+      {/* Tabs Section */}
+      <TabsSection
+        tabs={[
+          {
+            id: "businesses",
+            label: "Voor bedrijven",
+            content: {
+              title: "Voor Bedrijven",
+              description: "Verbind al je bedrijfslinks, producten en diensten op één krachtige landingspagina. Stroomlijn klantbetrokkenheid, showcase je aanbod en verhoog conversies met een professionele Lynqit pagina op maat voor je bedrijf.",
+              image: "https://zafemwpgbkciuozaxtgs.supabase.co/storage/v1/object/public/lynqit-uploads/uploads/dreamcamper%20lynqit.jpg"
+            }
+          },
+          {
+            id: "artists",
+            label: "Voor artiesten",
+            content: {
+              title: "Voor Artiesten",
+              description: "Alles wat je nodig hebt om te verbinden met je fans, je muziek te promoten en je publiek te laten groeien. Van Spotify integratie tot shows kalenders, pre-saves tot social media hubs—alles in één krachtige link ontworpen voor muzikanten.",
+              image: "https://lynqit.nl/wp-content/uploads/2025/06/phones.png"
+            }
+          },
+          {
+            id: "events",
+            label: "Voor evenementen",
+            content: {
+              title: "Voor Evenementen",
+              description: "Maak de perfecte landingspagina voor je evenementen. Showcase data, locaties en ticketlinks op één plek. Maak evenementpromotie simpel en effectief met een dedicated events template gebouwd voor organisatoren.",
+              image: "https://lynqit.nl/wp-content/uploads/2025/06/phones.png"
+            }
+          },
+          {
+            id: "hotels",
+            label: "Voor hotels",
+            content: {
+              title: "Voor Hotels",
+              description: "Showcase je hotel, kamers, faciliteiten en boekingslinks op één elegante pagina. Verbind gasten met je website, social media, reviews en directe boekingsplatforms. Perfect voor hospitality bedrijven die hun online aanwezigheid willen stroomlijnen.",
+              image: "https://zafemwpgbkciuozaxtgs.supabase.co/storage/v1/object/public/lynqit-uploads/uploads/Lynqit-Atrium.jpg"
+            }
+          },
+          {
+            id: "creators",
+            label: "Voor creators",
+            content: {
+              title: "Voor Creators",
+              description: "Bouw je creator merk met een professionele link pagina. Verbind al je content, social platforms, merchandise en samenwerkingslinks. Perfect voor influencers, YouTubers en content creators die hun bereik willen maximaliseren.",
+              image: "https://lynqit.nl/wp-content/uploads/2025/06/phones.png"
+            }
+          }
+        ]}
+        pricingLink="/prijzen"
+        buttonText="Bekijk Prijzen"
+      />
 
       {/* Quote Section */}
       <section className="py-20 px-4 bg-black">

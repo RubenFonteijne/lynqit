@@ -310,7 +310,7 @@ export default function PublicLynqitPage() {
             <img
               src={page.logo}
               alt="Logo"
-              className="h-20 w-auto"
+              className="h-30 w-auto"
               style={{ objectFit: "contain" }}
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = "none";
@@ -550,6 +550,7 @@ export default function PublicLynqitPage() {
                     style={{
                       backgroundColor: isDark ? "#1a1a1a" : "#f0f0f0",
                       borderRadius: "8px",
+                      border: isDark ? "1px solid rgba(255, 255, 255, 0.05)" : "1px solid rgba(0, 0, 0, 0.15)",
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = isDark ? "#2a2a2a" : "#e0e0e0";

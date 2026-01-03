@@ -8,6 +8,7 @@ import type { LynqitPage } from "@/lib/lynqit-pages";
 import { formatPageTitle } from "@/lib/utils";
 import { SUBSCRIPTION_PRICES, calculatePriceWithBTW } from "@/lib/pricing";
 import DashboardSidebar from "@/app/components/DashboardSidebar";
+import ConfirmModal from "@/app/components/ConfirmModal";
 import { createClientClient } from "@/lib/supabase-client";
 import { isAdminUserAsync } from "@/lib/users";
 
@@ -18,19 +19,17 @@ export default function AdminPage() {
   const [allPages, setAllPages] = useState<LynqitPage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [settings, setSettings] = useState({
-    mollieApiKeyTest: "",
-    mollieApiKeyLive: "",
-    useTestMode: true,
-  });
-  const [settingsLoading, setSettingsLoading] = useState(false);
   const [editingPage, setEditingPage] = useState<LynqitPage | null>(null);
   const [editPageForm, setEditPageForm] = useState({ slug: "", title: "" });
   const [editPageLoading, setEditPageLoading] = useState(false);
   const [editPageError, setEditPageError] = useState<string | null>(null);
   const [transferringPageId, setTransferringPageId] = useState<string | null>(null);
   const [transferPageLoading, setTransferPageLoading] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    page: LynqitPage | null;
+  }>({ isOpen: false, page: null });
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Admin - Lynqit";
@@ -102,7 +101,7 @@ export default function AdminPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token || '';
 
-      const [usersResponse, pagesResponse, settingsResponse] = await Promise.all([
+      const [usersResponse, pagesResponse] = await Promise.all([
         fetch("/api/admin/users", { cache: 'no-store' }),
         fetch("/api/admin/pages", { 
           cache: 'no-store',
@@ -110,7 +109,6 @@ export default function AdminPage() {
             'Authorization': `Bearer ${accessToken}`
           } : {}
         }),
-        fetch("/api/admin/settings", { cache: 'no-store' }),
       ]);
 
       if (usersResponse.ok) {
@@ -122,57 +120,11 @@ export default function AdminPage() {
         const pagesData = await pagesResponse.json();
         setAllPages(pagesData.pages || []);
       }
-
-      if (settingsResponse.ok) {
-        const settingsData = await settingsResponse.json();
-        setSettings({
-          mollieApiKeyTest: settingsData.settings.mollieApiKeyTest || "",
-          mollieApiKeyLive: settingsData.settings.mollieApiKeyLive || "",
-          useTestMode: settingsData.settings.useTestMode ?? true,
-        });
-      }
     } catch (error) {
       console.error("Error fetching admin data:", error);
     }
   };
 
-  const handleSaveSettings = async () => {
-    setSettingsLoading(true);
-    try {
-      const response = await fetch("/api/admin/settings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(settings),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        alert(data.error || "Fout bij opslaan van instellingen");
-        return;
-      }
-
-      alert("Instellingen opgeslagen!");
-      setShowSettings(false);
-      // Refresh settings
-      const settingsResponse = await fetch("/api/admin/settings");
-      if (settingsResponse.ok) {
-        const settingsData = await settingsResponse.json();
-        setSettings({
-          mollieApiKeyTest: settingsData.settings.mollieApiKeyTest || "",
-          mollieApiKeyLive: settingsData.settings.mollieApiKeyLive || "",
-          useTestMode: settingsData.settings.useTestMode ?? true,
-        });
-      }
-    } catch (error) {
-      console.error("Error saving settings:", error);
-      alert("Er is een fout opgetreden bij het opslaan van de instellingen");
-    } finally {
-      setSettingsLoading(false);
-    }
-  };
 
   const getUserPages = (userId: string) => {
     if (!Array.isArray(allPages)) {
@@ -378,6 +330,40 @@ export default function AdminPage() {
     }
   };
 
+  const handleDeletePage = (page: LynqitPage) => {
+    setDeleteModal({ isOpen: true, page });
+  };
+
+  const confirmDeletePage = async () => {
+    if (!deleteModal.page || !user) return;
+
+    const page = deleteModal.page;
+    setIsDeleting(page.id);
+
+    try {
+      const response = await fetch(`/api/admin/pages/${page.id}?userId=${encodeURIComponent(user.email)}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(errorData.error || "Fout bij verwijderen van pagina");
+        setDeleteModal({ isOpen: false, page: null });
+        return;
+      }
+
+      // Refresh data
+      await fetchData();
+      setDeleteModal({ isOpen: false, page: null });
+      alert("Pagina succesvol verwijderd!");
+    } catch (error) {
+      console.error("Error deleting page:", error);
+      alert("Er is een fout opgetreden bij het verwijderen van de pagina");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
   // Don't show loading screen, just render empty state if needed
 
   return (
@@ -397,12 +383,6 @@ export default function AdminPage() {
               </p>
             </div>
             <div className="flex gap-4">
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className="px-4 py-2 rounded-lg transition-colors" style={{ border: '1px solid rgba(255, 255, 255, 0.2)', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'white' }}
-              >
-                {showSettings ? "Verberg Settings" : "Settings"}
-              </button>
               <Link
                 href="/dashboard"
                 className="px-4 py-2 rounded-lg transition-colors" style={{ border: '1px solid rgba(255, 255, 255, 0.2)', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'white' }}
@@ -412,70 +392,6 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
-
-        {/* Settings Card */}
-        {showSettings && (
-          <div className="rounded-xl p-6 mb-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-            <h2 className="text-xl font-semibold text-white mb-4">
-              Settings
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  Mollie Test API Key
-                </label>
-                <input
-                  type="password"
-                  value={settings.mollieApiKeyTest}
-                  onChange={(e) => setSettings({ ...settings, mollieApiKeyTest: e.target.value })}
-                  placeholder="test_..."
-                  className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" style={{ border: '1px solid rgba(255, 255, 255, 0.2)', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'white' }}
-                />
-                <p className="mt-1 text-xs text-zinc-400">
-                  Test API key voor ontwikkelomgeving
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  Mollie Live API Key
-                </label>
-                <input
-                  type="password"
-                  value={settings.mollieApiKeyLive}
-                  onChange={(e) => setSettings({ ...settings, mollieApiKeyLive: e.target.value })}
-                  placeholder="live_..."
-                  className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" style={{ border: '1px solid rgba(255, 255, 255, 0.2)', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'white' }}
-                />
-                <p className="mt-1 text-xs text-zinc-400">
-                  Live API key voor productieomgeving
-                </p>
-              </div>
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={settings.useTestMode}
-                    onChange={(e) => setSettings({ ...settings, useTestMode: e.target.checked })}
-                    className="w-4 h-4 text-[#2E47FF] rounded focus:ring-[#2E47FF]"
-                  />
-                  <span className="text-sm font-medium text-zinc-300">
-                    Gebruik Test Mode
-                  </span>
-                </label>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 ml-6">
-                  Schakel test mode uit om live betalingen te verwerken
-                </p>
-              </div>
-              <button
-                onClick={handleSaveSettings}
-                disabled={settingsLoading}
-                className="px-6 py-2 bg-[#2E47FF] text-white rounded-lg font-medium hover:bg-[#1E37E6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {settingsLoading ? "Opslaan..." : "Instellingen opslaan"}
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -519,15 +435,15 @@ export default function AdminPage() {
         </div>
 
         {/* Users List */}
-        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 p-6 mb-6">
-          <h2 className="text-xl font-semibold text-black dark:text-zinc-50 mb-4">
+        <div className="rounded-xl shadow-sm border p-6 mb-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+          <h2 className="text-xl font-semibold text-zinc-50 mb-4">
             Alle Gebruikers
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-700">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                <tr className="border-b border-zinc-700">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-zinc-300">
                     Email
                   </th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -550,25 +466,25 @@ export default function AdminPage() {
                   return (
                     <tr
                       key={u.email}
-                      className="border-b border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer"
+                      className="border-b border-zinc-800 hover:bg-zinc-800 cursor-pointer"
                       onClick={() => setSelectedUserId(selectedUserId === u.email ? null : u.email)}
                     >
-                      <td className="py-3 px-4 text-sm text-black dark:text-zinc-50">
+                      <td className="py-3 px-4 text-sm text-zinc-50">
                         {u.email}
                       </td>
-                      <td className="py-3 px-4 text-sm text-black dark:text-zinc-50">
+                      <td className="py-3 px-4 text-sm text-zinc-50">
                         <span className={`px-2 py-1 rounded text-xs ${
                           u.role === "admin"
-                            ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-                            : "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
+                            ? "bg-purple-900 text-purple-200"
+                            : "bg-zinc-800 text-zinc-200"
                         }`}>
                           {u.role}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-sm text-zinc-600 dark:text-zinc-400">
+                      <td className="py-3 px-4 text-sm text-zinc-400">
                         {formatDate(u.createdAt)}
                       </td>
-                      <td className="py-3 px-4 text-sm text-black dark:text-zinc-50">
+                      <td className="py-3 px-4 text-sm text-zinc-50">
                         {userPages.length}
                       </td>
                       <td className="py-3 px-4 text-sm">
@@ -578,7 +494,7 @@ export default function AdminPage() {
                               e.stopPropagation();
                               setSelectedUserId(selectedUserId === u.email ? null : u.email);
                             }}
-                            className="text-[#2E47FF] hover:text-[#1E37E6] dark:text-[#00F0EE] dark:hover:text-[#00D9D7]"
+                            className="text-[#00F0EE] hover:text-[#00D9D7]"
                           >
                             {selectedUserId === u.email ? "Verberg" : "Bekijk"}
                           </button>
@@ -588,7 +504,7 @@ export default function AdminPage() {
                                 e.stopPropagation();
                                 handleDeleteUser(u.email, u.email);
                               }}
-                              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                              className="text-red-400 hover:text-red-300"
                               title="Gebruiker verwijderen"
                             >
                               <i className="fas fa-trash"></i>
@@ -606,30 +522,30 @@ export default function AdminPage() {
 
         {/* User Pages Detail */}
         {selectedUserId && (
-          <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 p-6">
-            <h2 className="text-xl font-semibold text-black dark:text-zinc-50 mb-4">
+          <div className="rounded-xl shadow-sm border p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+            <h2 className="text-xl font-semibold text-zinc-50 mb-4">
               Pagina's van {selectedUserId}
             </h2>
             {getUserPages(selectedUserId).length === 0 ? (
-              <p className="text-zinc-600 dark:text-zinc-400">Geen pagina's</p>
+              <p className="text-zinc-400">Geen pagina's</p>
             ) : (
               <div className="space-y-3">
                 {getUserPages(selectedUserId).map((page) => (
                   <div
                     key={page.id}
-                    className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg"
+                    className="flex items-center justify-between p-3 bg-zinc-800 rounded-lg"
                   >
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium text-black dark:text-zinc-50">
+                        <p className="font-medium text-zinc-50">
                           {page.slug}
                         </p>
                         <span className={`px-2 py-0.5 rounded text-xs ${
                           page.subscriptionPlan === "pro"
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                            ? "bg-blue-900 text-blue-200"
                             : page.subscriptionPlan === "start"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                            : "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
+                            ? "bg-green-900 text-green-200"
+                            : "bg-zinc-800 text-zinc-200"
                         }`}>
                           {page.subscriptionPlan === "pro"
                             ? "Pro"
@@ -640,17 +556,17 @@ export default function AdminPage() {
                         {page.subscriptionStatus && (
                           <span className={`px-2 py-0.5 rounded text-xs ${
                             page.subscriptionStatus === "active"
-                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                              ? "bg-green-900 text-green-200"
+                              : "bg-red-900 text-red-200"
                           }`}>
                             {page.subscriptionStatus}
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-zinc-600 dark:text-zinc-400 font-mono">
+                      <p className="text-xs text-zinc-400 font-mono">
                         /{page.slug}
                       </p>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
+                      <p className="text-xs text-zinc-500 mt-1">
                         Aangemaakt: {formatDate(page.createdAt)}
                       </p>
                     </div>
@@ -666,7 +582,7 @@ export default function AdminPage() {
                               }
                             }}
                             disabled={transferPageLoading}
-                            className="px-3 py-2 rounded-lg text-sm border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-black dark:text-zinc-50"
+                            className="px-3 py-2 rounded-lg text-sm border border-zinc-700 bg-zinc-900 text-zinc-50"
                             defaultValue=""
                           >
                             <option value="">Selecteer gebruiker...</option>
@@ -678,7 +594,7 @@ export default function AdminPage() {
                           </select>
                           <button
                             onClick={() => setTransferringPageId(null)}
-                            className="px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+                            className="px-3 py-2 text-sm text-zinc-400 hover:text-zinc-200"
                           >
                             Annuleren
                           </button>
@@ -690,7 +606,7 @@ export default function AdminPage() {
                               e.stopPropagation();
                               handleEditPage(page);
                             }}
-                            className="px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors"
+                            className="px-4 py-2 border border-zinc-700 bg-zinc-900 text-zinc-50 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors"
                           >
                             URL/Titel
                           </button>
@@ -699,14 +615,14 @@ export default function AdminPage() {
                               e.stopPropagation();
                               setTransferringPageId(page.id);
                             }}
-                            className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+                            className="px-4 py-2 border border-zinc-700 bg-zinc-900 text-zinc-50 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors"
                             title="Koppel pagina aan andere gebruiker"
                           >
                             Koppelen
                           </button>
                           <Link
                             href={`/dashboard/pages/${page.id}/edit`}
-                            className="px-4 py-2 bg-zinc-600 text-white rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors"
+                            className="px-4 py-2 border border-zinc-700 bg-zinc-900 text-zinc-50 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors"
                             target="_blank"
                           >
                             Bewerken
@@ -714,10 +630,21 @@ export default function AdminPage() {
                           <Link
                             href={`/${page.slug}`}
                             target="_blank"
-                            className="px-4 py-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-black dark:text-zinc-50 rounded-lg text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                            className="px-4 py-2 border border-zinc-700 bg-zinc-900 text-zinc-50 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors"
                           >
                             Bekijken
                           </Link>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeletePage(page);
+                            }}
+                            disabled={isDeleting === page.id}
+                            className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                            title="Verwijder pagina"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
                         </>
                       )}
                     </div>
@@ -806,6 +733,22 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* Delete Confirmation Modal */}
+        <ConfirmModal
+          isOpen={deleteModal.isOpen}
+          onClose={() => setDeleteModal({ isOpen: false, page: null })}
+          onConfirm={confirmDeletePage}
+          title="Pagina verwijderen"
+          message={
+            deleteModal.page
+              ? `Weet je zeker dat je de pagina "${formatPageTitle(deleteModal.page.slug)}" wilt verwijderen?\n\nDeze actie kan niet ongedaan worden gemaakt.`
+              : ""
+          }
+          confirmText="Verwijderen"
+          cancelText="Annuleren"
+          variant="danger"
+        />
         </div>
       </div>
     </div>

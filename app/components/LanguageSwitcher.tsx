@@ -11,7 +11,7 @@ export default function LanguageSwitcher() {
   const pathname = usePathname();
 
   // Determine current language from pathname
-  const currentLang = pathname?.startsWith("/nl") || pathname?.startsWith("/prijzen") || pathname?.startsWith("/hoe-werkt-het") || pathname?.startsWith("/voor-artiesten") ? "nl" : "en";
+  const currentLang = pathname?.startsWith("/nl") || pathname?.startsWith("/prijzen") || pathname?.startsWith("/hoe-werkt-het") || pathname?.startsWith("/voor-artiesten") || pathname?.startsWith("/voor-bedrijven") || pathname?.startsWith("/voor-evenementen") ? "nl" : "en";
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -43,10 +43,12 @@ export default function LanguageSwitcher() {
       "/nl": { nl: "/nl", en: "/" },
       "/prijzen": { nl: "/prijzen", en: "/pricing" },
       "/pricing": { nl: "/prijzen", en: "/pricing" },
-      "/hoe-werkt-het": { nl: "/hoe-werkt-het", en: "/how-it-works" },
-      "/how-it-works": { nl: "/hoe-werkt-het", en: "/how-it-works" },
       "/voor-artiesten": { nl: "/voor-artiesten", en: "/for-artists" },
       "/for-artists": { nl: "/voor-artiesten", en: "/for-artists" },
+      "/voor-bedrijven": { nl: "/voor-bedrijven", en: "/for-businesses" },
+      "/for-businesses": { nl: "/voor-bedrijven", en: "/for-businesses" },
+      "/voor-evenementen": { nl: "/voor-evenementen", en: "/for-events" },
+      "/for-events": { nl: "/voor-evenementen", en: "/for-events" },
       "/register": { nl: "/register", en: "/register" },
       "/login": { nl: "/login", en: "/login" },
       "/dashboard": { nl: "/dashboard", en: "/dashboard" },

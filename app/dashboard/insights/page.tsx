@@ -24,6 +24,19 @@ interface AnalyticsData {
   totalClicks: number;
   clicksByType: Record<string, number>;
   dailyClicks: Array<{ date: string; clicks: number }>;
+  // Engagement metrics
+  uniqueVisitors: number;
+  currentMonthUniqueVisitors: number;
+  previousMonthUniqueVisitors: number;
+  uniqueVisitorsPercentageChange: number;
+  clickThroughRate: number;
+  currentMonthCTR: number;
+  previousMonthCTR: number;
+  ctrPercentageChange: number;
+  averageClicksPerVisitor: number;
+  returnVisitors: number;
+  newVisitors: number;
+  last7DaysViews?: Record<string, number>; // Pageviews for the last 7 days (date keys: YYYY-MM-DD)
 }
 
 interface PageWithAnalytics extends LynqitPage {
@@ -40,6 +53,14 @@ export default function InsightsPage() {
   const [pages, setPages] = useState<PageWithAnalytics[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState<string>(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30); // Default to 30 days ago
+    return date.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0]; // Today
+  });
   const router = useRouter();
 
   // Social platforms mapping
@@ -82,6 +103,28 @@ export default function InsightsPage() {
             setUser(userData.user);
             // Store in localStorage for backward compatibility
             localStorage.setItem("lynqit_user", JSON.stringify(userData.user));
+            
+            // Show cached pages immediately for instant UI
+            const cachedPages = localStorage.getItem("lynqit_pages");
+            if (cachedPages && isMounted) {
+              try {
+                const pages = JSON.parse(cachedPages);
+                const cacheTimestamp = localStorage.getItem("lynqit_pages_timestamp");
+                if (cacheTimestamp) {
+                  const age = Date.now() - parseInt(cacheTimestamp);
+                  if (age < 5 * 60 * 1000) { // 5 minutes
+                    setPages(pages);
+                    // If there's only one page, select it by default
+                    if (pages.length === 1) {
+                      setSelectedPageId(pages[0].id);
+                    }
+                  }
+                }
+              } catch (e) {
+                // Invalid cache, continue to fetch
+              }
+            }
+            
             // Fetch user's pages with access token
             await fetchPages(session.access_token);
           }
@@ -122,6 +165,10 @@ export default function InsightsPage() {
         const pagesData = data.pages || [];
         setPages(pagesData);
         
+        // Cache pages for next time
+        localStorage.setItem("lynqit_pages", JSON.stringify(pagesData));
+        localStorage.setItem("lynqit_pages_timestamp", Date.now().toString());
+        
         // If there's only one page, select it by default
         if (pagesData.length === 1) {
           setSelectedPageId(pagesData[0].id);
@@ -146,8 +193,12 @@ export default function InsightsPage() {
       );
     });
 
-    // Fetch analytics
-    fetch(`/api/analytics/${selectedPageId}`)
+    // Fetch analytics with date filters
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    
+    fetch(`/api/analytics/${selectedPageId}?${params.toString()}`)
       .then((response) => {
         if (response.ok) {
           return response.json();
@@ -171,7 +222,7 @@ export default function InsightsPage() {
           )
         );
       });
-  }, [selectedPageId]); // Only re-run when selectedPageId changes
+  }, [selectedPageId, startDate, endDate]); // Re-run when selectedPageId or date filters change
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -194,33 +245,62 @@ export default function InsightsPage() {
             </p>
             
             {pages.length > 0 && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-white mb-2">
-                  Selecteer een pagina
-                </label>
-                <select
-                  value={selectedPageId || ""}
-                  onChange={(e) => setSelectedPageId(e.target.value || null)}
-                  className="w-full md:w-96 px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white focus:outline-none focus:ring-2 focus:ring-[#2E47FF] focus:border-transparent"
-                >
-                  <option value="">Selecteer een pagina...</option>
-                  {pages.map((page) => (
-                    <option key={page.id} value={page.id}>
-                      {formatPageTitle(page.slug)}
-                    </option>
-                  ))}
-                </select>
+              <div className="mb-6 flex flex-col md:flex-row gap-4 items-end">
+                <div className="flex-1 md:flex-none md:w-96">
+                  <label className="block text-md font-medium text-white mb-2">
+                    Selecteer een pagina
+                  </label>
+                  <select
+                    value={selectedPageId || ""}
+                    onChange={(e) => setSelectedPageId(e.target.value || null)}
+                    className="w-full px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white focus:outline-none focus:ring-2 focus:ring-[#2E47FF] focus:border-transparent"
+                  >
+                    <option value="">Selecteer een pagina...</option>
+                    {pages.map((page) => (
+                      <option key={page.id} value={page.id}>
+                        {formatPageTitle(page.slug)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="flex gap-4 flex-1 md:flex-none">
+                  <div className="flex-1">
+                    <label className="block text-md font-medium text-white mb-2">
+                      Startdatum
+                    </label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white focus:outline-none focus:ring-2 focus:ring-[#2E47FF] focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div className="flex-1">
+                    <label className="block text-md font-medium text-white mb-2">
+                      Einddatum
+                    </label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
+                      className="w-full px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white focus:outline-none focus:ring-2 focus:ring-[#2E47FF] focus:border-transparent"
+                    />
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
-          {pages.length === 0 ? (
+          {!isLoading && pages.length === 0 ? (
             <div className="rounded-xl p-8 text-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
               <p className="text-zinc-400">
                 Je hebt nog geen Lynqit pages. Maak er een aan om statistieken te zien.
               </p>
             </div>
-          ) : !selectedPageId ? (
+          ) : !isLoading && !selectedPageId ? (
             <div className="rounded-xl p-8 text-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
               <p className="text-zinc-400">
                 Selecteer een pagina uit de dropdown om statistieken te bekijken.
@@ -243,10 +323,8 @@ export default function InsightsPage() {
               const isLoading = selectedPage.isLoadingAnalytics;
 
               return (
-                <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                  
-                  
-                  <div className="px-6 py-6">
+                <div>
+                  <div>
                           {isLoading ? (
                             <div className="text-center py-8">
                               <p className="text-zinc-400">
@@ -255,129 +333,236 @@ export default function InsightsPage() {
                             </div>
                           ) : analytics ? (
                             <>
-                              {/* Main Statistics */}
-                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                            <div className="p-4 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
-                              <p className="text-sm text-zinc-400 mb-1">
-                                Totale pageviews
-                              </p>
-                              <p className="text-2xl font-bold text-white">
-                                {analytics.totalViews.toLocaleString()}
-                              </p>
-                            </div>
-                            <div className="p-4 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
-                              <p className="text-sm text-zinc-400 mb-1">
-                                Huidige maand
-                              </p>
-                              <p className="text-2xl font-bold text-white">
-                                {analytics.currentMonthViews.toLocaleString()}
-                              </p>
-                            </div>
-                            <div className="p-4 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
-                              <p className="text-sm text-zinc-400 mb-1">
-                                Vorige maand
-                              </p>
-                              <p className="text-2xl font-bold text-white">
-                                {analytics.previousMonthViews.toLocaleString()}
-                              </p>
-                            </div>
-                            <div className="p-4 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
-                              <p className="text-sm text-zinc-400 mb-1">
-                                Verandering
-                              </p>
-                              <p
-                                className={`text-2xl font-bold ${
-                                  analytics.percentageChange >= 0
-                                    ? "text-green-600 dark:text-green-400"
-                                    : "text-red-600 dark:text-red-400"
-                                }`}
-                              >
-                                {analytics.percentageChange >= 0 ? "+" : ""}
-                                {analytics.percentageChange.toFixed(1)}%
-                              </p>
-                            </div>
-                          </div>
+                              {/* Summary Cards - Top Row */}
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                {/* Page Views Card */}
+                                <div className="p-6 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                                  <p className="text-md text-zinc-400 mb-2">
+                                    Page Views
+                                  </p>
+                                  <p className="text-3xl font-bold text-white mb-2">
+                                    {analytics.totalViews.toLocaleString()}
+                                  </p>
+                                  <p className={`text-md font-medium ${
+                                    analytics.percentageChange >= 0 ? "text-green-400" : "text-red-400"
+                                  }`}>
+                                    {analytics.percentageChange >= 0 ? "+" : ""}
+                                    {analytics.percentageChange.toFixed(1)}% sinds vorige maand
+                                  </p>
+                                  <p className="text-md text-zinc-500 mt-1">
+                                    {new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long" })}
+                                  </p>
+                                </div>
 
-                              {/* Referrer Sources */}
-                              <div className="mb-6">
-                            <h3 className="text-lg font-semibold text-white mb-4">
-                              Bron van herkomst
-                            </h3>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                              {Object.entries(analytics.referrerSources)
-                                .sort(([, a], [, b]) => b - a)
-                                .map(([source, count]) => (
-                                  <div
-                                    key={source}
-                                    className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}
-                                  >
-                                    <p className="text-sm font-medium text-white">
-                                      {source}
-                                    </p>
-                                    <p className="text-lg font-bold text-[#2E47FF] dark:text-[#00F0EE]">
-                                      {count.toLocaleString()}
-                                    </p>
-                                  </div>
-                                ))}
+                                {/* Unique Visitors Card */}
+                                <div className="p-6 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                                  <p className="text-md text-zinc-400 mb-2">
+                                    Unieke Bezoekers
+                                  </p>
+                                  <p className="text-3xl font-bold text-white mb-2">
+                                    {(analytics.uniqueVisitors ?? 0).toLocaleString()}
+                                  </p>
+                                  <p className={`text-md font-medium ${
+                                    (analytics.uniqueVisitorsPercentageChange ?? 0) >= 0 ? "text-green-400" : "text-red-400"
+                                  }`}>
+                                    {(analytics.uniqueVisitorsPercentageChange ?? 0) >= 0 ? "+" : ""}
+                                    {(analytics.uniqueVisitorsPercentageChange ?? 0).toFixed(1)}% sinds vorige maand
+                                  </p>
+                                  <p className="text-md text-zinc-500 mt-1">
+                                    {new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long" })}
+                                  </p>
+                                </div>
+
+                                {/* Click-Through Rate Card */}
+                                <div className="p-6 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                                  <p className="text-md text-zinc-400 mb-2">
+                                    Click-Through Rate
+                                  </p>
+                                  <p className="text-3xl font-bold text-white mb-2">
+                                    {(analytics.clickThroughRate ?? 0).toFixed(1)}%
+                                  </p>
+                                  <p className={`text-md font-medium ${
+                                    (analytics.ctrPercentageChange ?? 0) >= 0 ? "text-green-400" : "text-red-400"
+                                  }`}>
+                                    {(analytics.ctrPercentageChange ?? 0) >= 0 ? "+" : ""}
+                                    {(analytics.ctrPercentageChange ?? 0).toFixed(1)}% sinds vorige maand
+                                  </p>
+                                  <p className="text-md text-zinc-500 mt-1">
+                                    {new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long" })}
+                                  </p>
+                                </div>
                               </div>
-                              
-                              {/* Show individual referrer URLs for "Other" category */}
-                              {analytics.otherReferrers && Object.keys(analytics.otherReferrers).length > 0 && (
-                                <div className="mt-4">
-                                  <h4 className="text-md font-semibold text-white mb-3">
-                                    Other referrers
-                                  </h4>
-                                  <div className="space-y-2">
-                                    {Object.entries(analytics.otherReferrers)
-                                      .sort(([, a], [, b]) => b - a)
-                                      .map(([referrer, count]) => (
-                                        <div
-                                          key={referrer}
-                                          className="p-3 rounded-lg flex items-center justify-between" 
-                                          style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}
-                                        >
-                                          <p className="text-sm text-zinc-300 break-all">
-                                            {referrer}
-                                          </p>
-                                          <p className="text-sm font-bold text-[#2E47FF] dark:text-[#00F0EE] ml-4 flex-shrink-0">
-                                            {count.toLocaleString()}
-                                          </p>
-                                        </div>
-                                      ))}
+
+                              {/* Last 7 Days Pageviews - Second Row */}
+                              <div className="grid grid-cols-2 md:grid-cols-7 gap-4 mb-8">
+                                {(() => {
+                                  const today = new Date();
+                                  today.setHours(0, 0, 0, 0);
+                                  const days = [];
+                                  
+                                  for (let i = 6; i >= 0; i--) {
+                                    const date = new Date(today);
+                                    date.setDate(date.getDate() - i);
+                                    const dateKey = date.toISOString().split("T")[0];
+                                    const dayName = date.toLocaleDateString("nl-NL", { weekday: "short" });
+                                    const dayNumber = date.getDate();
+                                    const views = analytics.last7DaysViews?.[dateKey] || 0;
+                                    
+                                    days.push({
+                                      dateKey,
+                                      dayName,
+                                      dayNumber,
+                                      views,
+                                      isToday: i === 0
+                                    });
+                                  }
+                                  
+                                  return days.map((day) => (
+                                    <div key={day.dateKey} className="p-5 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                                      <p className="text-md text-zinc-400 mb-1">
+                                        {day.dayName}
+                                      </p>
+                                      <p className="text-md text-zinc-500 mb-2">
+                                        {day.dayNumber} {new Date(day.dateKey).toLocaleDateString("nl-NL", { month: "short" })}
+                                      </p>
+                                      <p className={`text-2xl font-bold ${day.isToday ? "text-[#00F0EE]" : "text-white"}`}>
+                                        {day.views.toLocaleString()}
+                                      </p>
+                                    </div>
+                                  ));
+                                })()}
+                              </div>
+
+                              {/* Charts Section - Bottom Row */}
+                              <div className="mb-6">
+                                {/* Daily Views Chart */}
+                                <div className="p-6 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                                  <h3 className="text-lg font-semibold text-white mb-4">
+                                    Pageviews
+                                  </h3>
+                                  <div className="h-64 w-full">
+                                    {analytics.dailyViews.length > 0 ? (
+                                      <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={analytics.dailyViews}>
+                                          <CartesianGrid
+                                            strokeDasharray="3 3"
+                                            stroke="#3f3f46"
+                                          />
+                                          <XAxis
+                                            dataKey="date"
+                                            tickFormatter={formatDate}
+                                            stroke="#71717a"
+                                            style={{ fontSize: '12px' }}
+                                          />
+                                          <YAxis
+                                            stroke="#71717a"
+                                            style={{ fontSize: '12px' }}
+                                          />
+                                          <Tooltip
+                                            contentStyle={{
+                                              backgroundColor: "#18181b",
+                                              border: "1px solid #3f3f46",
+                                              borderRadius: "8px",
+                                              color: "#fff"
+                                            }}
+                                            labelFormatter={(label) => formatDate(label)}
+                                          />
+                                          <Line
+                                            type="monotone"
+                                            dataKey="views"
+                                            stroke="#2E47FF"
+                                            strokeWidth={2}
+                                            dot={{ fill: "#2E47FF", r: 3 }}
+                                            activeDot={{ r: 5 }}
+                                          />
+                                        </LineChart>
+                                      </ResponsiveContainer>
+                                    ) : (
+                                      <div className="flex items-center justify-center h-full text-zinc-500">
+                                        Nog geen data beschikbaar
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
-                              )}
                               </div>
 
-                              {/* Click Statistics */}
-                              <div className="mb-6">
-                            <h3 className="text-lg font-semibold text-white mb-4">
-                              Totale clicks
-                            </h3>
-                            <div className="p-4 rounded-lg mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
-                              <p className="text-3xl font-bold text-[#2E47FF] dark:text-[#00F0EE]">
-                                {analytics.totalClicks?.toLocaleString() || 0}
-                              </p>
-                            </div>
-                            
-                            {analytics.clicksByType && Object.keys(analytics.clicksByType).length > 0 && (
-                              <>
-                                <h4 className="text-md font-semibold text-white mb-3">
-                                  Clicks per type
-                                </h4>
-                                <div className="overflow-x-auto">
-                                  <table className="w-full">
-                                    <thead>
-                                      <tr>
-                                        <th className="text-left py-2 px-4 text-sm font-semibold text-white border-b border-zinc-700">
-                                          Knop
-                                        </th>
-                                        <th className="text-right py-2 px-4 text-sm font-semibold text-white border-b border-zinc-700">
-                                          Clicks
-                                        </th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
+                              {/* Clicks Chart and Table */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                {/* Clicks Chart */}
+                                {analytics.dailyClicks && analytics.dailyClicks.length > 0 ? (
+                                  <div className="p-6 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                                    <h3 className="text-lg font-semibold text-white mb-4">
+                                      Clicks
+                                    </h3>
+                                    <div className="h-64 w-full">
+                                      <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={analytics.dailyClicks}>
+                                          <CartesianGrid
+                                            strokeDasharray="3 3"
+                                            stroke="#3f3f46"
+                                          />
+                                          <XAxis
+                                            dataKey="date"
+                                            tickFormatter={formatDate}
+                                            stroke="#71717a"
+                                            style={{ fontSize: '12px' }}
+                                          />
+                                          <YAxis
+                                            stroke="#71717a"
+                                            style={{ fontSize: '12px' }}
+                                          />
+                                          <Tooltip
+                                            contentStyle={{
+                                              backgroundColor: "#18181b",
+                                              border: "1px solid #3f3f46",
+                                              borderRadius: "8px",
+                                              color: "#fff"
+                                            }}
+                                            labelFormatter={(label) => formatDate(label)}
+                                          />
+                                          <Line
+                                            type="monotone"
+                                            dataKey="clicks"
+                                            stroke="#00F0EE"
+                                            strokeWidth={2}
+                                            dot={{ fill: "#00F0EE", r: 3 }}
+                                            activeDot={{ r: 5 }}
+                                          />
+                                        </LineChart>
+                                      </ResponsiveContainer>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="p-6 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                                    <h3 className="text-lg font-semibold text-white mb-4">
+                                      Clicks
+                                    </h3>
+                                    <div className="h-64 w-full flex items-center justify-center">
+                                      <p className="text-zinc-500 text-md">Nog geen clicks data beschikbaar</p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Clicks Table */}
+                                <div className="p-6 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                                  <h3 className="text-lg font-semibold text-white mb-4">
+                                    Clicks per knop
+                                  </h3>
+                                  
+                                  {analytics.clicksByType && Object.keys(analytics.clicksByType).length > 0 ? (
+                                    <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                      <thead>
+                                        <tr>
+                                          <th className="text-left py-2 px-4 text-md font-semibold text-white border-b border-zinc-700">
+                                            Knop
+                                          </th>
+                                          <th className="text-right py-2 px-4 text-md font-semibold text-white border-b border-zinc-700">
+                                            Clicks
+                                          </th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
                                       {Object.entries(analytics.clicksByType)
                                         .sort(([, a], [, b]) => b - a)
                                         .map(([clickType, count]) => {
@@ -458,10 +643,10 @@ export default function InsightsPage() {
                                           
                                           return (
                                             <tr key={clickType} className="border-b border-zinc-800">
-                                              <td className="py-3 px-4 text-sm text-white">
+                                              <td className="py-3 px-4 text-md text-white">
                                                 {displayName}
                                               </td>
-                                              <td className="py-3 px-4 text-sm text-right font-bold text-[#2E47FF] dark:text-[#00F0EE]">
+                                              <td className="py-3 px-4 text-md text-right font-bold text-[#2E47FF] dark:text-[#00F0EE]">
                                                 {count.toLocaleString()}
                                               </td>
                                             </tr>
@@ -470,105 +655,11 @@ export default function InsightsPage() {
                                     </tbody>
                                   </table>
                                 </div>
-                              </>
-                            )}
-                              </div>
-
-                              {/* Daily Views Graph */}
-                              <div className="mb-6">
-                            <h3 className="text-lg font-semibold text-white mb-4">
-                              Pageviews per dag (laatste 30 dagen)
-                            </h3>
-                            <div className="h-64 w-full">
-                              {analytics.dailyViews.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                  <LineChart data={analytics.dailyViews}>
-                                    <CartesianGrid
-                                      strokeDasharray="3 3"
-                                      stroke="#e4e4e7"
-                                      className="dark:stroke-zinc-700"
-                                    />
-                                    <XAxis
-                                      dataKey="date"
-                                      tickFormatter={formatDate}
-                                      stroke="#71717a"
-                                      className="dark:stroke-zinc-400"
-                                    />
-                                    <YAxis
-                                      stroke="#71717a"
-                                      className="dark:stroke-zinc-400"
-                                    />
-                                    <Tooltip
-                                      contentStyle={{
-                                        backgroundColor: "white",
-                                        border: "1px solid #e4e4e7",
-                                        borderRadius: "8px",
-                                      }}
-                                      labelFormatter={(label) => formatDate(label)}
-                                    />
-                                    <Line
-                                      type="monotone"
-                                      dataKey="views"
-                                      stroke="#2E47FF"
-                                      strokeWidth={2}
-                                      dot={{ fill: "#2E47FF", r: 3 }}
-                                      activeDot={{ r: 5 }}
-                                    />
-                                  </LineChart>
-                                </ResponsiveContainer>
-                              ) : (
-                                <div className="flex items-center justify-center h-full text-zinc-500 dark:text-zinc-400">
-                                  Nog geen data beschikbaar
+                                ) : (
+                                  <p className="text-zinc-400 text-md">Nog geen clicks geregistreerd</p>
+                                )}
                                 </div>
-                              )}
                               </div>
-                              </div>
-
-                              {/* Daily Clicks Graph */}
-                              {analytics.dailyClicks && analytics.dailyClicks.length > 0 && (
-                                <div>
-                              <h3 className="text-lg font-semibold text-white mb-4">
-                                Clicks per dag (laatste 30 dagen)
-                              </h3>
-                              <div className="h-64 w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                  <LineChart data={analytics.dailyClicks}>
-                                    <CartesianGrid
-                                      strokeDasharray="3 3"
-                                      stroke="#e4e4e7"
-                                      className="dark:stroke-zinc-700"
-                                    />
-                                    <XAxis
-                                      dataKey="date"
-                                      tickFormatter={formatDate}
-                                      stroke="#71717a"
-                                      className="dark:stroke-zinc-400"
-                                    />
-                                    <YAxis
-                                      stroke="#71717a"
-                                      className="dark:stroke-zinc-400"
-                                    />
-                                    <Tooltip
-                                      contentStyle={{
-                                        backgroundColor: "white",
-                                        border: "1px solid #e4e4e7",
-                                        borderRadius: "8px",
-                                      }}
-                                      labelFormatter={(label) => formatDate(label)}
-                                    />
-                                    <Line
-                                      type="monotone"
-                                      dataKey="clicks"
-                                      stroke="#00F0EE"
-                                      strokeWidth={2}
-                                      dot={{ fill: "#00F0EE", r: 3 }}
-                                      activeDot={{ r: 5 }}
-                                    />
-                                  </LineChart>
-                                </ResponsiveContainer>
-                                </div>
-                                </div>
-                              )}
                             </>
                           ) : (
                             <div className="text-center py-8">

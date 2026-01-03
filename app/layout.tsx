@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Inter_Tight } from "next/font/google";
 import "./globals.css";
 import ConditionalNavbar from "./components/ConditionalNavbar";
+import ConditionalFooter from "./components/ConditionalFooter";
 import ThemeProvider from "./components/ThemeProvider";
+import CookieConsent from "./components/CookieConsent";
 
 const interTight = Inter_Tight({
   variable: "--font-inter-tight",
@@ -72,6 +74,8 @@ export default function RootLayout({
         <ThemeProvider />
         <ConditionalNavbar />
         {children}
+        <ConditionalFooter />
+        <CookieConsent />
       </body>
     </html>
   );

@@ -191,7 +191,7 @@ export default function EditPagePage() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen font-sans flex" style={{ background: 'linear-gradient(#2F3441, #000)' }}>
+      <div className="min-h-screen font-sans flex dark" style={{ background: 'linear-gradient(#2F3441, #000)' }}>
         <DashboardSidebar />
         <div className="flex-1 ml-64">
           <div className="w-full px-8 py-8 mt-6 rounded-xl" style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
@@ -234,14 +234,14 @@ export default function EditPagePage() {
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="px-4 py-3 bg-[#2E47FF] text-white rounded-lg font-medium hover:bg-[#1E37E6] transition-colors disabled:opacity-50"
+              className="px-4 py-3 bg-gradient-to-r from-[#2E47FF] to-[#00F0EE] text-white rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {isSaving ? "Opslaan..." : "Opslaan"}
             </button>
           </div>
         </div>
 
-        {/* Upgrade Section */}
+        {/* Upgrade Section - Free Plan */}
         {(!page.subscriptionPlan || page.subscriptionPlan === "free") && (
           <div className="mb-6 bg-gradient-to-r from-[#2E47FF] to-[#00F0EE] rounded-xl shadow-sm border border-[#2E47FF] p-6">
             <div className="flex items-center justify-between">
@@ -273,33 +273,31 @@ export default function EditPagePage() {
           </div>
         )}
 
-        {/* Current Plan Display (only for Start plan, not Pro) */}
+        {/* Upgrade Section - Start Plan */}
         {page.subscriptionPlan === "start" && (
-          <div className="mb-6 rounded-xl p-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <div className="mb-6 bg-gradient-to-r from-[#2E47FF] to-[#00F0EE] rounded-xl shadow-sm border border-[#2E47FF] p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Huidig plan:
-                </p>
-                <p className="text-lg font-semibold text-black dark:text-zinc-50">
-                  Lynqit Start
+                <h3 className="text-lg font-semibold text-white mb-1">
+                  Upgrade naar Pro
+                </h3>
+                <p className="text-sm text-white/90">
+                  Je gebruikt momenteel het Start plan. Upgrade naar Pro voor nog meer functies zoals video headers en geavanceerde analytics.
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  Status:
-                </p>
-                <p className={`text-sm font-medium ${
-                  page.subscriptionStatus === "active" 
-                    ? "text-green-600 dark:text-green-400" 
-                    : "text-red-600 dark:text-red-400"
-                }`}>
-                  {page.subscriptionStatus === "active" ? "Actief" : page.subscriptionStatus || "Onbekend"}
-                </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleUpgrade("pro")}
+                  disabled={isUpgrading}
+                  className="px-4 py-2 bg-white text-[#00F0EE] rounded-lg text-sm font-semibold hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isUpgrading ? "Laden..." : `Upgrade naar Pro (€${SUBSCRIPTION_PRICES.pro.toFixed(2)}/maand)`}
+                </button>
               </div>
             </div>
           </div>
         )}
+
 
         <div className="grid grid-cols-1 xl:grid-cols-[70%_30%] gap-8">
           {/* Left Column - Scrollable */}
@@ -307,12 +305,12 @@ export default function EditPagePage() {
             {/* Template - Only for Pro plan */}
             {page.subscriptionPlan === "pro" && (
               <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <h2 className="text-xl font-semibold text-black dark:text-zinc-50 mb-4">
+                <h2 className="text-xl font-semibold text-zinc-50 mb-4">
                   Template
                 </h2>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">
                       Template
                     </label>
                     <div className="relative">
@@ -321,7 +319,7 @@ export default function EditPagePage() {
                         onChange={(e) =>
                           updatePage({ template: e.target.value as "default" | "events" | "artist" | "webshop" })
                         }
-                        className="w-full px-4 py-2 pr-10 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-[#2E47FF] appearance-none"
+                        className="w-full px-4 py-2 pr-10 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50 focus:outline-none focus:ring-2 focus:ring-[#2E47FF] appearance-none"
                         style={{ minWidth: "100%", boxSizing: "border-box" }}
                       >
                         <option value="default">Standaard</option>
@@ -342,13 +340,13 @@ export default function EditPagePage() {
             )}
 
             {/* Theme - First for free plan */}
-            <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 p-6">
-              <h2 className="text-xl font-semibold text-black dark:text-zinc-50 mb-4">
+            <div className="rounded-xl shadow-sm border border-zinc-800 p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
+              <h2 className="text-xl font-semibold text-zinc-50 mb-4">
                 {(!page.subscriptionPlan || page.subscriptionPlan === "free") ? "Thema" : "Thema & Brand Kleur"}
               </h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  <label className="block text-sm font-medium text-zinc-300 mb-2">
                     Thema
                   </label>
                   <div className="relative">
@@ -357,7 +355,7 @@ export default function EditPagePage() {
                       onChange={(e) =>
                         updatePage({ theme: e.target.value as "dark" | "light" })
                       }
-                      className="w-full px-4 py-2 pr-10 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-[#2E47FF] appearance-none"
+                      className="w-full px-4 py-2 pr-10 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50 focus:outline-none focus:ring-2 focus:ring-[#2E47FF] appearance-none"
                       style={{ minWidth: "100%", boxSizing: "border-box" }}
                     >
                       <option value="dark">Donker</option>
@@ -374,7 +372,7 @@ export default function EditPagePage() {
                 {page.subscriptionPlan && page.subscriptionPlan !== "free" && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
                         CTA Button Kleur
                       </label>
                       <div className="flex gap-3 items-center">
@@ -389,7 +387,7 @@ export default function EditPagePage() {
                           value={page.brandColor || "#2E47FF"}
                           onChange={(e) => updatePage({ brandColor: e.target.value })}
                           placeholder="#2E47FF"
-                          className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 font-mono"
+                          className="flex-1 px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50 font-mono"
                         />
                       </div>
                       <p className="text-xs text-zinc-500 mt-1">
@@ -397,7 +395,7 @@ export default function EditPagePage() {
                       </p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
                         Tekst Kleur op CTA Kleur
                       </label>
                       <div className="flex gap-3 items-center">
@@ -412,7 +410,7 @@ export default function EditPagePage() {
                           value={page.ctaTextColor || "#FFFFFF"}
                           onChange={(e) => updatePage({ ctaTextColor: e.target.value })}
                           placeholder="#FFFFFF"
-                          className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 font-mono"
+                          className="flex-1 px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50 font-mono"
                         />
                       </div>
                       <p className="text-xs text-zinc-500 mt-1">
@@ -420,7 +418,7 @@ export default function EditPagePage() {
                       </p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
                         Achtergrond-kleur
                       </label>
                       <div className="flex gap-3 items-center">
@@ -435,7 +433,7 @@ export default function EditPagePage() {
                           value={page.backgroundColor || ""}
                           onChange={(e) => updatePage({ backgroundColor: e.target.value })}
                           placeholder="#000000"
-                          className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 font-mono"
+                          className="flex-1 px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50 font-mono"
                         />
                       </div>
                       <p className="text-xs text-zinc-500 mt-1">
@@ -448,14 +446,14 @@ export default function EditPagePage() {
             </div>
 
             {/* Header - Only image for free/start, image or video for pro */}
-            <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 p-6">
-              <h2 className="text-xl font-semibold text-black dark:text-zinc-50 mb-4">
+            <div className="rounded-xl shadow-sm border border-zinc-800 p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
+              <h2 className="text-xl font-semibold text-zinc-50 mb-4">
                 Header Afbeelding
               </h2>
               <div className="space-y-4">
                 {page.subscriptionPlan === "pro" && (
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">
                       Type
                     </label>
                     <div className="relative">
@@ -466,7 +464,7 @@ export default function EditPagePage() {
                             header: { ...page.header, type: e.target.value as "video" | "image" },
                           })
                         }
-                        className="w-full px-4 py-2 pr-10 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-[#2E47FF] appearance-none"
+                        className="w-full px-4 py-2 pr-10 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50 focus:outline-none focus:ring-2 focus:ring-[#2E47FF] appearance-none"
                         style={{ minWidth: "100%", boxSizing: "border-box" }}
                       >
                         <option value="image">Afbeelding</option>
@@ -492,7 +490,7 @@ export default function EditPagePage() {
                   </>
                 ) : (
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">
                       Video URL
                     </label>
                     <input
@@ -504,7 +502,7 @@ export default function EditPagePage() {
                         })
                       }
                       placeholder="https://www.youtube.com/watch?v=..."
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                     />
                   </div>
                 )}
@@ -514,12 +512,12 @@ export default function EditPagePage() {
             {/* Promo Banner - Only visible for Pro plan */}
             {page.subscriptionPlan === "pro" && (
               <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-              <h2 className="text-xl font-semibold text-black dark:text-zinc-50 mb-4">
+              <h2 className="text-xl font-semibold text-zinc-50 mb-4">
                 Promo Banner
               </h2>
               <div className="space-y-4">
                 <label className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  <span className="text-sm font-medium text-zinc-300">
                     Promo banner inschakelen
                   </span>
                   <button
@@ -543,7 +541,7 @@ export default function EditPagePage() {
                 {page.promoBanner.enabled && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
                         Titel
                       </label>
                       <input
@@ -554,11 +552,11 @@ export default function EditPagePage() {
                             promoBanner: { ...page.promoBanner, title: e.target.value },
                           })
                         }
-                        className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                        className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
                         Beschrijving
                       </label>
                       <textarea
@@ -569,11 +567,11 @@ export default function EditPagePage() {
                           })
                         }
                         rows={3}
-                        className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                        className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
                         Button Tekst
                       </label>
                       <input
@@ -584,11 +582,11 @@ export default function EditPagePage() {
                             promoBanner: { ...page.promoBanner, buttonText: e.target.value },
                           })
                         }
-                        className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                        className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
                         Button Link
                       </label>
                       <input
@@ -599,7 +597,7 @@ export default function EditPagePage() {
                             promoBanner: { ...page.promoBanner, buttonLink: e.target.value },
                           })
                         }
-                        className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                        className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                       />
                     </div>
                     <ImageUpload
@@ -620,7 +618,7 @@ export default function EditPagePage() {
             {/* Events (for Events template) - Hidden for free plan */}
             {(!page.subscriptionPlan || page.subscriptionPlan !== "free") && page.template === "events" && (
               <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <h2 className="text-xl font-semibold text-black dark:text-zinc-50 mb-4">
+                <h2 className="text-xl font-semibold text-zinc-50 mb-4">
                   Events
                 </h2>
                 <div className="space-y-4">
@@ -679,7 +677,7 @@ export default function EditPagePage() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <i className="fas fa-grip-vertical text-zinc-400 dark:text-zinc-500"></i>
-                            <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                            <h3 className="text-sm font-medium text-zinc-300">
                               {event.text || `Event ${index + 1}`}
                             </h3>
                           </div>
@@ -707,7 +705,7 @@ export default function EditPagePage() {
                                 }
                                 setCollapsedEvents(newCollapsed);
                               }}
-                              className="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 text-sm p-2"
+                              className="text-zinc-400 hover:text-zinc-200 text-sm p-2"
                               title={isCollapsed ? "Uitklappen" : "Inklappen"}
                             >
                               <i className={`fas ${isCollapsed ? "fa-chevron-down" : "fa-chevron-up"}`}></i>
@@ -729,7 +727,7 @@ export default function EditPagePage() {
                           <>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                          <label className="block text-sm font-medium text-zinc-300 mb-2">
                             Event
                           </label>
                           <input
@@ -741,11 +739,11 @@ export default function EditPagePage() {
                               updatePage({ events: newEvents });
                             }}
                             placeholder="Event"
-                            className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                            className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                          <label className="block text-sm font-medium text-zinc-300 mb-2">
                             Link
                           </label>
                           <input
@@ -757,12 +755,12 @@ export default function EditPagePage() {
                               updatePage({ events: newEvents });
                             }}
                             placeholder="https://..."
-                            className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                            className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">
                           Datum event
                         </label>
                         <input
@@ -778,11 +776,11 @@ export default function EditPagePage() {
                               updatePage({ events: newEvents });
                             }
                           }}
-                          className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                          className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">
                           Locatie (optioneel)
                         </label>
                         <input
@@ -794,12 +792,12 @@ export default function EditPagePage() {
                             updatePage({ events: newEvents });
                           }}
                           placeholder="Bijv. Amsterdam, Nederland"
-                          className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                          className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                          <label className="block text-sm font-medium text-zinc-300 mb-2">
                             Zichtbaar vanaf (datum)
                           </label>
                           <input
@@ -825,11 +823,11 @@ export default function EditPagePage() {
                                 updatePage({ events: newEvents });
                               }
                             }}
-                            className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                            className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                          <label className="block text-sm font-medium text-zinc-300 mb-2">
                             Zichtbaar vanaf (tijd)
                           </label>
                           <input
@@ -852,13 +850,13 @@ export default function EditPagePage() {
                                 updatePage({ events: newEvents });
                               }
                             }}
-                            className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                            className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                           />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                          <label className="block text-sm font-medium text-zinc-300 mb-2">
                             Onzichtbaar vanaf (datum)
                           </label>
                           <input
@@ -884,11 +882,11 @@ export default function EditPagePage() {
                                 updatePage({ events: newEvents });
                               }
                             }}
-                            className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                            className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                          <label className="block text-sm font-medium text-zinc-300 mb-2">
                             Onzichtbaar vanaf (tijd)
                           </label>
                           <input
@@ -911,7 +909,7 @@ export default function EditPagePage() {
                                 updatePage({ events: newEvents });
                               }
                             }}
-                            className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                            className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                           />
                         </div>
                       </div>
@@ -932,7 +930,7 @@ export default function EditPagePage() {
                         });
                         updatePage({ events: newEvents });
                       }}
-                      className="w-full px-4 py-2 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors"
+                      className="w-full px-4 py-2 border-2 border-dashed border-zinc-700 rounded-lg text-zinc-300 hover:border-zinc-600 transition-colors"
                     >
                       + Nieuw event toevoegen
                     </button>
@@ -949,7 +947,7 @@ export default function EditPagePage() {
             {/* Products (for Webshop template) - Hidden for free plan */}
             {(!page.subscriptionPlan || page.subscriptionPlan !== "free") && page.template === "webshop" && (
               <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <h2 className="text-xl font-semibold text-black dark:text-zinc-50 mb-4">
+                <h2 className="text-xl font-semibold text-zinc-50 mb-4">
                   Producten
                 </h2>
                 <div className="space-y-4">
@@ -1008,7 +1006,7 @@ export default function EditPagePage() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <i className="fas fa-grip-vertical text-zinc-400 dark:text-zinc-500"></i>
-                            <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                            <h3 className="text-sm font-medium text-zinc-300">
                               {product.name || `Product ${index + 1}`}
                             </h3>
                           </div>
@@ -1036,7 +1034,7 @@ export default function EditPagePage() {
                                 }
                                 setCollapsedProducts(newCollapsed);
                               }}
-                              className="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 text-sm p-2"
+                              className="text-zinc-400 hover:text-zinc-200 text-sm p-2"
                               title={isCollapsed ? "Uitklappen" : "Inklappen"}
                             >
                               <i className={`fas ${isCollapsed ? "fa-chevron-down" : "fa-chevron-up"}`}></i>
@@ -1057,7 +1055,7 @@ export default function EditPagePage() {
                         {!isCollapsed && (
                           <>
                             <div>
-                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                              <label className="block text-sm font-medium text-zinc-300 mb-2">
                                 Product
                               </label>
                               <input
@@ -1069,12 +1067,12 @@ export default function EditPagePage() {
                                   updatePage({ products: newProducts });
                                 }}
                                 placeholder="Product naam"
-                                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                                className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                               />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                                <label className="block text-sm font-medium text-zinc-300 mb-2">
                                   Prijs
                                 </label>
                                 <input
@@ -1086,11 +1084,11 @@ export default function EditPagePage() {
                                     updatePage({ products: newProducts });
                                   }}
                                   placeholder="€ 29,99"
-                                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                                  className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                                <label className="block text-sm font-medium text-zinc-300 mb-2">
                                   Kortingsprijs (optioneel)
                                 </label>
                                 <input
@@ -1102,7 +1100,7 @@ export default function EditPagePage() {
                                     updatePage({ products: newProducts });
                                   }}
                                   placeholder="€ 19,99"
-                                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                                  className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                                 />
                               </div>
                             </div>
@@ -1118,13 +1116,13 @@ export default function EditPagePage() {
                                   }}
                                   className="w-4 h-4 text-[#2E47FF] rounded focus:ring-[#2E47FF]"
                                 />
-                                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                <span className="text-sm font-medium text-zinc-300">
                                   Vanaf-prijs
                                 </span>
                               </label>
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                              <label className="block text-sm font-medium text-zinc-300 mb-2">
                                 Link
                               </label>
                               <input
@@ -1136,11 +1134,11 @@ export default function EditPagePage() {
                                   updatePage({ products: newProducts });
                                 }}
                                 placeholder="https://..."
-                                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                                className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                              <label className="block text-sm font-medium text-zinc-300 mb-2">
                                 Afbeelding
                               </label>
                               <ImageUpload
@@ -1173,7 +1171,7 @@ export default function EditPagePage() {
                         });
                         updatePage({ products: newProducts });
                       }}
-                      className="w-full px-4 py-2 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors"
+                      className="w-full px-4 py-2 border-2 border-dashed border-zinc-700 rounded-lg text-zinc-300 hover:border-zinc-600 transition-colors"
                     >
                       + Nieuw product toevoegen
                     </button>
@@ -1190,7 +1188,7 @@ export default function EditPagePage() {
             {/* Shows (for Artist template) - Hidden for free plan */}
             {(!page.subscriptionPlan || page.subscriptionPlan !== "free") && page.template === "artist" && (
               <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <h2 className="text-xl font-semibold text-black dark:text-zinc-50 mb-4">
+                <h2 className="text-xl font-semibold text-zinc-50 mb-4">
                   Shows
                 </h2>
                 <div className="space-y-4">
@@ -1249,7 +1247,7 @@ export default function EditPagePage() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <i className="fas fa-grip-vertical text-zinc-400 dark:text-zinc-500"></i>
-                            <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                            <h3 className="text-sm font-medium text-zinc-300">
                               {show.show || `Show ${index + 1}`}
                             </h3>
                           </div>
@@ -1277,7 +1275,7 @@ export default function EditPagePage() {
                                 }
                                 setCollapsedShows(newCollapsed);
                               }}
-                              className="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 text-sm p-2"
+                              className="text-zinc-400 hover:text-zinc-200 text-sm p-2"
                               title={isCollapsed ? "Uitklappen" : "Inklappen"}
                             >
                               <i className={`fas ${isCollapsed ? "fa-chevron-down" : "fa-chevron-up"}`}></i>
@@ -1298,7 +1296,7 @@ export default function EditPagePage() {
                         {!isCollapsed && (
                           <>
                             <div>
-                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                              <label className="block text-sm font-medium text-zinc-300 mb-2">
                                 Show
                               </label>
                               <input
@@ -1310,11 +1308,11 @@ export default function EditPagePage() {
                                   updatePage({ shows: newShows });
                                 }}
                                 placeholder="Show naam"
-                                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                                className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                              <label className="block text-sm font-medium text-zinc-300 mb-2">
                                 Datum
                               </label>
                               <input
@@ -1330,11 +1328,11 @@ export default function EditPagePage() {
                                     updatePage({ shows: newShows });
                                   }
                                 }}
-                                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                                className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                              <label className="block text-sm font-medium text-zinc-300 mb-2">
                                 Locatie (optioneel)
                               </label>
                               <input
@@ -1346,11 +1344,11 @@ export default function EditPagePage() {
                                   updatePage({ shows: newShows });
                                 }}
                                 placeholder="Bijv. Amsterdam, Nederland"
-                                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                                className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                              <label className="block text-sm font-medium text-zinc-300 mb-2">
                                 Link (optioneel)
                               </label>
                               <input
@@ -1362,7 +1360,7 @@ export default function EditPagePage() {
                                   updatePage({ shows: newShows });
                                 }}
                                 placeholder="https://..."
-                                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                                className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                               />
                             </div>
                           </>
@@ -1381,7 +1379,7 @@ export default function EditPagePage() {
                         });
                         updatePage({ shows: newShows });
                       }}
-                      className="w-full px-4 py-2 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors"
+                      className="w-full px-4 py-2 border-2 border-dashed border-zinc-700 rounded-lg text-zinc-300 hover:border-zinc-600 transition-colors"
                     >
                       + Nieuwe show toevoegen
                     </button>
@@ -1398,7 +1396,7 @@ export default function EditPagePage() {
             {/* Logo & Intro - Third for free plan, after Header */}
             {(!page.subscriptionPlan || page.subscriptionPlan === "free") && (
               <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <h2 className="text-xl font-semibold text-black dark:text-zinc-50 mb-4">
+                <h2 className="text-xl font-semibold text-zinc-50 mb-4">
                   Logo & Intro
                 </h2>
                 <div className="space-y-4">
@@ -1408,14 +1406,14 @@ export default function EditPagePage() {
                     label="Logo"
                   />
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">
                       Intro Tekst
                     </label>
                     <textarea
                       value={page.intro || ""}
                       onChange={(e) => updatePage({ intro: e.target.value })}
                       rows={4}
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                     />
                   </div>
                 </div>
@@ -1425,7 +1423,7 @@ export default function EditPagePage() {
             {/* Links - Fourth for free plan */}
             {(!page.subscriptionPlan || page.subscriptionPlan === "free") && (
               <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <h2 className="text-xl font-semibold text-black dark:text-zinc-50 mb-4">
+                <h2 className="text-xl font-semibold text-zinc-50 mb-4">
                   Links
                   <span className="text-sm font-normal text-zinc-500 ml-2">(Maximaal 5)</span>
                 </h2>
@@ -1534,7 +1532,7 @@ export default function EditPagePage() {
                       {!isCollapsed && (
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                            <label className="block text-sm font-medium text-zinc-300 mb-2">
                               Tekst
                             </label>
                             <input
@@ -1546,11 +1544,11 @@ export default function EditPagePage() {
                                 updatePage({ customLinks: newLinks });
                               }}
                               placeholder="Tekst"
-                              className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                              className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                            <label className="block text-sm font-medium text-zinc-300 mb-2">
                               URL
                             </label>
                             <input
@@ -1562,7 +1560,7 @@ export default function EditPagePage() {
                                 updatePage({ customLinks: newLinks });
                               }}
                               placeholder="https://..."
-                              className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                              className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                             />
                           </div>
                         </div>
@@ -1581,7 +1579,7 @@ export default function EditPagePage() {
                       });
                       updatePage({ customLinks: newLinks });
                     }}
-                    className="w-full px-4 py-2 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors"
+                    className="w-full px-4 py-2 border-2 border-dashed border-zinc-700 rounded-lg text-zinc-300 hover:border-zinc-600 transition-colors"
                   >
                     + Nieuwe link toevoegen
                   </button>
@@ -1597,7 +1595,7 @@ export default function EditPagePage() {
 
             {/* Social Media - For all plans */}
             <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-              <h2 className="text-xl font-semibold text-black dark:text-zinc-50 mb-4">
+              <h2 className="text-xl font-semibold text-zinc-50 mb-4">
                 Social Media Links
               </h2>
               <div className="space-y-4">
@@ -1612,7 +1610,7 @@ export default function EditPagePage() {
                   "website",
                 ].map((platform) => (
                   <div key={platform}>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2 capitalize">
+                    <label className="block text-sm font-medium text-zinc-300 mb-2 capitalize">
                       {platform}
                     </label>
                     <input
@@ -1627,7 +1625,7 @@ export default function EditPagePage() {
                         })
                       }
                       placeholder="https://..."
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                     />
                   </div>
                 ))}
@@ -1637,30 +1635,30 @@ export default function EditPagePage() {
             {/* Contact Info - Only for Start and Pro plans */}
             {page.subscriptionPlan && page.subscriptionPlan !== "free" && (
               <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <h2 className="text-xl font-semibold text-black dark:text-zinc-50 mb-4">
+                <h2 className="text-xl font-semibold text-zinc-50 mb-4">
                   Contactgegevens
                 </h2>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">
                       Telefoonnummer
                     </label>
                     <input
                       type="text"
                       value={page.telefoonnummer || ""}
                       onChange={(e) => updatePage({ telefoonnummer: e.target.value })}
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">
                       E-mailadres
                     </label>
                     <input
                       type="email"
                       value={page.emailadres || ""}
                       onChange={(e) => updatePage({ emailadres: e.target.value })}
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                     />
                   </div>
                 </div>
@@ -1670,12 +1668,12 @@ export default function EditPagePage() {
             {/* CTA Button - Only for Start and Pro plans */}
             {page.subscriptionPlan && page.subscriptionPlan !== "free" && (
               <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <h2 className="text-xl font-semibold text-black dark:text-zinc-50 mb-4">
+                <h2 className="text-xl font-semibold text-zinc-50 mb-4">
                   CTA Knop
                 </h2>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">
                       Tekst
                     </label>
                     <input
@@ -1686,11 +1684,11 @@ export default function EditPagePage() {
                           ctaButton: { ...page.ctaButton, text: e.target.value },
                         })
                       }
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">
                       Link
                     </label>
                     <input
@@ -1701,7 +1699,7 @@ export default function EditPagePage() {
                           ctaButton: { ...page.ctaButton, link: e.target.value },
                         })
                       }
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                     />
                   </div>
                 </div>
@@ -1711,7 +1709,7 @@ export default function EditPagePage() {
             {/* Logo & Intro - For Start and Pro plans */}
             {(!page.subscriptionPlan || page.subscriptionPlan !== "free") && (
               <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <h2 className="text-xl font-semibold text-black dark:text-zinc-50 mb-4">
+                <h2 className="text-xl font-semibold text-zinc-50 mb-4">
                   Logo & Intro
                 </h2>
                 <div className="space-y-4">
@@ -1723,7 +1721,7 @@ export default function EditPagePage() {
                   {/* Spotify Embed (only for Artist template) */}
                   {page.template === "artist" && (
                     <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
                         Spotify Nummer URL
                       </label>
                       <input
@@ -1731,7 +1729,7 @@ export default function EditPagePage() {
                         value={page.spotifyUrl || ""}
                         onChange={(e) => updatePage({ spotifyUrl: e.target.value })}
                         placeholder="https://open.spotify.com/track/..."
-                        className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                        className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                       />
                       <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                         Plak hier de Spotify URL van het nummer dat je wilt embedden
@@ -1739,14 +1737,14 @@ export default function EditPagePage() {
                     </div>
                   )}
                   <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">
                       Intro Tekst
                     </label>
                     <textarea
                       value={page.intro || ""}
                       onChange={(e) => updatePage({ intro: e.target.value })}
                       rows={4}
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                     />
                   </div>
                 </div>
@@ -1756,7 +1754,7 @@ export default function EditPagePage() {
             {/* Featured Links - Only for Start and Pro plans */}
             {page.subscriptionPlan && page.subscriptionPlan !== "free" && (
               <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-              <h2 className="text-xl font-semibold text-black dark:text-zinc-50 mb-4">
+              <h2 className="text-xl font-semibold text-zinc-50 mb-4">
                 Featured Links
               </h2>
               <div className="space-y-6">
@@ -1768,9 +1766,9 @@ export default function EditPagePage() {
                     return (
                       <div 
                         key={num} 
-                        className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-4"
+                        className="border border-zinc-700 rounded-lg p-4"
                       >
-                        <h3 className="text-lg font-medium text-black dark:text-zinc-50 mb-4">
+                        <h3 className="text-lg font-medium text-zinc-50 mb-4">
                           Featured Link {num}
                         </h3>
                         <div className="space-y-4">
@@ -1792,7 +1790,7 @@ export default function EditPagePage() {
                           label="Afbeelding"
                         />
                         <div>
-                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                          <label className="block text-sm font-medium text-zinc-300 mb-2">
                             Titel
                           </label>
                           <input
@@ -1811,11 +1809,11 @@ export default function EditPagePage() {
                                 },
                               })
                             }
-                            className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                            className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                          <label className="block text-sm font-medium text-zinc-300 mb-2">
                             Link
                           </label>
                           <input
@@ -1835,7 +1833,7 @@ export default function EditPagePage() {
                               })
                             }
                             placeholder="https://..."
-                            className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                            className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                           />
                         </div>
                         </div>
@@ -1851,9 +1849,9 @@ export default function EditPagePage() {
                     return (
                       <div 
                         key={num} 
-                        className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-4"
+                        className="border border-zinc-700 rounded-lg p-4"
                       >
-                        <h3 className="text-lg font-medium text-black dark:text-zinc-50 mb-4">
+                        <h3 className="text-lg font-medium text-zinc-50 mb-4">
                           Featured Link {num}
                         </h3>
                         <div className="space-y-4">
@@ -1875,7 +1873,7 @@ export default function EditPagePage() {
                             label="Afbeelding"
                           />
                           <div>
-                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                            <label className="block text-sm font-medium text-zinc-300 mb-2">
                               Titel
                             </label>
                             <input
@@ -1894,11 +1892,11 @@ export default function EditPagePage() {
                                   },
                                 })
                               }
-                              className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                              className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                            <label className="block text-sm font-medium text-zinc-300 mb-2">
                               Link
                             </label>
                             <input
@@ -1918,7 +1916,7 @@ export default function EditPagePage() {
                                 })
                               }
                               placeholder="https://..."
-                              className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50"
+                              className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                             />
                           </div>
                         </div>
@@ -2111,7 +2109,7 @@ export default function EditPagePage() {
                             <img
                               src={page.logo}
                               alt="Logo"
-                              className="h-20 w-auto"
+                              className="h-30 w-auto"
                               style={{ objectFit: "contain" }}
                               onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = "none";

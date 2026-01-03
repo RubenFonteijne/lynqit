@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
     const page = await createPage(user.email, slug, {
       subscriptionPlan: 'pro',
       subscriptionStatus: 'active',
+      isDemo: true,
     });
 
     return NextResponse.json({ page }, { status: 201 });

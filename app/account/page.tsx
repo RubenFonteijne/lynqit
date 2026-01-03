@@ -686,10 +686,10 @@ export default function AccountPage() {
                       type="email"
                       value={email}
                       disabled
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 cursor-not-allowed"
+                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-400 cursor-not-allowed"
                       placeholder="E-mailadres"
                     />
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    <p className="text-xs text-zinc-400 mt-1">
                       E-mailadres kan niet worden gewijzigd
                     </p>
                   </div>
@@ -759,20 +759,20 @@ export default function AccountPage() {
 
           {/* Settings Tab */}
           {activeTab === "settings" && (
-            <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 p-6">
+            <div className="rounded-xl shadow-sm border p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
               <h2 className="text-xl font-semibold text-white mb-6">
                 Instellingen
               </h2>
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+                  <label className="block text-sm font-medium text-zinc-300 mb-3">
                     Dashboard Thema
                   </label>
                   <div className="space-y-3">
                     {(["light", "dark", "auto"] as const).map((theme) => (
                       <label
                         key={theme}
-                        className="flex items-center gap-3 p-4 border border-zinc-200 dark:border-zinc-800 rounded-lg cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                        className="flex items-center gap-3 p-4 border border-zinc-800 rounded-lg cursor-pointer hover:bg-zinc-800 transition-colors"
                       >
                         <input
                           type="radio"
@@ -811,7 +811,7 @@ export default function AccountPage() {
                       </label>
                     ))}
                   </div>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
+                  <p className="text-xs text-zinc-400 mt-2">
                     Kies je voorkeur voor de dashboard omgeving. Auto gebruikt de voorkeur van je systeem.
                   </p>
                 </div>
@@ -821,9 +821,9 @@ export default function AccountPage() {
 
           {/* Invoices Tab */}
           {activeTab === "invoices" && (
-            <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 p-6">
+            <div className="rounded-xl shadow-sm border p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-black dark:text-zinc-50">
+                <h2 className="text-xl font-semibold text-zinc-50">
                   Facturen
                 </h2>
                 {paidPages.length > 0 && (
@@ -842,7 +842,7 @@ export default function AccountPage() {
                 </p>
               ) : (
                 <div className="space-y-4">
-                  <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-4">
+                  <div className="border border-zinc-800 rounded-lg p-4">
                     <h3 className="text-lg font-semibold text-white mb-4">
                       Huidige abonnementen
                     </h3>
@@ -856,7 +856,7 @@ export default function AccountPage() {
                         return (
                           <div
                             key={page.id}
-                            className="flex justify-between items-center p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg"
+                            className="flex justify-between items-center p-3 bg-zinc-800 rounded-lg"
                           >
                             <div>
                               <p className="font-medium text-white">
@@ -872,7 +872,7 @@ export default function AccountPage() {
                               <p className="font-medium text-white">
                                 €{planPrice.toFixed(2)}/maand
                               </p>
-                              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                              <p className="text-xs text-zinc-400">
                                 ex. BTW
                               </p>
                             </div>
@@ -880,7 +880,7 @@ export default function AccountPage() {
                         );
                       })}
                     </div>
-                    <div className="border-t border-zinc-200 dark:border-zinc-800 pt-4 mt-4">
+                    <div className="border-t border-zinc-800 pt-4 mt-4">
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm text-zinc-400">
                           Subtotaal (ex. BTW)
@@ -914,7 +914,7 @@ export default function AccountPage() {
 
           {/* Subscriptions Tab */}
           {activeTab === "subscriptions" && (
-            <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 p-6">
+            <div className="rounded-xl shadow-sm border p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
               <h2 className="text-xl font-semibold text-white mb-6">
                 Abonnement(en) beheren
               </h2>
@@ -937,14 +937,14 @@ export default function AccountPage() {
                     return (
                       <div
                         key={page.id}
-                        className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-4"
+                        className="border border-zinc-800 rounded-lg p-4"
                       >
                         <div className="flex justify-between items-center">
                           <div>
-                            <h3 className="text-lg font-semibold text-black dark:text-zinc-50 mb-1">
+                            <h3 className="text-lg font-semibold text-zinc-50 mb-1">
                               {formatPageTitle(page.slug)}
                             </h3>
-                            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                            <p className="text-sm text-zinc-400">
                               Huidig plan: {currentPlan === "free" ? "Lynqit Basis (Gratis)" : currentPlan === "start" ? "Lynqit Start" : "Lynqit Pro"}
                             </p>
                             {planPrice > 0 && (
@@ -953,7 +953,7 @@ export default function AccountPage() {
                               </p>
                             )}
                             {page.subscriptionEndDate && (
-                              <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
+                              <p className="text-xs text-zinc-500 mt-1">
                                 Loopt af op: {new Date(page.subscriptionEndDate).toLocaleDateString("nl-NL")}
                               </p>
                             )}

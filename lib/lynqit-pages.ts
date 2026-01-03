@@ -82,6 +82,7 @@ export interface LynqitPage {
   subscriptionPlan?: SubscriptionPlan;
   subscriptionStatus?: "active" | "cancelled" | "expired";
   mollieSubscriptionId?: string;
+  isDemo?: boolean;
   subscriptionStartDate?: string;
   subscriptionEndDate?: string;
   template?: TemplateType;
@@ -302,6 +303,7 @@ export async function createPage(
   options?: { 
     subscriptionPlan?: SubscriptionPlan; 
     subscriptionStatus?: "active" | "cancelled" | "expired";
+    isDemo?: boolean;
   }
 ): Promise<LynqitPage> {
   const supabase = createServerClient();
@@ -319,7 +321,7 @@ export async function createPage(
   }
 
   const now = new Date().toISOString();
-  const insertData = {
+  const insertData: any = {
     user_id: user.id,
     slug,
     subscription_plan: options?.subscriptionPlan || 'free',
@@ -337,6 +339,11 @@ export async function createPage(
     created_at: now,
     updated_at: now,
   };
+  
+  // Only include is_demo if it's explicitly set (column might not exist yet)
+  if (options?.isDemo !== undefined) {
+    insertData.is_demo = options.isDemo;
+  }
 
   const { data: pageData, error } = await supabase
     .from('lynqit_pages')
@@ -394,12 +401,16 @@ export async function updatePage(id: string, updates: Partial<LynqitPage>, allow
   if (allowedUpdates.subscriptionPlan !== undefined) updateData.subscription_plan = allowedUpdates.subscriptionPlan;
   if (allowedUpdates.subscriptionStatus !== undefined) updateData.subscription_status = allowedUpdates.subscriptionStatus;
   if (allowedUpdates.mollieSubscriptionId !== undefined) updateData.mollie_subscription_id = allowedUpdates.mollieSubscriptionId;
+  if (allowedUpdates.isDemo !== undefined) updateData.is_demo = allowedUpdates.isDemo;
   if (allowedUpdates.subscriptionStartDate !== undefined) updateData.subscription_start_date = allowedUpdates.subscriptionStartDate;
   if (allowedUpdates.subscriptionEndDate !== undefined) updateData.subscription_end_date = allowedUpdates.subscriptionEndDate;
   if (allowedUpdates.template !== undefined) updateData.template = allowedUpdates.template;
   if (allowedUpdates.theme !== undefined) updateData.theme = allowedUpdates.theme;
   if (allowedUpdates.brandColor !== undefined) updateData.brand_color = allowedUpdates.brandColor;
-  if (allowedUpdates.ctaTextColor !== undefined) updateData.cta_text_color = allowedUpdates.ctaTextColor;
+  // Only include cta_text_color if it's explicitly provided (column might not exist yet)
+  if (allowedUpdates.ctaTextColor !== undefined) {
+    updateData.cta_text_color = allowedUpdates.ctaTextColor;
+  }
   if (allowedUpdates.backgroundColor !== undefined) updateData.background_color = allowedUpdates.backgroundColor;
   if (allowedUpdates.header !== undefined) {
     updateData.header_type = allowedUpdates.header.type;
@@ -420,16 +431,35 @@ export async function updatePage(id: string, updates: Partial<LynqitPage>, allow
   if (allowedUpdates.featuredLinks !== undefined) updateData.featured_links = allowedUpdates.featuredLinks;
   if (allowedUpdates.customLinks !== undefined) updateData.custom_links = allowedUpdates.customLinks;
 
-  const { data: pageData, error } = await supabase
+  let { data: pageData, error } = await supabase
     .from('lynqit_pages')
     .update(updateData)
     .eq('id', id)
     .select('*')
     .single();
 
-  if (error) {
+  // If update fails due to missing column, retry without it
+  if (error && (error.message?.includes('column') || error.code === '42703')) {
+    console.warn('Column does not exist, retrying update without new columns');
+    // Remove potentially missing columns from updateData and retry
+    const { cta_text_color, is_demo, ...updateDataWithoutNewColumns } = updateData;
+    const retryResult = await supabase
+      .from('lynqit_pages')
+      .update(updateDataWithoutNewColumns)
+      .eq('id', id)
+      .select('*')
+      .single();
+    
+    if (retryResult.error) {
+      console.error('Error updating page (retry):', retryResult.error);
+      throw new Error(`Failed to update page: ${retryResult.error.message || 'Unknown error'}`);
+    }
+    
+    pageData = retryResult.data;
+    error = null;
+  } else if (error) {
     console.error('Error updating page:', error);
-    throw new Error('Failed to update page');
+    throw new Error(`Failed to update page: ${error.message || 'Unknown error'}`);
   }
 
   if (!pageData) {
@@ -489,6 +519,7 @@ function mapDbPageToPage(dbPage: any): LynqitPage {
     subscriptionPlan: dbPage.subscription_plan,
     subscriptionStatus: dbPage.subscription_status,
     mollieSubscriptionId: dbPage.mollie_subscription_id,
+    isDemo: dbPage.is_demo || false,
     subscriptionStartDate: dbPage.subscription_start_date,
     subscriptionEndDate: dbPage.subscription_end_date,
     template: dbPage.template,

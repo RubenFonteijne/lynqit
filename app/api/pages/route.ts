@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Use the existing getPagesByUser function (it's already optimized)
     const pages = await getPagesByUser(user.email);
     return NextResponse.json({ pages });
   } catch (error) {
