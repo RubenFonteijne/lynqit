@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get subscription from Mollie
-    // Mollie API expects: get(customerId, subscriptionId)
+    // Based on create() signature: create(customerId, data), so get() should be: get(customerId, subscriptionId)
     console.log("Fetching subscription from Mollie:", { customerId, subscriptionId, customerIdType: typeof customerId, subscriptionIdType: typeof subscriptionId });
     const mollieClient = await getMollieClient();
     
@@ -91,9 +91,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Error analysis: "The subscription id appears invalid: cst_dummy" means
-    // the first parameter is used as subscriptionId, so we need: get(subscriptionId, customerId)
-    const subscription = await (mollieClient.customerSubscriptions as any).get(subscriptionId, customerId);
+    // Based on create() signature: create(customerId, data), get() should be: get(customerId, subscriptionId)
+    const subscription = await (mollieClient.customerSubscriptions as any).get(customerId, subscriptionId);
 
     const metadata = subscription.metadata as { email?: string; plan?: SubscriptionPlan; pageId?: string } | undefined;
     const email = metadata?.email;
