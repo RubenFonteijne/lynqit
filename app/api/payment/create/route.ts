@@ -333,7 +333,24 @@ export async function POST(request: NextRequest) {
     // Mollie subscriptions require a first payment to be authorized
     // We'll create the subscription and get the payment URL for the first payment
     let subscription;
+    
+    // Final check before creating subscription
+    if (!finalCustomerId || typeof finalCustomerId !== "string" || finalCustomerId.trim() === "") {
+      console.error("FINAL CHECK FAILED: customerId is invalid before subscription creation!", {
+        finalCustomerId,
+        customerId,
+        type: typeof finalCustomerId,
+        isNewRegistration,
+        email,
+      });
+      return NextResponse.json(
+        { error: "Interne fout: Klant ID ontbreekt. Probeer het opnieuw of neem contact op met support." },
+        { status: 500 }
+      );
+    }
+    
     try {
+      console.log("Creating subscription with finalCustomerId:", finalCustomerId, "Type:", typeof finalCustomerId, "Length:", finalCustomerId.length);
       subscription = await (mollieClient.customerSubscriptions as any).create(finalCustomerId, {
         amount: {
           currency: "EUR",
