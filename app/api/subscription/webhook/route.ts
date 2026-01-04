@@ -4,6 +4,18 @@ import { getUserByEmail } from "@/lib/users";
 import { getPages, updatePage } from "@/lib/lynqit-pages";
 import type { SubscriptionPlan } from "@/lib/lynqit-pages";
 
+// OPTIONS handler for CORS preflight requests
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+
 // GET handler for testing/debugging - returns endpoint info
 export async function GET(request: NextRequest) {
   return NextResponse.json({
@@ -11,12 +23,36 @@ export async function GET(request: NextRequest) {
     method: "POST only",
     description: "This endpoint accepts POST requests from Mollie for subscription updates",
     testEndpoint: "/api/subscription/webhook/test",
-  }, { status: 200 });
+    status: "online",
+  }, { 
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+    },
+  });
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Parse body - handle both JSON and form data
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      // If JSON parsing fails, try to get as text (Mollie might send different formats)
+      const text = await request.text();
+      try {
+        body = JSON.parse(text);
+      } catch {
+        // If still fails, return error but don't crash
+        console.error("Webhook: Could not parse request body", text);
+        return NextResponse.json(
+          { error: "Invalid request body" },
+          { status: 400 }
+        );
+      }
+    }
+
     const subscriptionId = body.id;
     const customerId = body.customerId;
 
@@ -95,12 +131,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json(
+      { success: true },
+      {
+        status: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        },
+      }
+    );
   } catch (error: any) {
     console.error("Subscription webhook error:", error);
+    // Always return 200 to Mollie even on errors (to prevent retries of invalid requests)
+    // But log the error for debugging
     return NextResponse.json(
-      { error: error.message || "An error occurred processing subscription webhook" },
-      { status: 500 }
+      { 
+        success: false,
+        error: error.message || "An error occurred processing subscription webhook" 
+      },
+      { 
+        status: 200, // Return 200 so Mollie doesn't retry
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        },
+      }
     );
   }
 }
