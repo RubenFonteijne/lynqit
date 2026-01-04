@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get subscription from Mollie
-    // Try multiple approaches since Mollie API might have different signatures
+    // According to Mollie API docs: get(customerId, subscriptionId)
     console.log("Fetching subscription from Mollie:", { customerId, subscriptionId, customerIdType: typeof customerId, subscriptionIdType: typeof subscriptionId });
     const mollieClient = await getMollieClient();
     
@@ -103,62 +103,56 @@ export async function POST(request: NextRequest) {
     let subscription;
     let finalCustomerId = customerId;
     
-    // Try to get subscription - multiple approaches
-    try {
-      // Approach 1: Try with customerId if available
-      if (customerId) {
-        try {
-          console.log("Attempting get(customerId, subscriptionId):", { customerId, subscriptionId });
-          subscription = await (mollieClient.customerSubscriptions as any).get(customerId, subscriptionId);
-          finalCustomerId = customerId;
-          console.log("Success with get(customerId, subscriptionId)");
-        } catch (error1: any) {
-          console.log("get(customerId, subscriptionId) failed, trying get(subscriptionId, customerId):", error1.message);
-          // Approach 2: Try reversed order
-          try {
-            subscription = await (mollieClient.customerSubscriptions as any).get(subscriptionId, customerId);
-            finalCustomerId = customerId;
-            console.log("Success with get(subscriptionId, customerId)");
-          } catch (error2: any) {
-            console.log("Both parameter orders failed, trying subscriptions.get(subscriptionId):", error2.message);
-            // Approach 3: Try direct subscription get (if available)
-            if ((mollieClient as any).subscriptions) {
-              subscription = await (mollieClient as any).subscriptions.get(subscriptionId);
-              // Extract customerId from subscription response
-              if (subscription && (subscription as any).customerId) {
-                finalCustomerId = (subscription as any).customerId;
-                console.log("Success with subscriptions.get(subscriptionId), extracted customerId:", finalCustomerId);
-              }
-            } else {
-              throw error2;
-            }
-          }
-        }
-      } else {
-        // No customerId provided, try direct subscription get
-        console.log("No customerId provided, trying subscriptions.get(subscriptionId)");
-        if ((mollieClient as any).subscriptions) {
-          subscription = await (mollieClient as any).subscriptions.get(subscriptionId);
-          // Extract customerId from subscription response
-          if (subscription && (subscription as any).customerId) {
-            finalCustomerId = (subscription as any).customerId;
-            console.log("Success with subscriptions.get(subscriptionId), extracted customerId:", finalCustomerId);
-          } else {
-            throw new Error("Could not extract customerId from subscription");
-          }
-        } else {
-          throw new Error("No customerId provided and subscriptions.get() not available");
+    // If customerId is not provided in webhook, try to get it from database
+    if (!finalCustomerId) {
+      console.log("No customerId in webhook, trying to find it in database via subscriptionId");
+      const { getPages } = await import("@/lib/lynqit-pages");
+      const pages = await getPages();
+      const pageWithSubscription = pages.find((p) => p.mollieSubscriptionId === subscriptionId);
+      
+      if (pageWithSubscription) {
+        const { getUserByEmail } = await import("@/lib/users");
+        const user = await getUserByEmail(pageWithSubscription.userId);
+        if (user && user.mollieCustomerId) {
+          finalCustomerId = user.mollieCustomerId;
+          console.log("Found customerId in database:", finalCustomerId);
         }
       }
+    }
+    
+    // According to Mollie API documentation: get(customerId, subscriptionId)
+    // https://docs.mollie.com/reference/subscriptions-api
+    if (!finalCustomerId) {
+      console.error("Cannot fetch subscription: customerId is required but not available", {
+        subscriptionId,
+        customerIdFromWebhook: customerId,
+        allFormDataKeys: Object.keys(allFormData),
+      });
+      return NextResponse.json(
+        { 
+          error: "Customer ID is required to fetch subscription. It was not provided in the webhook and could not be found in the database.",
+          details: {
+            subscriptionId,
+            receivedFormData: allFormData,
+          }
+        },
+        { status: 400 }
+      );
+    }
+    
+    try {
+      console.log("Fetching subscription with get(customerId, subscriptionId):", { finalCustomerId, subscriptionId });
+      subscription = await (mollieClient.customerSubscriptions as any).get(finalCustomerId, subscriptionId);
+      console.log("Successfully fetched subscription:", { subscriptionId, status: subscription?.status });
     } catch (error: any) {
-      console.error("All subscription fetch approaches failed:", error);
+      console.error("Failed to fetch subscription from Mollie:", error);
       return NextResponse.json(
         { 
           error: `Failed to fetch subscription: ${error.message || "Unknown error"}`,
           details: {
             subscriptionId,
-            customerId,
-            triedApproaches: customerId ? ["get(customerId, subscriptionId)", "get(subscriptionId, customerId)", "subscriptions.get(subscriptionId)"] : ["subscriptions.get(subscriptionId)"]
+            customerId: finalCustomerId,
+            mollieError: error.message,
           }
         },
         { status: 500 }
