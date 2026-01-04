@@ -161,6 +161,7 @@ export async function POST(request: NextRequest) {
     }
     
     if (!customerId) {
+      console.log("No existing customer ID, creating new customer for email:", email, "isNewRegistration:", isNewRegistration);
       let customer;
       try {
         // For new registrations, include slug and password in metadata
@@ -172,6 +173,7 @@ export async function POST(request: NextRequest) {
           customerMetadata.slug = slug;
           customerMetadata.password = password; // Will be used to create account after payment
           customerMetadata.createAccount = "true";
+          console.log("Creating customer for new registration with slug:", slug);
         } else if (user) {
           customerMetadata.userId = user.email;
         }
@@ -181,6 +183,8 @@ export async function POST(request: NextRequest) {
           email: email,
           metadata: customerMetadata,
         });
+        
+        console.log("Mollie customer created successfully:", customer?.id);
       } catch (customerError: any) {
         console.error("Mollie customer creation error:", customerError);
         const errorMessage = customerError?.message || customerError?.toString() || "Unknown error";
@@ -209,7 +213,7 @@ export async function POST(request: NextRequest) {
       
       customerId = customer.id;
       
-      console.log("Created Mollie customer with ID:", customerId);
+      console.log("Created Mollie customer with ID:", customerId, "Type:", typeof customerId);
 
       // Save customer ID to user (if user exists)
       if (user) {
