@@ -221,12 +221,15 @@ export async function POST(request: NextRequest) {
 
     // Ensure customerId is set and is a string before proceeding
     if (!customerId || typeof customerId !== "string" || customerId.trim() === "") {
-      console.error("Customer ID is invalid before creating subscription:", customerId, typeof customerId);
+      console.error("Customer ID is invalid before creating subscription:", customerId, typeof customerId, "isNewRegistration:", isNewRegistration);
       return NextResponse.json(
         { error: "Customer ID is required but was not found or created. Please try again." },
         { status: 500 }
       );
     }
+
+    // Type guard: ensure customerId is definitely a string at this point
+    const finalCustomerId: string = customerId;
 
     // Create monthly subscription (not a one-time payment)
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
@@ -291,7 +294,7 @@ export async function POST(request: NextRequest) {
       selectedPaymentMethod = PaymentMethod.creditcard;
     }
     
-    console.log("Creating subscription with customerId:", customerId, "Type:", typeof customerId);
+    console.log("Creating subscription with customerId:", finalCustomerId, "Type:", typeof finalCustomerId);
 
     // For first payment only discounts, we need to handle it differently
     // Mollie subscriptions have a fixed price, so for first_payment discounts,
@@ -314,7 +317,7 @@ export async function POST(request: NextRequest) {
     // We'll create the subscription and get the payment URL for the first payment
     let subscription;
     try {
-      subscription = await (mollieClient.customerSubscriptions as any).create(customerId, {
+      subscription = await (mollieClient.customerSubscriptions as any).create(finalCustomerId, {
         amount: {
           currency: "EUR",
           value: subscriptionPriceWithBTW.toFixed(2),
