@@ -227,7 +227,8 @@ export async function POST(request: NextRequest) {
     const methodMap: Record<string, PaymentMethod> = {
       'creditcard': PaymentMethod.creditcard,
       'paypal': PaymentMethod.paypal,
-      'sepa': PaymentMethod.sepadirectdebit,
+      'sepa': PaymentMethod.directdebit, // SEPA Direct Debit uses directdebit in Mollie API
+      'sepadirectdebit': PaymentMethod.directdebit, // Alias for sepa
       'directdebit': PaymentMethod.directdebit,
       'ideal': PaymentMethod.ideal,
     };
