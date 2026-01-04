@@ -58,123 +58,131 @@ export async function POST(request: NextRequest) {
     let user = await getUserByEmail(email);
     let page = pageId ? await getPageById(pageId) : null;
 
-    // Create account if this is a new registration
-    if (createAccount && !user && slug && password) {
-      try {
-        // Create user account via Supabase Auth
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-        if (!supabaseUrl || !supabaseAnonKey) {
-          throw new Error("Missing Supabase configuration");
-        }
-
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey, {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
-        });
-
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-        
-        // Sign up user (this will send confirmation email if enabled)
-        const { data: authData, error: authError } = await supabaseAnon.auth.signUp({
-          email: email.toLowerCase(),
-          password,
-          options: {
-            emailRedirectTo: `${baseUrl}/account-confirmed`,
-          },
-        });
-
-        if (authError || !authData.user) {
-          console.error("Error creating user account:", authError);
-          throw new Error(authError?.message || "Failed to create user account");
-        }
-
-        // Create user in database
-        const supabaseAdmin = createServerClient();
-        const { data: newUser, error: createError } = await supabaseAdmin
-          .from('users')
-          .insert({
-            id: authData.user.id,
-            email: email.toLowerCase(),
-            role: 'user',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .select()
-          .single();
-        
-        if (createError) {
-          console.error("Error creating user in database:", createError);
-          throw new Error(`Failed to create user in database: ${createError.message}`);
-        }
-
-        user = {
-          id: newUser.id,
-          email: newUser.email,
-          role: (newUser.role || 'user') as 'admin' | 'user',
-          createdAt: newUser.created_at || new Date().toISOString(),
-          updatedAt: newUser.updated_at,
-        };
-
-        console.log("Created user account for:", email);
-      } catch (error: any) {
-        console.error("Error creating account in webhook:", error);
-        // Don't fail the webhook, but log the error
-        // The payment is still valid, we can retry account creation later
-      }
-    }
-
-    // If user still doesn't exist, we can't proceed
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found and could not be created" },
-        { status: 404 }
-      );
-    }
-
-    // Create page if it doesn't exist (for new registrations)
-    if (!page && slug && user) {
-      try {
-        const newPage = await createPage(
-          user.email, // userId
-          slug, // slug
-          {
-            subscriptionPlan: plan,
-            subscriptionStatus: "expired", // Will be set to active below
-          }
-        );
-        page = newPage;
-        console.log("Created page for new registration:", newPage.id);
-      } catch (error: any) {
-        console.error("Error creating page in webhook:", error);
-        // If page creation fails, try to continue with existing page if pageId was provided
-        if (pageId) {
-          page = await getPageById(pageId);
-        }
-      }
-    }
-
-    // Verify page exists and belongs to user
-    if (!page) {
-      return NextResponse.json(
-        { error: "Page not found and could not be created" },
-        { status: 404 }
-      );
-    }
-
-    if (page.userId !== email) {
-      return NextResponse.json(
-        { error: "Page does not belong to user" },
-        { status: 403 }
-      );
-    }
-
     // Update page subscription based on payment status
+    // IMPORTANT: Only create account and send confirmation email when payment status is "paid"
     if (payment.status === "paid") {
+      // Create account if this is a new registration AND payment is paid
+      // This ensures confirmation email is only sent after successful payment
+      if (createAccount && !user && slug && password) {
+        try {
+          // Create user account via Supabase Auth
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+          const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+          if (!supabaseUrl || !supabaseAnonKey) {
+            throw new Error("Missing Supabase configuration");
+          }
+
+          const { createClient } = await import('@supabase/supabase-js');
+          const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey, {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false,
+            },
+          });
+
+          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+          
+          // Sign up user (this will send confirmation email if enabled)
+          // Only called when payment status is "paid"
+          const { data: authData, error: authError } = await supabaseAnon.auth.signUp({
+            email: email.toLowerCase(),
+            password,
+            options: {
+              emailRedirectTo: `${baseUrl}/account-confirmed`,
+            },
+          });
+
+          if (authError || !authData.user) {
+            console.error("Error creating user account:", authError);
+            throw new Error(authError?.message || "Failed to create user account");
+          }
+
+          // Create user in database
+          const supabaseAdmin = createServerClient();
+          const { data: newUser, error: createError } = await supabaseAdmin
+            .from('users')
+            .insert({
+              id: authData.user.id,
+              email: email.toLowerCase(),
+              role: 'user',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+          
+          if (createError) {
+            console.error("Error creating user in database:", createError);
+            throw new Error(`Failed to create user in database: ${createError.message}`);
+          }
+
+          user = {
+            id: newUser.id,
+            email: newUser.email,
+            role: (newUser.role || 'user') as 'admin' | 'user',
+            createdAt: newUser.created_at || new Date().toISOString(),
+            updatedAt: newUser.updated_at,
+          };
+
+          console.log("Created user account for:", email, "after payment was confirmed as paid");
+        } catch (error: any) {
+          console.error("Error creating account in webhook:", error);
+          // Don't fail the webhook, but log the error
+          // The payment is still valid, we can retry account creation later
+          return NextResponse.json(
+            { success: false, error: `Failed to create account: ${error.message}` },
+            { status: 200 } // Return 200 to Mollie
+          );
+        }
+      }
+
+      // If user still doesn't exist after creation attempt, we can't proceed
+      if (!user) {
+        return NextResponse.json(
+          { error: "User not found and could not be created" },
+          { status: 404 }
+        );
+      }
+
+      // Create page if it doesn't exist (for new registrations)
+      if (!page && slug && user) {
+        try {
+          const newPage = await createPage(
+            user.email, // userId
+            slug, // slug
+            {
+              subscriptionPlan: plan,
+              subscriptionStatus: "expired", // Will be set to active below
+            }
+          );
+          page = newPage;
+          console.log("Created page for new registration:", newPage.id);
+        } catch (error: any) {
+          console.error("Error creating page in webhook:", error);
+          // If page creation fails, try to continue with existing page if pageId was provided
+          if (pageId) {
+            page = await getPageById(pageId);
+          }
+        }
+      }
+
+      // Verify page exists and belongs to user
+      if (!page) {
+        return NextResponse.json(
+          { error: "Page not found and could not be created" },
+          { status: 404 }
+        );
+      }
+
+      if (page.userId !== email) {
+        return NextResponse.json(
+          { error: "Page does not belong to user" },
+          { status: 403 }
+        );
+      }
+
+      // Payment successful - activate subscription
       // Payment successful - this is likely the first payment for a subscription
       const now = new Date();
       const subscriptionEndDate = new Date(now);
