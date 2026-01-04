@@ -79,8 +79,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Get subscription from Mollie
+    // Mollie API expects: get(customerId, subscriptionId)
     const mollieClient = await getMollieClient();
-    const subscription = await (mollieClient.customerSubscriptions as any).get(subscriptionId, customerId);
+    const subscription = await (mollieClient.customerSubscriptions as any).get(customerId, subscriptionId);
 
     const metadata = subscription.metadata as { email?: string; plan?: SubscriptionPlan; pageId?: string } | undefined;
     const email = metadata?.email;

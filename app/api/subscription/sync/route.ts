@@ -45,9 +45,10 @@ export async function POST(request: NextRequest) {
 
       try {
         // Get subscription from Mollie
+        // Mollie API expects: get(customerId, subscriptionId)
         const subscription = await (mollieClient.customerSubscriptions as any).get(
-          page.mollieSubscriptionId,
-          user.mollieCustomerId
+          user.mollieCustomerId,
+          page.mollieSubscriptionId
         );
 
         // Update page with latest subscription data
