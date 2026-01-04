@@ -41,11 +41,11 @@ export async function POST(request: NextRequest) {
 
     // Sync each page's subscription with Mollie
     for (const page of userPages) {
-      if (!page.mollieSubscriptionId) continue;
+      if (!page.mollieSubscriptionId || !user.mollieCustomerId) continue;
 
       try {
         // Get subscription from Mollie
-        const subscription = await mollieClient.customerSubscriptions.get(
+        const subscription = await (mollieClient.customerSubscriptions as any).get(
           user.mollieCustomerId,
           page.mollieSubscriptionId
         );
