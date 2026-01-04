@@ -42,12 +42,22 @@ export async function POST(request: NextRequest) {
 
     // Handle Mollie's webhook connectivity test (empty body or test requests)
     if (!subscriptionId || !customerId) {
-      // If this is a test from Mollie (empty form data or test parameter), return success
+      // If this is a test from Mollie (empty form data, test parameter, or only id without customerId), return success
       const testParam = formData.get("test");
-      if (testParam === "true" || (!subscriptionId && !customerId)) {
-        console.log("Webhook connectivity test received from Mollie");
+      const hasOnlyId = subscriptionId && !customerId;
+      
+      if (testParam === "true" || (!subscriptionId && !customerId) || hasOnlyId) {
+        console.log("Webhook connectivity test received from Mollie", { subscriptionId, customerId, testParam, hasOnlyId });
         return NextResponse.json(
-          { success: true, message: "Webhook endpoint is reachable" },
+          { 
+            success: true, 
+            message: "Webhook endpoint is reachable",
+            received: {
+              subscriptionId: subscriptionId || null,
+              customerId: customerId || null,
+              test: testParam || false,
+            }
+          },
           { 
             status: 200,
             headers: {
