@@ -117,11 +117,15 @@ export async function saveSettings(settings: Settings): Promise<void> {
 }
 
 // Get active Mollie API key (test or live based on useTestMode)
+// HARDCODED FALLBACK KEYS - Replace with your actual keys
+const HARDCODED_TEST_KEY = "test_dHar4XY7LxsDOtmnkVtjNVWXLSlXsM"; // Replace with your test key
+const HARDCODED_LIVE_KEY = "live_MdEcEVWzQtfHdGtvyTrBNvq3Hyhr5u"; // Replace with your live key
+
 export async function getActiveMollieApiKey(): Promise<string | undefined> {
   const settings = await getSettings();
   if (settings.useTestMode) {
-    return settings.mollieApiKeyTest || process.env.MOLLIE_API_KEY;
+    return settings.mollieApiKeyTest || process.env.MOLLIE_API_KEY || HARDCODED_TEST_KEY;
   } else {
-    return settings.mollieApiKeyLive || process.env.MOLLIE_API_KEY;
+    return settings.mollieApiKeyLive || process.env.MOLLIE_API_KEY || HARDCODED_LIVE_KEY;
   }
 }
