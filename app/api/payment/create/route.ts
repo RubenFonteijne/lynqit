@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate and apply discount code if provided
-    let finalPriceExBTW = SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES];
+    let finalPriceExBTW: number = SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES];
     let discountCodeId: string | undefined;
     let appliedDiscount = false;
     let recurringDiscountApplied = false;
@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
     // Determine the subscription price
     // If it's a first_payment discount, use regular price (discount applied only to first payment)
     // If it's a recurring discount, use discounted price (applies to all payments)
-    const subscriptionPriceExBTW = recurringDiscountApplied 
+    const subscriptionPriceExBTW: number = recurringDiscountApplied 
       ? finalPriceExBTW 
       : SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES];
     const subscriptionPriceWithBTW = calculatePriceWithBTW(subscriptionPriceExBTW);
