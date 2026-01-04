@@ -91,7 +91,9 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const subscription = await (mollieClient.customerSubscriptions as any).get(customerId, subscriptionId);
+    // Error analysis: "The subscription id appears invalid: cst_dummy" means
+    // the first parameter is used as subscriptionId, so we need: get(subscriptionId, customerId)
+    const subscription = await (mollieClient.customerSubscriptions as any).get(subscriptionId, customerId);
 
     const metadata = subscription.metadata as { email?: string; plan?: SubscriptionPlan; pageId?: string } | undefined;
     const email = metadata?.email;
