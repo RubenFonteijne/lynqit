@@ -3,6 +3,7 @@ import { getMollieClient } from "@/lib/mollie";
 import { getUserByEmail } from "@/lib/users";
 import { getPageById, updatePage, deletePage } from "@/lib/lynqit-pages";
 import type { SubscriptionPlan } from "@/lib/lynqit-pages";
+import { getDiscountCodeById, incrementDiscountCodeUsage } from "@/lib/discount-codes";
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +21,14 @@ export async function POST(request: NextRequest) {
     const mollieClient = await getMollieClient();
     const payment = await mollieClient.payments.get(paymentId);
 
-    const metadata = payment.metadata as { email?: string; plan?: SubscriptionPlan; pageId?: string; subscriptionId?: string } | undefined;
+    const metadata = payment.metadata as { 
+      email?: string; 
+      plan?: SubscriptionPlan; 
+      pageId?: string; 
+      subscriptionId?: string;
+      discountCodeId?: string;
+      appliedDiscount?: string;
+    } | undefined;
     const email = metadata?.email;
     const plan = metadata?.plan;
     const pageId = metadata?.pageId;
@@ -58,6 +66,16 @@ export async function POST(request: NextRequest) {
       // Check if this payment is linked to a subscription
       // Mollie payments for subscriptions have a subscriptionId property
       const subscriptionId = (payment as any).subscriptionId || metadata?.subscriptionId || page.mollieSubscriptionId;
+
+      // Increment discount code usage if applied
+      if (metadata?.discountCodeId && metadata?.appliedDiscount === "true") {
+        try {
+          await incrementDiscountCodeUsage(metadata.discountCodeId);
+        } catch (error) {
+          console.error("Error incrementing discount code usage:", error);
+          // Don't fail the webhook if discount code update fails
+        }
+      }
 
       if (subscriptionId) {
         // Payment is part of a subscription - activate the subscription

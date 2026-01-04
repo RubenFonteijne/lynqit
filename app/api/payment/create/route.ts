@@ -4,11 +4,13 @@ import { getUserByEmail, updateUser, isAdminUserAsync } from "@/lib/users";
 import { getPageById, updatePage } from "@/lib/lynqit-pages";
 import type { SubscriptionPlan } from "@/lib/lynqit-pages";
 import { PaymentMethod } from "@mollie/api-client";
+import { validateDiscountCode } from "@/lib/discount-codes";
+import { calculatePriceWithDiscount } from "@/lib/pricing";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, plan, pageId, paymentMethod } = body;
+    const { email, plan, pageId, paymentMethod, discountCode } = body;
 
     if (!email || !plan || !pageId) {
       return NextResponse.json(
@@ -49,8 +51,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const priceExBTW = SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES];
-    const priceWithBTW = calculatePriceWithBTW(priceExBTW);
+    // Validate and apply discount code if provided
+    let finalPriceExBTW = SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES];
+    let discountCodeId: string | undefined;
+    let appliedDiscount = false;
+    let recurringDiscountApplied = false;
+
+    if (discountCode) {
+      const validation = await validateDiscountCode(discountCode, plan as "start" | "pro");
+      if (validation.valid && validation.discountCode) {
+        discountCodeId = validation.discountCode.id;
+        
+        // Apply discount based on type
+        if (validation.discountCode.discountType === "first_payment") {
+          // Only apply to first payment
+          finalPriceExBTW = calculatePriceWithDiscount(
+            finalPriceExBTW,
+            validation.discountCode.discountValue,
+            validation.discountCode.isPercentage
+          );
+          appliedDiscount = true;
+        } else if (validation.discountCode.discountType === "recurring") {
+          // Apply to subscription price (all payments)
+          finalPriceExBTW = calculatePriceWithDiscount(
+            finalPriceExBTW,
+            validation.discountCode.discountValue,
+            validation.discountCode.isPercentage
+          );
+          recurringDiscountApplied = true;
+        }
+      } else {
+        return NextResponse.json(
+          { error: validation.error || "Ongeldige kortingscode" },
+          { status: 400 }
+        );
+      }
+    }
+
+    const priceWithBTW = calculatePriceWithBTW(finalPriceExBTW);
 
     let mollieClient;
     try {
@@ -159,13 +197,29 @@ export async function POST(request: NextRequest) {
 
     console.log("Creating subscription with customerId:", customerId);
 
+    // For first payment only discounts, we need to handle it differently
+    // Mollie subscriptions have a fixed price, so for first_payment discounts,
+    // we'll use the discounted price for the subscription but note it in metadata
+    // For recurring discounts, the subscription price is already adjusted
+    
+    // Determine the subscription price
+    // If it's a first_payment discount, use regular price (discount applied only to first payment)
+    // If it's a recurring discount, use discounted price (applies to all payments)
+    const subscriptionPriceExBTW = recurringDiscountApplied 
+      ? finalPriceExBTW 
+      : SUBSCRIPTION_PRICES[plan as keyof typeof SUBSCRIPTION_PRICES];
+    const subscriptionPriceWithBTW = calculatePriceWithBTW(subscriptionPriceExBTW);
+    
+    // For first payment, use discounted price if applicable
+    const firstPaymentPriceWithBTW = appliedDiscount ? priceWithBTW : subscriptionPriceWithBTW;
+
     // Create subscription with monthly interval
     // Mollie subscriptions require a first payment to be authorized
     // We'll create the subscription and get the payment URL for the first payment
     const subscription = await (mollieClient.customerSubscriptions as any).create(customerId, {
       amount: {
         currency: "EUR",
-        value: priceWithBTW.toFixed(2),
+        value: subscriptionPriceWithBTW.toFixed(2),
       },
       interval: "1 month", // Monthly subscription
       description: `Lynqit ${plan} subscription`,
@@ -177,12 +231,17 @@ export async function POST(request: NextRequest) {
         plan,
         pageId,
         userId: user.email,
+        discountCodeId: discountCodeId || undefined,
+        appliedDiscount: appliedDiscount ? "true" : undefined,
+        recurringDiscount: recurringDiscountApplied ? "true" : undefined,
+        firstPaymentPrice: appliedDiscount ? firstPaymentPriceWithBTW.toFixed(2) : undefined,
       },
     });
 
     // Update page with pending subscription info
     // Subscription will be confirmed by webhook after first payment
     // Don't set status to "active" yet - wait for successful payment
+    // Discount code usage will be incremented in the payment webhook after successful payment
     await updatePage(pageId, {
       subscriptionPlan: plan as SubscriptionPlan,
       subscriptionStatus: "expired", // Will be set to "active" by webhook after successful payment

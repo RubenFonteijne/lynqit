@@ -35,6 +35,8 @@ export default function AccountPage() {
   const [activeTab, setActiveTab] = useState<"profile" | "invoices" | "settings" | "subscriptions">("profile");
   const [subscriptionMessage, setSubscriptionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isProcessingSubscription, setIsProcessingSubscription] = useState<string | null>(null);
+  const [isSyncingSubscriptions, setIsSyncingSubscriptions] = useState(false);
+  const [hasSyncedSubscriptions, setHasSyncedSubscriptions] = useState(false);
   const [themePreference, setThemePreference] = useState<"light" | "dark" | "auto">("auto");
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
@@ -167,6 +169,62 @@ export default function AccountPage() {
       console.error("Error fetching pages:", error);
     }
   };
+
+  const syncSubscriptionsWithMollie = async () => {
+    if (!user?.email) return;
+    
+    setIsSyncingSubscriptions(true);
+    try {
+      const response = await fetch("/api/subscription/sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: user.email }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Refresh pages to get updated dates
+        if (accessToken) {
+          await fetchPages(accessToken);
+        }
+        setSubscriptionMessage({
+          type: "success",
+          text: `Abonnementen gesynchroniseerd. ${data.updatedPages.length} abonnement(en) bijgewerkt.`,
+        });
+        setTimeout(() => setSubscriptionMessage(null), 5000);
+      } else {
+        const errorData = await response.json();
+        setSubscriptionMessage({
+          type: "error",
+          text: errorData.error || "Fout bij synchroniseren van abonnementen",
+        });
+        setTimeout(() => setSubscriptionMessage(null), 5000);
+      }
+    } catch (error) {
+      console.error("Error syncing subscriptions:", error);
+      setSubscriptionMessage({
+        type: "error",
+        text: "Er is een fout opgetreden bij het synchroniseren van abonnementen",
+      });
+      setTimeout(() => setSubscriptionMessage(null), 5000);
+    } finally {
+      setIsSyncingSubscriptions(false);
+    }
+  };
+
+  // Auto-sync subscriptions when subscriptions tab is opened
+  useEffect(() => {
+    if (activeTab === "subscriptions" && user?.email && !hasSyncedSubscriptions) {
+      setHasSyncedSubscriptions(true);
+      // Small delay to ensure tab is rendered
+      setTimeout(() => {
+        syncSubscriptionsWithMollie();
+      }, 100);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, user?.email, hasSyncedSubscriptions]);
 
   const handleSaveProfile = async () => {
     if (!user) return;
@@ -915,9 +973,33 @@ export default function AccountPage() {
           {/* Subscriptions Tab */}
           {activeTab === "subscriptions" && (
             <div className="rounded-xl shadow-sm border p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-              <h2 className="text-xl font-semibold text-white mb-6">
-                Abonnement(en) beheren
-              </h2>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-white">
+                  Abonnement(en) beheren
+                </h2>
+                <button
+                  onClick={syncSubscriptionsWithMollie}
+                  disabled={isSyncingSubscriptions}
+                  className="px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isSyncingSubscriptions ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Synchroniseren...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Synchroniseren met Mollie
+                    </>
+                  )}
+                </button>
+              </div>
 
               {pages.length === 0 ? (
                 <p className="text-zinc-400">
@@ -952,7 +1034,21 @@ export default function AccountPage() {
                                 €{planPrice.toFixed(2)}/maand ex. BTW
                               </p>
                             )}
-                            {page.subscriptionEndDate && (
+                            {isActive && currentPlan !== "free" && (
+                              <div className="mt-3 space-y-1">
+                                {page.subscriptionStartDate && (
+                                  <p className="text-xs text-zinc-400">
+                                    Gestart op: <span className="text-zinc-300 font-medium">{new Date(page.subscriptionStartDate).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}</span>
+                                  </p>
+                                )}
+                                {page.subscriptionEndDate && (
+                                  <p className="text-xs text-zinc-400">
+                                    Volgende facturatie: <span className="text-zinc-300 font-medium">{new Date(page.subscriptionEndDate).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}</span>
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                            {!isActive && page.subscriptionEndDate && (
                               <p className="text-xs text-zinc-500 mt-1">
                                 Loopt af op: {new Date(page.subscriptionEndDate).toLocaleDateString("nl-NL")}
                               </p>
