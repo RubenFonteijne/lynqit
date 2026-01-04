@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClientClient } from "@/lib/supabase-client";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +12,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createClientClient();
+    // Create a server-side client with anon key for OTP verification
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return NextResponse.json(
+        { error: "Missing Supabase configuration" },
+        { status: 500 }
+      );
+    }
+
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
 
     // Verify the OTP token
     const { data, error } = await supabase.auth.verifyOtp({
