@@ -172,22 +172,22 @@ export async function POST(request: NextRequest) {
     // Update page subscription based on subscription status
     // For webhooks, we assume active unless we get a cancellation event
     // The actual status will be synced by the sync endpoint
+    const now = new Date();
+    
     if (subscriptionStatus === "active") {
-      // Subscription is active - calculate next payment date
-      const now = new Date();
-      // Use nextPaymentDate from subscription if available, otherwise calculate 1 month from now
-      const subscriptionEndDate = subscription.nextPaymentDate 
-        ? new Date(subscription.nextPaymentDate)
+      // Subscription is active - calculate next payment date (1 month from now)
+      const subscriptionEndDate = page.subscriptionEndDate 
+        ? new Date(page.subscriptionEndDate)
         : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
 
       await updatePage(pageId, {
         subscriptionPlan: plan,
         subscriptionStatus: "active",
-        subscriptionStartDate: subscription.startDate || page.subscriptionStartDate || now.toISOString(),
+        subscriptionStartDate: page.subscriptionStartDate || now.toISOString(),
         subscriptionEndDate: subscriptionEndDate.toISOString(),
-        mollieSubscriptionId: subscription.id,
+        mollieSubscriptionId: subscriptionId, // Use subscriptionId from webhook
       });
-    } else if (subscription.status === "canceled" || subscription.status === "suspended") {
+    } else if (subscriptionStatus === "canceled" || subscriptionStatus === "suspended") {
       // Subscription cancelled or suspended - revert to free
       // Only delete page if it was just created (expired status with paid plan)
       if (page.subscriptionStatus === "expired" && page.subscriptionPlan !== "free") {
