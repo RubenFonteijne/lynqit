@@ -137,13 +137,32 @@ export async function POST(request: NextRequest) {
     }
     
     if (!customerId) {
-      const customer = await mollieClient.customers.create({
-        name: user.email.split("@")[0],
-        email: user.email,
-        metadata: {
-          userId: user.email,
-        },
-      });
+      let customer;
+      try {
+        customer = await mollieClient.customers.create({
+          name: user.email.split("@")[0],
+          email: user.email,
+          metadata: {
+            userId: user.email,
+          },
+        });
+      } catch (customerError: any) {
+        console.error("Mollie customer creation error:", customerError);
+        const errorMessage = customerError?.message || customerError?.toString() || "Unknown error";
+        
+        // Check if it's an authentication error
+        if (errorMessage.includes("authenticate") || errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
+          return NextResponse.json(
+            { error: "Mollie authenticatie fout. Controleer of de Mollie API key correct is geconfigureerd in de admin settings." },
+            { status: 401 }
+          );
+        }
+        
+        return NextResponse.json(
+          { error: `Fout bij aanmaken van klant in Mollie: ${errorMessage}` },
+          { status: 500 }
+        );
+      }
       
       if (!customer || !customer.id) {
         console.error("Failed to create customer - customer or customer.id is undefined", customer);
@@ -224,27 +243,54 @@ export async function POST(request: NextRequest) {
     // Create subscription with monthly interval
     // Mollie subscriptions require a first payment to be authorized
     // We'll create the subscription and get the payment URL for the first payment
-    const subscription = await (mollieClient.customerSubscriptions as any).create(customerId, {
-      amount: {
-        currency: "EUR",
-        value: subscriptionPriceWithBTW.toFixed(2),
-      },
-      interval: "1 month", // Monthly subscription
-      description: `Lynqit ${plan} subscription`,
-      method: selectedPaymentMethod,
-      webhookUrl: webhookUrl,
-      redirectUrl: `${baseUrl}/payment/success?email=${encodeURIComponent(email)}&plan=${plan}&pageId=${pageId}`,
-      metadata: {
-        email,
-        plan,
-        pageId,
-        userId: user.email,
-        discountCodeId: discountCodeId || undefined,
-        appliedDiscount: appliedDiscount ? "true" : undefined,
-        recurringDiscount: recurringDiscountApplied ? "true" : undefined,
-        firstPaymentPrice: appliedDiscount ? firstPaymentPriceWithBTW.toFixed(2) : undefined,
-      },
-    });
+    let subscription;
+    try {
+      subscription = await (mollieClient.customerSubscriptions as any).create(customerId, {
+        amount: {
+          currency: "EUR",
+          value: subscriptionPriceWithBTW.toFixed(2),
+        },
+        interval: "1 month", // Monthly subscription
+        description: `Lynqit ${plan} subscription`,
+        method: selectedPaymentMethod,
+        webhookUrl: webhookUrl,
+        redirectUrl: `${baseUrl}/payment/success?email=${encodeURIComponent(email)}&plan=${plan}&pageId=${pageId}`,
+        metadata: {
+          email,
+          plan,
+          pageId,
+          userId: user.email,
+          discountCodeId: discountCodeId || undefined,
+          appliedDiscount: appliedDiscount ? "true" : undefined,
+          recurringDiscount: recurringDiscountApplied ? "true" : undefined,
+          firstPaymentPrice: appliedDiscount ? firstPaymentPriceWithBTW.toFixed(2) : undefined,
+        },
+      });
+    } catch (subscriptionError: any) {
+      console.error("Mollie subscription creation error:", subscriptionError);
+      const errorMessage = subscriptionError?.message || subscriptionError?.toString() || "Unknown error";
+      
+      // Check if it's an authentication error
+      if (errorMessage.includes("authenticate") || errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
+        return NextResponse.json(
+          { error: "Mollie authenticatie fout. Controleer of de Mollie API key correct is geconfigureerd in de admin settings." },
+          { status: 401 }
+        );
+      }
+      
+      // Check if it's a payment method error
+      if (errorMessage.includes("method") || errorMessage.includes("not available")) {
+        return NextResponse.json(
+          { error: `Betaalmethode ${selectedPaymentMethod} is niet beschikbaar. Probeer een andere betaalmethode.` },
+          { status: 400 }
+        );
+      }
+      
+      return NextResponse.json(
+        { error: `Fout bij aanmaken van abonnement: ${errorMessage}` },
+        { status: 500 }
+      );
+    }
 
     // Update page with pending subscription info
     // Subscription will be confirmed by webhook after first payment

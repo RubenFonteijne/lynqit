@@ -8,7 +8,20 @@ export async function GET(request: NextRequest) {
     // Get available payment methods from Mollie
     // For subscriptions, we need to check which methods are available
     // Mollie subscriptions support: creditcard, paypal, sepadirectdebit, directdebit
-    const methods = await mollieClient.methods.list();
+    let methods;
+    try {
+      methods = await mollieClient.methods.list();
+    } catch (methodsError: any) {
+      console.error("Error fetching methods from Mollie:", methodsError);
+      // If methods.list() fails, return default methods
+      // This can happen if the API key doesn't have permissions or if there's an auth issue
+      return NextResponse.json({
+        methods: [
+          { id: 'creditcard', description: 'Creditcard', available: true },
+          { id: 'paypal', description: 'PayPal', available: true },
+        ],
+      });
+    }
     
     // Methods that are suitable for subscriptions (recurring payments)
     const subscriptionSupportedMethods = ['creditcard', 'paypal', 'sepadirectdebit', 'directdebit'];
