@@ -208,6 +208,8 @@ export async function POST(request: NextRequest) {
       }
       
       customerId = customer.id;
+      
+      console.log("Created Mollie customer with ID:", customerId);
 
       // Save customer ID to user (if user exists)
       if (user) {
@@ -215,6 +217,15 @@ export async function POST(request: NextRequest) {
           mollieCustomerId: customerId,
         });
       }
+    }
+
+    // Ensure customerId is set and is a string before proceeding
+    if (!customerId || typeof customerId !== "string" || customerId.trim() === "") {
+      console.error("Customer ID is invalid before creating subscription:", customerId, typeof customerId);
+      return NextResponse.json(
+        { error: "Customer ID is required but was not found or created. Please try again." },
+        { status: 500 }
+      );
     }
 
     // Create monthly subscription (not a one-time payment)
@@ -280,16 +291,7 @@ export async function POST(request: NextRequest) {
       selectedPaymentMethod = PaymentMethod.creditcard;
     }
     
-    // Ensure customerId is set and is a string before creating subscription
-    if (!customerId || typeof customerId !== "string") {
-      console.error("Customer ID is invalid before creating subscription:", customerId, typeof customerId);
-      return NextResponse.json(
-        { error: "Customer ID is required but was not found or created" },
-        { status: 500 }
-      );
-    }
-
-    console.log("Creating subscription with customerId:", customerId);
+    console.log("Creating subscription with customerId:", customerId, "Type:", typeof customerId);
 
     // For first payment only discounts, we need to handle it differently
     // Mollie subscriptions have a fixed price, so for first_payment discounts,
