@@ -4,6 +4,16 @@ import { getUserByEmail } from "@/lib/users";
 import { getPages, updatePage } from "@/lib/lynqit-pages";
 import type { SubscriptionPlan } from "@/lib/lynqit-pages";
 
+// GET handler for testing/debugging - returns endpoint info
+export async function GET(request: NextRequest) {
+  return NextResponse.json({
+    message: "Subscription webhook endpoint",
+    method: "POST only",
+    description: "This endpoint accepts POST requests from Mollie for subscription updates",
+    testEndpoint: "/api/subscription/webhook/test",
+  }, { status: 200 });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
