@@ -141,11 +141,31 @@ export async function POST(request: NextRequest) {
     }
     
     try {
-      console.log("Fetching subscription with get(customerId, subscriptionId):", { finalCustomerId, subscriptionId });
-      // Error analysis: "The subscription id appears invalid: cst_dummy" means
-      // the FIRST parameter is used as subscriptionId, so we need: get(subscriptionId, customerId)
-      subscription = await (mollieClient.customerSubscriptions as any).get(subscriptionId, finalCustomerId);
-      console.log("Successfully fetched subscription:", { subscriptionId, status: subscription?.status });
+      // Try both parameter orders since the Mollie client library documentation is unclear
+      // Based on errors: "The subscription id appears invalid: cst_dummy" (first param = subscriptionId)
+      // and "The customer id appears invalid: undefined" (second param = customerId)
+      console.log("Attempting get(subscriptionId, customerId):", { subscriptionId, finalCustomerId });
+      try {
+        subscription = await (mollieClient.customerSubscriptions as any).get(subscriptionId, finalCustomerId);
+        console.log("Success with get(subscriptionId, customerId)");
+      } catch (error1: any) {
+        console.log("get(subscriptionId, customerId) failed:", error1.message);
+        console.log("Trying get(customerId, subscriptionId):", { finalCustomerId, subscriptionId });
+        try {
+          subscription = await (mollieClient.customerSubscriptions as any).get(finalCustomerId, subscriptionId);
+          console.log("Success with get(customerId, subscriptionId)");
+        } catch (error2: any) {
+          console.error("Both parameter orders failed");
+          console.error("Error 1 (get(subscriptionId, customerId)):", error1.message);
+          console.error("Error 2 (get(customerId, subscriptionId)):", error2.message);
+          throw error1; // Throw the first error
+        }
+      }
+      console.log("Successfully fetched subscription:", { 
+        subscriptionId, 
+        status: subscription?.status,
+        customerId: subscription?.customerId,
+      });
     } catch (error: any) {
       console.error("Failed to fetch subscription from Mollie:", error);
       return NextResponse.json(
@@ -155,6 +175,7 @@ export async function POST(request: NextRequest) {
             subscriptionId,
             customerId: finalCustomerId,
             mollieError: error.message,
+            triedBothOrders: true,
           }
         },
         { status: 500 }

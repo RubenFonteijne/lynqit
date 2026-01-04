@@ -403,36 +403,7 @@ export async function POST(request: NextRequest) {
         subscriptionDataKeys: Object.keys(subscriptionData),
       });
       
-      // Verify customer exists before creating subscription
-      try {
-        const customer = await mollieClient.customers.get(finalCustomerId);
-        console.log("Customer verified before subscription creation:", {
-          customerId: customer.id,
-          email: customer.email,
-        });
-      } catch (customerError: any) {
-        console.error("Customer verification failed:", customerError.message);
-        throw new Error(`Customer ${finalCustomerId} does not exist in Mollie: ${customerError.message}`);
-      }
-      
-      // Try creating subscription - the Mollie client library might expect different parameter order
-      // Based on error analysis, try both approaches
-      try {
-        subscription = await (mollieClient.customerSubscriptions as any).create(finalCustomerId, subscriptionData);
-      } catch (createError1: any) {
-        console.warn("First create attempt failed, trying alternative approach:", createError1.message);
-        // Alternative: maybe customerId needs to be in the data object?
-        try {
-          const subscriptionDataWithCustomer = {
-            ...subscriptionData,
-            customerId: finalCustomerId,
-          };
-          subscription = await (mollieClient.customerSubscriptions as any).create(subscriptionDataWithCustomer);
-        } catch (createError2: any) {
-          console.error("Both create approaches failed");
-          throw createError1; // Throw original error
-        }
-      }
+      subscription = await (mollieClient.customerSubscriptions as any).create(finalCustomerId, subscriptionData);
       
       console.log("Subscription created successfully:", {
         subscriptionId: subscription?.id,
