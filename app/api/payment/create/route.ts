@@ -351,6 +351,12 @@ export async function POST(request: NextRequest) {
     
     try {
       console.log("Creating subscription with finalCustomerId:", finalCustomerId, "Type:", typeof finalCustomerId, "Length:", finalCustomerId.length);
+      
+      // Ensure customerId is a valid string before creating subscription
+      if (!finalCustomerId || typeof finalCustomerId !== "string") {
+        throw new Error(`Invalid customerId: ${finalCustomerId} (type: ${typeof finalCustomerId})`);
+      }
+      
       subscription = await (mollieClient.customerSubscriptions as any).create(finalCustomerId, {
         amount: {
           currency: "EUR",
@@ -361,6 +367,7 @@ export async function POST(request: NextRequest) {
         method: selectedPaymentMethod,
         webhookUrl: webhookUrl,
         redirectUrl: redirectUrl,
+        customerId: finalCustomerId, // Also include in metadata/options if needed
         metadata: {
           email,
           plan,
