@@ -218,8 +218,8 @@ export async function POST(request: NextRequest) {
       // Only delete if this was a new page creation (not an upgrade)
       // Check if page was just created (has expired status and paid plan)
       if (page.subscriptionStatus === "expired" && page.subscriptionPlan !== "free") {
-        await deletePage(pageId);
-        console.log(`Deleted page ${pageId} due to failed payment`);
+        await deletePage(page.id);
+        console.log(`Deleted page ${page.id} due to failed payment`);
       } else {
         // For existing pages (upgrades), just revert to free plan
         await updatePage(pageId, {
