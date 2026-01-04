@@ -27,6 +27,10 @@ function RegisterContent() {
   const [slug, setSlug] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<"free" | "start" | "pro">(planParam || "free");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"creditcard" | "paypal">("creditcard");
+  const [discountCode, setDiscountCode] = useState("");
+  const [discountCodeValidating, setDiscountCodeValidating] = useState(false);
+  const [discountCodeValid, setDiscountCodeValid] = useState<boolean | null>(null);
+  const [discountCodeMessage, setDiscountCodeMessage] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -36,6 +40,51 @@ function RegisterContent() {
       setEmail(prefillEmail);
     }
   }, [prefillEmail]);
+
+  // Validate discount code when it changes and a paid plan is selected
+  useEffect(() => {
+    if (discountCode && discountCode.trim() !== "" && selectedPlan !== "free") {
+      const validateDiscount = async () => {
+        setDiscountCodeValidating(true);
+        setDiscountCodeValid(null);
+        setDiscountCodeMessage("");
+
+        try {
+          const response = await fetch(
+            `/api/discount-codes/validate?code=${encodeURIComponent(discountCode.trim())}&plan=${selectedPlan}`
+          );
+          const data = await response.json();
+
+          if (data.valid) {
+            setDiscountCodeValid(true);
+            if (data.discountCode) {
+              const discount = data.discountCode;
+              const discountText = discount.isPercentage
+                ? `${discount.discountValue}%`
+                : `€${discount.discountValue.toFixed(2)}`;
+              const typeText = discount.discountType === "first_payment" ? "eerste betaling" : "elke maand";
+              setDiscountCodeMessage(`Kortingscode geldig: ${discountText} korting op ${typeText}`);
+            }
+          } else {
+            setDiscountCodeValid(false);
+            setDiscountCodeMessage(data.error || "Ongeldige kortingscode");
+          }
+        } catch (error) {
+          setDiscountCodeValid(false);
+          setDiscountCodeMessage("Fout bij valideren van kortingscode");
+        } finally {
+          setDiscountCodeValidating(false);
+        }
+      };
+
+      // Debounce validation
+      const timeoutId = setTimeout(validateDiscount, 500);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setDiscountCodeValid(null);
+      setDiscountCodeMessage("");
+    }
+  }, [discountCode, selectedPlan]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -228,6 +277,7 @@ function RegisterContent() {
             plan: selectedPlan,
             pageId: pageId,
             paymentMethod: selectedPaymentMethod,
+            discountCode: discountCode.trim() || undefined,
           }),
         });
 
@@ -459,6 +509,42 @@ function RegisterContent() {
                   </button>
                 </div>
               </div>
+
+              {/* Discount Code - Only show for paid plans */}
+              {selectedPlan !== "free" && (
+                <div>
+                  <label
+                    htmlFor="discountCode"
+                    className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                  >
+                    Kortingscode (optioneel)
+                  </label>
+                  <input
+                    id="discountCode"
+                    type="text"
+                    value={discountCode}
+                    onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                    placeholder="WELCOME10"
+                    className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors"
+                  />
+                  {discountCodeValidating && (
+                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                      Valideren...
+                    </p>
+                  )}
+                  {!discountCodeValidating && discountCodeMessage && (
+                    <p
+                      className={`mt-1 text-xs ${
+                        discountCodeValid
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-red-600 dark:text-red-400"
+                      }`}
+                    >
+                      {discountCodeMessage}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Payment Method Selection - Only show for paid plans */}
               {selectedPlan !== "free" && (
