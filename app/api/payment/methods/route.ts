@@ -27,11 +27,11 @@ export async function GET(request: NextRequest) {
     const subscriptionSupportedMethods = ['creditcard', 'paypal', 'sepadirectdebit', 'directdebit'];
     
     // Filter methods that are available and suitable for subscriptions
+    // If status is 'activated', the method is available
     const subscriptionMethods = methods.filter(method => {
       const methodId = method.id.toLowerCase();
       return subscriptionSupportedMethods.includes(methodId) && 
-             method.status === 'activated' && 
-             method.available;
+             method.status === 'activated';
     });
 
     // Map to a simpler format with user-friendly descriptions
@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
     const availableMethods = subscriptionMethods.map(method => ({
       id: method.id,
       description: methodDescriptions[method.id.toLowerCase()] || method.description,
-      available: method.available,
+      image: method.image, // Include image for display
+      available: method.status === 'activated', // Derive from status
     }));
 
     // Always include creditcard and paypal as fallback (most common for subscriptions)
