@@ -381,12 +381,70 @@ export async function POST(request: NextRequest) {
       
       // Check for customer ID errors
       if (errorMessage.includes("customer id") || errorMessage.includes("customerId") || (errorMessage.includes("invalid") && errorMessage.includes("undefined"))) {
-        console.error("CRITICAL: customerId is undefined when creating subscription!", {
+        console.error("CRITICAL: customerId error when creating subscription!", {
           finalCustomerId,
           customerId,
           isNewRegistration,
           userExists: !!user,
+          email,
+          errorMessage,
+          fullError: subscriptionError,
         });
+        
+        // If customerId is actually undefined, try to create customer again
+        if (!finalCustomerId || finalCustomerId === "undefined") {
+          console.error("customerId is actually undefined, attempting to create customer again...");
+          try {
+            const customer = await mollieClient.customers.create({
+              name: email.split("@")[0],
+              email: email,
+              metadata: {
+                email: email,
+                ...(isNewRegistration && slug ? { slug, password, createAccount: "true" } : {}),
+              },
+            });
+            
+            if (customer?.id) {
+              console.log("Successfully created customer on retry:", customer.id);
+              // Retry subscription creation with new customerId
+              const retrySubscription = await (mollieClient.customerSubscriptions as any).create(customer.id, {
+                amount: {
+                  currency: "EUR",
+                  value: subscriptionPriceWithBTW.toFixed(2),
+                },
+                interval: "1 month",
+                description: `Lynqit ${plan} subscription`,
+                method: selectedPaymentMethod,
+                webhookUrl: webhookUrl,
+                redirectUrl: redirectUrl,
+                metadata: {
+                  email,
+                  plan,
+                  pageId: pageId || undefined,
+                  userId: user?.email || email,
+                  slug: isNewRegistration ? slug : undefined,
+                  password: isNewRegistration ? password : undefined,
+                  createAccount: isNewRegistration ? "true" : undefined,
+                  discountCodeId: discountCodeId || undefined,
+                  appliedDiscount: appliedDiscount ? "true" : undefined,
+                  recurringDiscount: recurringDiscountApplied ? "true" : undefined,
+                  firstPaymentPrice: appliedDiscount ? firstPaymentPriceWithBTW.toFixed(2) : undefined,
+                },
+              });
+              
+              const retryCheckoutUrl = retrySubscription._links?.payment?.href || retrySubscription._links?.checkout?.href;
+              if (retryCheckoutUrl) {
+                return NextResponse.json({
+                  success: true,
+                  paymentUrl: retryCheckoutUrl,
+                });
+              }
+            }
+          } catch (retryError: any) {
+            console.error("Retry customer creation also failed:", retryError);
+          }
+        }
+        
         return NextResponse.json(
           { error: "Interne fout: Klant ID ontbreekt. Probeer het opnieuw of neem contact op met support." },
           { status: 500 }

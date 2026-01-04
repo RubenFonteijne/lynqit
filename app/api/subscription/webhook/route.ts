@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get subscription from Mollie
-    // Based on error messages, Mollie API expects: get(subscriptionId, customerId)
+    // Mollie API expects: get(customerId, subscriptionId)
     console.log("Fetching subscription from Mollie:", { customerId, subscriptionId, customerIdType: typeof customerId, subscriptionIdType: typeof subscriptionId });
     const mollieClient = await getMollieClient();
     
@@ -91,8 +91,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Try subscriptionId first, then customerId (based on error message analysis)
-    const subscription = await (mollieClient.customerSubscriptions as any).get(subscriptionId, customerId);
+    const subscription = await (mollieClient.customerSubscriptions as any).get(customerId, subscriptionId);
 
     const metadata = subscription.metadata as { email?: string; plan?: SubscriptionPlan; pageId?: string } | undefined;
     const email = metadata?.email;
