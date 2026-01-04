@@ -360,6 +360,15 @@ export async function POST(request: NextRequest) {
       });
     } catch (subscriptionError: any) {
       console.error("Mollie subscription creation error:", subscriptionError);
+      console.error("Error details:", {
+        message: subscriptionError?.message,
+        status: subscriptionError?.status,
+        field: subscriptionError?.field,
+        type: subscriptionError?.type,
+        customerId: finalCustomerId,
+        customerIdType: typeof finalCustomerId,
+      });
+      
       const errorMessage = subscriptionError?.message || subscriptionError?.toString() || "Unknown error";
       
       // Check if it's an authentication error
@@ -367,6 +376,20 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: "Mollie authenticatie fout. Controleer of de Mollie API key correct is geconfigureerd in de admin settings." },
           { status: 401 }
+        );
+      }
+      
+      // Check for customer ID errors
+      if (errorMessage.includes("customer id") || errorMessage.includes("customerId") || (errorMessage.includes("invalid") && errorMessage.includes("undefined"))) {
+        console.error("CRITICAL: customerId is undefined when creating subscription!", {
+          finalCustomerId,
+          customerId,
+          isNewRegistration,
+          userExists: !!user,
+        });
+        return NextResponse.json(
+          { error: "Interne fout: Klant ID ontbreekt. Probeer het opnieuw of neem contact op met support." },
+          { status: 500 }
         );
       }
       
