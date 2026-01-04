@@ -1,16 +1,74 @@
 "use client";
 
-import { useEffect, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 function ConfirmRegistrationContent() {
   useEffect(() => {
     document.title = "Confirm Registration - Lynqit";
   }, []);
 
+  const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
+  const pageId = searchParams.get("pageId");
+  
+  const [verificationCode, setVerificationCode] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationError, setVerificationError] = useState("");
+  const [verificationSuccess, setVerificationSuccess] = useState(false);
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !verificationCode.trim()) {
+      setVerificationError("Please enter the verification code");
+      return;
+    }
+
+    setIsVerifying(true);
+    setVerificationError("");
+    setVerificationSuccess(false);
+
+    try {
+      const response = await fetch("/api/auth/verify-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          token: verificationCode.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setVerificationError(data.error || "Invalid verification code");
+        setIsVerifying(false);
+        return;
+      }
+
+      // Store session in localStorage
+      if (data.session) {
+        localStorage.setItem("lynqit_user", JSON.stringify(data.user));
+      }
+
+      setVerificationSuccess(true);
+      
+      // Redirect to appropriate page
+      if (pageId) {
+        router.push(`/dashboard/pages/${pageId}/edit`);
+      } else {
+        router.push("/dashboard");
+      }
+    } catch (error) {
+      console.error("Verification error:", error);
+      setVerificationError("An error occurred. Please try again.");
+      setIsVerifying(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
@@ -49,6 +107,42 @@ function ConfirmRegistrationContent() {
             <p className="text-center">
               After confirmation, you can log in. Your Lynqit page has already been created and is ready to edit.
             </p>
+          </div>
+
+          {/* Verification Code Input */}
+          <div className="mt-6">
+            <form onSubmit={handleVerifyCode} className="space-y-3">
+              <label
+                htmlFor="verificationCode"
+                className="block text-sm font-medium text-zinc-300 mb-2"
+              >
+                Enter Verification Code
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="verificationCode"
+                  type="text"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value.toUpperCase())}
+                  placeholder="123456"
+                  maxLength={6}
+                  className="flex-1 px-4 py-3 rounded-lg border border-zinc-700 bg-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#2E47FF] focus:border-transparent transition-colors text-center text-lg tracking-widest font-mono"
+                />
+                <button
+                  type="submit"
+                  disabled={isVerifying || !verificationCode.trim()}
+                  className="px-6 py-3 bg-gradient-to-r from-[#2E47FF] to-[#00F0EE] text-white rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isVerifying ? "Verifying..." : "Verify"}
+                </button>
+              </div>
+              {verificationError && (
+                <p className="text-sm text-red-400">{verificationError}</p>
+              )}
+              {verificationSuccess && (
+                <p className="text-sm text-green-400">Email verified successfully! Redirecting...</p>
+              )}
+            </form>
           </div>
 
           <div className="mt-8 space-y-3">
