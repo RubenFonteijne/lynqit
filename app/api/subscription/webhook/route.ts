@@ -56,10 +56,30 @@ export async function POST(request: NextRequest) {
     const subscriptionId = body.id;
     const customerId = body.customerId;
 
+    // Handle Mollie's webhook connectivity test (empty body or test requests)
     if (!subscriptionId || !customerId) {
+      // If this is a test from Mollie (empty body or test data), return success
+      if (!body || Object.keys(body).length === 0 || body.test === true) {
+        console.log("Webhook connectivity test received from Mollie");
+        return NextResponse.json(
+          { success: true, message: "Webhook endpoint is reachable" },
+          { 
+            status: 200,
+            headers: {
+              'Access-Control-Allow-Origin': '*',
+            },
+          }
+        );
+      }
+      
       return NextResponse.json(
         { error: "Subscription ID and Customer ID are required" },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
       );
     }
 
