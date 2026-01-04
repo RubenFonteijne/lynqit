@@ -107,7 +107,7 @@ function RegisterContent() {
     // TypeScript now knows selectedPlan is "start" | "pro"
     const plan = selectedPlan as "start" | "pro";
     const basePriceExBTW = SUBSCRIPTION_PRICES[plan];
-    let finalPriceExBTW = basePriceExBTW;
+    let finalPriceExBTW: number = basePriceExBTW;
     let discount = 0;
 
     if (discountCodeValid && discountCodeData) {
