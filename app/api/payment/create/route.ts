@@ -185,6 +185,7 @@ export async function POST(request: NextRequest) {
         });
         
         console.log("Mollie customer created successfully:", customer?.id);
+        console.log("Full customer response:", JSON.stringify(customer, null, 2));
       } catch (customerError: any) {
         console.error("Mollie customer creation error:", customerError);
         const errorMessage = customerError?.message || customerError?.toString() || "Unknown error";
