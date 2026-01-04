@@ -42,8 +42,9 @@ export async function POST(request: NextRequest) {
 
     // Handle Mollie's webhook connectivity test (empty body or test requests)
     if (!subscriptionId || !customerId) {
-      // If this is a test from Mollie (empty body or test data), return success
-      if (!body || Object.keys(body).length === 0 || body.test === true) {
+      // If this is a test from Mollie (empty form data or test parameter), return success
+      const testParam = formData.get("test");
+      if (testParam === "true" || (!subscriptionId && !customerId)) {
         console.log("Webhook connectivity test received from Mollie");
         return NextResponse.json(
           { success: true, message: "Webhook endpoint is reachable" },
