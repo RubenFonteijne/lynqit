@@ -80,7 +80,17 @@ export async function POST(request: NextRequest) {
 
     // Get subscription from Mollie
     // Mollie API expects: get(customerId, subscriptionId)
+    console.log("Fetching subscription from Mollie:", { customerId, subscriptionId, customerIdType: typeof customerId, subscriptionIdType: typeof subscriptionId });
     const mollieClient = await getMollieClient();
+    
+    if (!customerId || !subscriptionId) {
+      console.error("Missing required parameters:", { customerId, subscriptionId });
+      return NextResponse.json(
+        { error: "Customer ID and Subscription ID are required" },
+        { status: 400 }
+      );
+    }
+    
     const subscription = await (mollieClient.customerSubscriptions as any).get(customerId, subscriptionId);
 
     const metadata = subscription.metadata as { email?: string; plan?: SubscriptionPlan; pageId?: string } | undefined;
