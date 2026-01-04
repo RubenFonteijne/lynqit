@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
       if (subscriptionId) {
         // Payment is part of a subscription - activate the subscription
         // The subscription webhook will handle future monthly payments
-        await updatePage(pageId, {
+        await updatePage(page.id, {
           subscriptionPlan: plan,
           subscriptionStatus: "active",
           subscriptionStartDate: now.toISOString(),
@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
         });
       } else {
         // No subscription ID - this might be a legacy payment, activate directly
-        await updatePage(pageId, {
+        await updatePage(page.id, {
           subscriptionPlan: plan,
           subscriptionStatus: "active",
           subscriptionStartDate: now.toISOString(),
