@@ -104,11 +104,13 @@ function RegisterContent() {
       };
     }
 
-    const basePriceExBTW = SUBSCRIPTION_PRICES[selectedPlan];
+    // TypeScript now knows selectedPlan is "start" | "pro"
+    const plan = selectedPlan as "start" | "pro";
+    const basePriceExBTW = SUBSCRIPTION_PRICES[plan];
     let finalPriceExBTW = basePriceExBTW;
     let discount = 0;
 
-    if (discountCodeValid && discountCodeData && selectedPlan !== "free") {
+    if (discountCodeValid && discountCodeData) {
       // Only apply discount if it's for first payment or recurring
       if (discountCodeData.discountType === "first_payment" || discountCodeData.discountType === "recurring") {
         finalPriceExBTW = calculatePriceWithDiscount(
