@@ -402,6 +402,7 @@ export async function updatePage(id: string, updates: Partial<LynqitPage>, allow
   if (allowedUpdates.subscriptionPlan !== undefined) updateData.subscription_plan = allowedUpdates.subscriptionPlan;
   if (allowedUpdates.subscriptionStatus !== undefined) updateData.subscription_status = allowedUpdates.subscriptionStatus;
   if (allowedUpdates.mollieSubscriptionId !== undefined) updateData.mollie_subscription_id = allowedUpdates.mollieSubscriptionId;
+  if (allowedUpdates.stripeSubscriptionId !== undefined) updateData.stripe_subscription_id = allowedUpdates.stripeSubscriptionId;
   if (allowedUpdates.isDemo !== undefined) updateData.is_demo = allowedUpdates.isDemo;
   if (allowedUpdates.subscriptionStartDate !== undefined) updateData.subscription_start_date = allowedUpdates.subscriptionStartDate;
   if (allowedUpdates.subscriptionEndDate !== undefined) updateData.subscription_end_date = allowedUpdates.subscriptionEndDate;
@@ -520,6 +521,7 @@ function mapDbPageToPage(dbPage: any): LynqitPage {
     subscriptionPlan: dbPage.subscription_plan,
     subscriptionStatus: dbPage.subscription_status,
     mollieSubscriptionId: dbPage.mollie_subscription_id,
+    stripeSubscriptionId: dbPage.stripe_subscription_id,
     isDemo: dbPage.is_demo || false,
     subscriptionStartDate: dbPage.subscription_start_date,
     subscriptionEndDate: dbPage.subscription_end_date,

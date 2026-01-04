@@ -145,6 +145,7 @@ export async function updateUser(email: string, updates: Partial<User>): Promise
 
   if (allowedUpdates.role !== undefined) updateData.role = allowedUpdates.role;
   if (allowedUpdates.mollieCustomerId !== undefined) updateData.mollie_customer_id = allowedUpdates.mollieCustomerId;
+  if (allowedUpdates.stripeCustomerId !== undefined) updateData.stripe_customer_id = allowedUpdates.stripeCustomerId;
   if (allowedUpdates.companyName !== undefined) updateData.company_name = allowedUpdates.companyName;
   if (allowedUpdates.firstName !== undefined) updateData.first_name = allowedUpdates.firstName;
   if (allowedUpdates.lastName !== undefined) updateData.last_name = allowedUpdates.lastName;
@@ -256,6 +257,7 @@ function mapDbUserToUser(dbUser: any): User {
     passwordHash: dbUser.password_hash,
     role: dbUser.role,
     mollieCustomerId: dbUser.mollie_customer_id,
+    stripeCustomerId: dbUser.stripe_customer_id,
     companyName: dbUser.company_name,
     firstName: dbUser.first_name,
     lastName: dbUser.last_name,
