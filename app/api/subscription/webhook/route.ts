@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     // Get subscription from Mollie
     const mollieClient = await getMollieClient();
-    const subscription = await mollieClient.customerSubscriptions.get(customerId, subscriptionId);
+    const subscription = await (mollieClient.customerSubscriptions as any).get(customerId, subscriptionId);
 
     const metadata = subscription.metadata as { email?: string; plan?: SubscriptionPlan; pageId?: string } | undefined;
     const email = metadata?.email;
