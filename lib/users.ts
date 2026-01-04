@@ -6,6 +6,7 @@ export interface User {
   passwordHash?: string; // Only for migration, will be removed
   role: 'admin' | 'user';
   mollieCustomerId?: string;
+  stripeCustomerId?: string; // Stripe customer ID
   companyName?: string;
   firstName?: string;
   lastName?: string;

@@ -5,6 +5,14 @@ export interface Settings {
   mollieApiKeyTest?: string;
   mollieApiKeyLive?: string;
   useTestMode?: boolean;
+  // Stripe settings
+  stripeSecretKey?: string;
+  stripeSecretKeyTest?: string;
+  stripeSecretKeyLive?: string;
+  stripePublishableKeyTest?: string;
+  stripePublishableKeyLive?: string;
+  // Payment provider selection
+  paymentProvider?: 'mollie' | 'stripe'; // Default to 'mollie' for backward compatibility
   updatedAt?: string;
 }
 
@@ -42,6 +50,21 @@ export async function getSettings(): Promise<Settings> {
           break;
         case 'mollie_api_key':
           settings.mollieApiKey = setting.value;
+          break;
+        case 'stripe_secret_key_test':
+          settings.stripeSecretKeyTest = setting.value;
+          break;
+        case 'stripe_secret_key_live':
+          settings.stripeSecretKeyLive = setting.value;
+          break;
+        case 'stripe_publishable_key_test':
+          settings.stripePublishableKeyTest = setting.value;
+          break;
+        case 'stripe_publishable_key_live':
+          settings.stripePublishableKeyLive = setting.value;
+          break;
+        case 'payment_provider':
+          settings.paymentProvider = setting.value as 'mollie' | 'stripe';
           break;
       }
       if (setting.updated_at) {
@@ -90,6 +113,41 @@ export async function saveSettings(settings: Settings): Promise<void> {
       settingsToSave.push({
         key: 'mollie_api_key',
         value: settings.mollieApiKey,
+      });
+    }
+
+    if (settings.stripeSecretKeyTest !== undefined) {
+      settingsToSave.push({
+        key: 'stripe_secret_key_test',
+        value: settings.stripeSecretKeyTest,
+      });
+    }
+
+    if (settings.stripeSecretKeyLive !== undefined) {
+      settingsToSave.push({
+        key: 'stripe_secret_key_live',
+        value: settings.stripeSecretKeyLive,
+      });
+    }
+
+    if (settings.stripePublishableKeyTest !== undefined) {
+      settingsToSave.push({
+        key: 'stripe_publishable_key_test',
+        value: settings.stripePublishableKeyTest,
+      });
+    }
+
+    if (settings.stripePublishableKeyLive !== undefined) {
+      settingsToSave.push({
+        key: 'stripe_publishable_key_live',
+        value: settings.stripePublishableKeyLive,
+      });
+    }
+
+    if (settings.paymentProvider !== undefined) {
+      settingsToSave.push({
+        key: 'payment_provider',
+        value: settings.paymentProvider,
       });
     }
 

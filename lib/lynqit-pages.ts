@@ -82,6 +82,7 @@ export interface LynqitPage {
   subscriptionPlan?: SubscriptionPlan;
   subscriptionStatus?: "active" | "cancelled" | "expired";
   mollieSubscriptionId?: string;
+  stripeSubscriptionId?: string; // Stripe subscription ID
   isDemo?: boolean;
   subscriptionStartDate?: string;
   subscriptionEndDate?: string;
