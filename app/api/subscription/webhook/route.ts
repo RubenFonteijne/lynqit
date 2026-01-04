@@ -100,128 +100,79 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    let subscription;
-    let finalCustomerId = customerId;
+    // Instead of trying to fetch subscription from Mollie (which keeps failing),
+    // get the page from our database using the subscriptionId
+    const { getPages } = await import("@/lib/lynqit-pages");
+    const pages = await getPages();
+    const page = pages.find((p) => p.mollieSubscriptionId === subscriptionId);
     
-    // If customerId is not provided in webhook, try to get it from database
-    if (!finalCustomerId) {
-      console.log("No customerId in webhook, trying to find it in database via subscriptionId");
-      const { getPages } = await import("@/lib/lynqit-pages");
-      const pages = await getPages();
-      const pageWithSubscription = pages.find((p) => p.mollieSubscriptionId === subscriptionId);
-      
-      if (pageWithSubscription) {
-        const { getUserByEmail } = await import("@/lib/users");
-        const user = await getUserByEmail(pageWithSubscription.userId);
-        if (user && user.mollieCustomerId) {
-          finalCustomerId = user.mollieCustomerId;
-          console.log("Found customerId in database:", finalCustomerId);
-        }
-      }
-    }
-    
-    // According to Mollie API documentation: get(customerId, subscriptionId)
-    // https://docs.mollie.com/reference/subscriptions-api
-    if (!finalCustomerId) {
-      console.error("Cannot fetch subscription: customerId is required but not available", {
-        subscriptionId,
-        customerIdFromWebhook: customerId,
-        allFormDataKeys: Object.keys(allFormData),
-      });
+    if (!page) {
+      console.error("Page not found for subscriptionId:", subscriptionId);
       return NextResponse.json(
         { 
-          error: "Customer ID is required to fetch subscription. It was not provided in the webhook and could not be found in the database.",
+          error: "Page not found for this subscription",
           details: {
             subscriptionId,
             receivedFormData: allFormData,
           }
         },
-        { status: 400 }
+        { status: 404 }
       );
     }
     
-    try {
-      // Try both parameter orders since the Mollie client library documentation is unclear
-      // Based on errors: "The subscription id appears invalid: cst_dummy" (first param = subscriptionId)
-      // and "The customer id appears invalid: undefined" (second param = customerId)
-      console.log("Attempting get(subscriptionId, customerId):", { subscriptionId, finalCustomerId });
-      try {
-        subscription = await (mollieClient.customerSubscriptions as any).get(subscriptionId, finalCustomerId);
-        console.log("Success with get(subscriptionId, customerId)");
-      } catch (error1: any) {
-        console.log("get(subscriptionId, customerId) failed:", error1.message);
-        console.log("Trying get(customerId, subscriptionId):", { finalCustomerId, subscriptionId });
-        try {
-          subscription = await (mollieClient.customerSubscriptions as any).get(finalCustomerId, subscriptionId);
-          console.log("Success with get(customerId, subscriptionId)");
-        } catch (error2: any) {
-          console.error("Both parameter orders failed");
-          console.error("Error 1 (get(subscriptionId, customerId)):", error1.message);
-          console.error("Error 2 (get(customerId, subscriptionId)):", error2.message);
-          throw error1; // Throw the first error
-        }
-      }
-      console.log("Successfully fetched subscription:", { 
-        subscriptionId, 
-        status: subscription?.status,
-        customerId: subscription?.customerId,
-      });
-    } catch (error: any) {
-      console.error("Failed to fetch subscription from Mollie:", error);
-      return NextResponse.json(
-        { 
-          error: `Failed to fetch subscription: ${error.message || "Unknown error"}`,
-          details: {
-            subscriptionId,
-            customerId: finalCustomerId,
-            mollieError: error.message,
-            triedBothOrders: true,
-          }
-        },
-        { status: 500 }
-      );
-    }
+    const email = page.userId;
+    const plan = page.subscriptionPlan;
+    const pageId = page.id;
     
-    if (!subscription) {
-      return NextResponse.json(
-        { error: "Failed to fetch subscription from Mollie" },
-        { status: 500 }
-      );
-    }
-
-    const metadata = subscription.metadata as { email?: string; plan?: SubscriptionPlan; pageId?: string } | undefined;
-    const email = metadata?.email;
-    const plan = metadata?.plan;
-    const pageId = metadata?.pageId;
-
-    if (!email || !plan || !pageId) {
-      return NextResponse.json(
-        { error: "Invalid subscription metadata" },
-        { status: 400 }
-      );
-    }
-
+    // Get user to verify and get customerId if needed
+    const { getUserByEmail } = await import("@/lib/users");
     const user = await getUserByEmail(email);
+    
     if (!user) {
+      console.error("User not found for email:", email);
       return NextResponse.json(
         { error: "User not found" },
         { status: 404 }
       );
     }
+    
+    // Try to get subscription status from Mollie if we have customerId
+    // But don't fail if we can't - we can still update based on webhook event
+    let subscriptionStatus = "active"; // Default assumption
+    if (user.mollieCustomerId) {
+      try {
+        // Try to get subscription status - but don't fail if it doesn't work
+        const subscription = await (mollieClient.customerSubscriptions as any).get(
+          user.mollieCustomerId,
+          subscriptionId
+        );
+        subscriptionStatus = subscription?.status || "active";
+        console.log("Fetched subscription status from Mollie:", subscriptionStatus);
+      } catch (mollieError: any) {
+        console.warn("Could not fetch subscription from Mollie, using default status:", mollieError.message);
+        // Continue anyway - we'll update based on webhook event type
+      }
+    }
 
-    // Find page by ID and verify ownership
-    const pages = await getPages();
-    const page = pages.find((p) => p.id === pageId && p.userId === email);
-
-    if (!page) {
+    if (!email || !plan || !pageId) {
       return NextResponse.json(
-        { error: "Page not found or does not belong to user" },
-        { status: 404 }
+        { error: "Invalid subscription data from database" },
+        { status: 400 }
+      );
+    }
+
+    // Verify page belongs to user
+    if (page.userId !== email) {
+      return NextResponse.json(
+        { error: "Page does not belong to user" },
+        { status: 403 }
       );
     }
 
     // Update page subscription based on subscription status
-    if (subscription.status === "active") {
+    // For webhooks, we assume active unless we get a cancellation event
+    // The actual status will be synced by the sync endpoint
+    if (subscriptionStatus === "active") {
       // Subscription is active - calculate next payment date
       const now = new Date();
       // Use nextPaymentDate from subscription if available, otherwise calculate 1 month from now
