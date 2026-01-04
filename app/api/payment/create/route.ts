@@ -174,10 +174,18 @@ export async function POST(request: NextRequest) {
     const isLocalTestMode = isLocalhost || process.env.NODE_ENV === "development";
     let selectedPaymentMethod: PaymentMethod;
     
-    if (paymentMethod === "paypal") {
-      selectedPaymentMethod = PaymentMethod.paypal;
-    } else if (paymentMethod === "creditcard") {
-      selectedPaymentMethod = PaymentMethod.creditcard;
+    // Map payment method string to Mollie PaymentMethod enum
+    // Mollie subscriptions support: creditcard, paypal, sepa, directdebit
+    const methodMap: Record<string, PaymentMethod> = {
+      'creditcard': PaymentMethod.creditcard,
+      'paypal': PaymentMethod.paypal,
+      'sepa': PaymentMethod.sepadirectdebit,
+      'directdebit': PaymentMethod.directdebit,
+      'ideal': PaymentMethod.ideal,
+    };
+    
+    if (paymentMethod && methodMap[paymentMethod.toLowerCase()]) {
+      selectedPaymentMethod = methodMap[paymentMethod.toLowerCase()];
     } else if (isLocalTestMode) {
       // Fallback to iDEAL in test mode if no method specified
       selectedPaymentMethod = PaymentMethod.ideal;

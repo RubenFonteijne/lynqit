@@ -27,7 +27,11 @@ function RegisterContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [slug, setSlug] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<"free" | "start" | "pro">(planParam || "free");
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"creditcard" | "paypal">("creditcard");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("creditcard");
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<Array<{ id: string; description: string; available: boolean }>>([
+    { id: 'creditcard', description: 'Creditcard', available: true },
+    { id: 'paypal', description: 'PayPal', available: true },
+  ]);
   const [currentStep, setCurrentStep] = useState(1);
   const [discountCode, setDiscountCode] = useState("");
   const [discountCodeValidating, setDiscountCodeValidating] = useState(false);
@@ -43,6 +47,30 @@ function RegisterContent() {
       setEmail(prefillEmail);
     }
   }, [prefillEmail]);
+
+  // Fetch available payment methods from Mollie
+  useEffect(() => {
+    const fetchPaymentMethods = async () => {
+      try {
+        const response = await fetch("/api/payment/methods");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.methods && data.methods.length > 0) {
+            setAvailablePaymentMethods(data.methods);
+            // Set default to first available method
+            if (data.methods[0]?.id) {
+              setSelectedPaymentMethod(data.methods[0].id as "creditcard" | "paypal");
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching payment methods:", error);
+        // Keep default methods on error
+      }
+    };
+
+    fetchPaymentMethods();
+  }, []);
 
   // Validate discount code when it changes and a paid plan is selected
   useEffect(() => {
@@ -676,39 +704,35 @@ function RegisterContent() {
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                     Betaalmethode
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPaymentMethod("creditcard")}
-                      className={`px-4 py-3 rounded-lg border-2 transition-colors ${
-                        selectedPaymentMethod === "creditcard"
-                          ? "border-[#2E47FF] bg-blue-50 dark:bg-blue-900/20"
-                          : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
-                      }`}
-                    >
-                      <div className="flex items-center justify-center gap-2">
-                        <i className="fas fa-credit-card text-lg"></i>
-                        <div className="text-sm font-semibold text-black dark:text-zinc-50">
-                          Creditcard
-                        </div>
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPaymentMethod("paypal")}
-                      className={`px-4 py-3 rounded-lg border-2 transition-colors ${
-                        selectedPaymentMethod === "paypal"
-                          ? "border-[#2E47FF] bg-blue-50 dark:bg-blue-900/20"
-                          : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
-                      }`}
-                    >
-                      <div className="flex items-center justify-center gap-2">
-                        <i className="fab fa-paypal text-lg"></i>
-                        <div className="text-sm font-semibold text-black dark:text-zinc-50">
-                          PayPal
-                        </div>
-                      </div>
-                    </button>
+                  <div className={`grid gap-3 ${availablePaymentMethods.length === 2 ? 'grid-cols-2' : availablePaymentMethods.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                    {availablePaymentMethods.filter(m => m.available).map((method) => {
+                      const methodId = method.id.toLowerCase();
+                      const isSelected = selectedPaymentMethod === methodId;
+                      const iconClass = methodId === 'creditcard' ? 'fas fa-credit-card' :
+                                       methodId === 'paypal' ? 'fab fa-paypal' :
+                                       methodId === 'sepa' || methodId === 'directdebit' ? 'fas fa-university' :
+                                       'fas fa-money-bill';
+                      
+                      return (
+                        <button
+                          key={method.id}
+                          type="button"
+                          onClick={() => setSelectedPaymentMethod(methodId)}
+                          className={`px-4 py-3 rounded-lg border-2 transition-colors ${
+                            isSelected
+                              ? "border-[#2E47FF] bg-blue-50 dark:bg-blue-900/20"
+                              : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
+                          }`}
+                        >
+                          <div className="flex items-center justify-center gap-2">
+                            <i className={`${iconClass} text-lg`}></i>
+                            <div className="text-sm font-semibold text-black dark:text-zinc-50">
+                              {method.description}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
