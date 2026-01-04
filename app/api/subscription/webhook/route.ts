@@ -88,20 +88,89 @@ export async function POST(request: NextRequest) {
     }
 
     // Get subscription from Mollie
-    // Based on create() signature: create(customerId, data), so get() should be: get(customerId, subscriptionId)
+    // Try multiple approaches since Mollie API might have different signatures
     console.log("Fetching subscription from Mollie:", { customerId, subscriptionId, customerIdType: typeof customerId, subscriptionIdType: typeof subscriptionId });
     const mollieClient = await getMollieClient();
     
-    if (!customerId || !subscriptionId) {
-      console.error("Missing required parameters:", { customerId, subscriptionId });
+    if (!subscriptionId) {
+      console.error("Missing subscriptionId:", { subscriptionId, customerId });
       return NextResponse.json(
-        { error: "Customer ID and Subscription ID are required" },
+        { error: "Subscription ID is required" },
         { status: 400 }
       );
     }
     
-    // Based on create() signature: create(customerId, data), get() should be: get(customerId, subscriptionId)
-    const subscription = await (mollieClient.customerSubscriptions as any).get(customerId, subscriptionId);
+    let subscription;
+    let finalCustomerId = customerId;
+    
+    // Try to get subscription - multiple approaches
+    try {
+      // Approach 1: Try with customerId if available
+      if (customerId) {
+        try {
+          console.log("Attempting get(customerId, subscriptionId):", { customerId, subscriptionId });
+          subscription = await (mollieClient.customerSubscriptions as any).get(customerId, subscriptionId);
+          finalCustomerId = customerId;
+          console.log("Success with get(customerId, subscriptionId)");
+        } catch (error1: any) {
+          console.log("get(customerId, subscriptionId) failed, trying get(subscriptionId, customerId):", error1.message);
+          // Approach 2: Try reversed order
+          try {
+            subscription = await (mollieClient.customerSubscriptions as any).get(subscriptionId, customerId);
+            finalCustomerId = customerId;
+            console.log("Success with get(subscriptionId, customerId)");
+          } catch (error2: any) {
+            console.log("Both parameter orders failed, trying subscriptions.get(subscriptionId):", error2.message);
+            // Approach 3: Try direct subscription get (if available)
+            if ((mollieClient as any).subscriptions) {
+              subscription = await (mollieClient as any).subscriptions.get(subscriptionId);
+              // Extract customerId from subscription response
+              if (subscription && (subscription as any).customerId) {
+                finalCustomerId = (subscription as any).customerId;
+                console.log("Success with subscriptions.get(subscriptionId), extracted customerId:", finalCustomerId);
+              }
+            } else {
+              throw error2;
+            }
+          }
+        }
+      } else {
+        // No customerId provided, try direct subscription get
+        console.log("No customerId provided, trying subscriptions.get(subscriptionId)");
+        if ((mollieClient as any).subscriptions) {
+          subscription = await (mollieClient as any).subscriptions.get(subscriptionId);
+          // Extract customerId from subscription response
+          if (subscription && (subscription as any).customerId) {
+            finalCustomerId = (subscription as any).customerId;
+            console.log("Success with subscriptions.get(subscriptionId), extracted customerId:", finalCustomerId);
+          } else {
+            throw new Error("Could not extract customerId from subscription");
+          }
+        } else {
+          throw new Error("No customerId provided and subscriptions.get() not available");
+        }
+      }
+    } catch (error: any) {
+      console.error("All subscription fetch approaches failed:", error);
+      return NextResponse.json(
+        { 
+          error: `Failed to fetch subscription: ${error.message || "Unknown error"}`,
+          details: {
+            subscriptionId,
+            customerId,
+            triedApproaches: customerId ? ["get(customerId, subscriptionId)", "get(subscriptionId, customerId)", "subscriptions.get(subscriptionId)"] : ["subscriptions.get(subscriptionId)"]
+          }
+        },
+        { status: 500 }
+      );
+    }
+    
+    if (!subscription) {
+      return NextResponse.json(
+        { error: "Failed to fetch subscription from Mollie" },
+        { status: 500 }
+      );
+    }
 
     const metadata = subscription.metadata as { email?: string; plan?: SubscriptionPlan; pageId?: string } | undefined;
     const email = metadata?.email;
