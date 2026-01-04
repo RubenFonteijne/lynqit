@@ -34,27 +34,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse body - handle both JSON and form data
-    let body;
-    try {
-      body = await request.json();
-    } catch (error) {
-      // If JSON parsing fails, try to get as text (Mollie might send different formats)
-      const text = await request.text();
-      try {
-        body = JSON.parse(text);
-      } catch {
-        // If still fails, return error but don't crash
-        console.error("Webhook: Could not parse request body", text);
-        return NextResponse.json(
-          { error: "Invalid request body" },
-          { status: 400 }
-        );
-      }
-    }
-
-    const subscriptionId = body.id;
-    const customerId = body.customerId;
+    // Mollie sends webhooks as form-url-encoded (id=sub_..., customerId=cst_...)
+    // Read body only once using formData() for App Router
+    const formData = await request.formData();
+    const subscriptionId = formData.get("id") as string | null;
+    const customerId = formData.get("customerId") as string | null;
 
     // Handle Mollie's webhook connectivity test (empty body or test requests)
     if (!subscriptionId || !customerId) {

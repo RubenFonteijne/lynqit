@@ -8,8 +8,10 @@ import { createServerClient } from "@/lib/supabase-server";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const paymentId = body.id;
+    // Mollie sends webhooks as form-url-encoded (id=tr_...)
+    // Read body only once using formData() for App Router
+    const formData = await request.formData();
+    const paymentId = formData.get("id") as string | null;
 
     if (!paymentId) {
       return NextResponse.json(
