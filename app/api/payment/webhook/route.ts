@@ -139,12 +139,14 @@ export async function POST(request: NextRequest) {
     // Create page if it doesn't exist (for new registrations)
     if (!page && slug && user) {
       try {
-        const newPage = await createPage({
-          userId: user.email,
-          slug: slug,
-          subscriptionPlan: plan,
-          subscriptionStatus: "expired", // Will be set to active below
-        });
+        const newPage = await createPage(
+          user.email, // userId
+          slug, // slug
+          {
+            subscriptionPlan: plan,
+            subscriptionStatus: "expired", // Will be set to active below
+          }
+        );
         page = newPage;
         console.log("Created page for new registration:", newPage.id);
       } catch (error: any) {
