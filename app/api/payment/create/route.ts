@@ -233,8 +233,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Ensure customerId is set and is a string before proceeding
+    console.log("Before final validation - customerId:", customerId, "Type:", typeof customerId, "isNewRegistration:", isNewRegistration, "user exists:", !!user);
+    
     if (!customerId || typeof customerId !== "string" || customerId.trim() === "") {
-      console.error("Customer ID is invalid before creating subscription:", customerId, typeof customerId, "isNewRegistration:", isNewRegistration);
+      console.error("Customer ID is invalid before creating subscription:", customerId, typeof customerId, "isNewRegistration:", isNewRegistration, "user exists:", !!user);
+      console.error("Stack trace:", new Error().stack);
       return NextResponse.json(
         { error: "Customer ID is required but was not found or created. Please try again." },
         { status: 500 }
@@ -243,6 +246,7 @@ export async function POST(request: NextRequest) {
 
     // Type guard: ensure customerId is definitely a string at this point
     const finalCustomerId: string = customerId;
+    console.log("Final customerId after type guard:", finalCustomerId, "Type:", typeof finalCustomerId);
 
     // Create monthly subscription (not a one-time payment)
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
