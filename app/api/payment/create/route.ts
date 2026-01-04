@@ -386,12 +386,30 @@ export async function POST(request: NextRequest) {
       
       console.log("Subscription data prepared:", {
         customerId: finalCustomerId,
+        customerIdType: typeof finalCustomerId,
+        customerIdLength: finalCustomerId?.length,
         amount: subscriptionData.amount,
         method: subscriptionData.method,
         hasWebhookUrl: !!subscriptionData.webhookUrl,
       });
       
+      // Final validation before create
+      if (!finalCustomerId || typeof finalCustomerId !== "string" || finalCustomerId.trim() === "") {
+        throw new Error(`Invalid customerId before create: ${finalCustomerId} (type: ${typeof finalCustomerId})`);
+      }
+      
+      console.log("Calling customerSubscriptions.create with:", {
+        customerId: finalCustomerId,
+        subscriptionDataKeys: Object.keys(subscriptionData),
+      });
+      
       subscription = await (mollieClient.customerSubscriptions as any).create(finalCustomerId, subscriptionData);
+      
+      console.log("Subscription created successfully:", {
+        subscriptionId: subscription?.id,
+        status: subscription?.status,
+        customerId: subscription?.customerId,
+      });
     } catch (subscriptionError: any) {
       console.error("Mollie subscription creation error:", subscriptionError);
       console.error("Error details:", {
