@@ -6,14 +6,17 @@ export async function GET(request: NextRequest) {
   try {
     const settings = await getSettings();
     
-    // Don't return the actual API keys for security, just indicate if they're set
+    // Return settings (for admin, we return full values for editing)
     return NextResponse.json({
       settings: {
-        mollieApiKeyTest: settings.mollieApiKeyTest ? "***" + settings.mollieApiKeyTest.slice(-4) : "",
-        mollieApiKeyLive: settings.mollieApiKeyLive ? "***" + settings.mollieApiKeyLive.slice(-4) : "",
+        mollieApiKeyTest: settings.mollieApiKeyTest || "",
+        mollieApiKeyLive: settings.mollieApiKeyLive || "",
+        stripeSecretKeyTest: settings.stripeSecretKeyTest || "",
+        stripeSecretKeyLive: settings.stripeSecretKeyLive || "",
+        stripePublishableKeyTest: settings.stripePublishableKeyTest || "",
+        stripePublishableKeyLive: settings.stripePublishableKeyLive || "",
+        paymentProvider: settings.paymentProvider || "mollie",
         useTestMode: settings.useTestMode ?? true,
-        hasTestKey: !!settings.mollieApiKeyTest,
-        hasLiveKey: !!settings.mollieApiKeyLive,
         updatedAt: settings.updatedAt,
       },
     });
@@ -30,14 +33,28 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { mollieApiKeyTest, mollieApiKeyLive, useTestMode } = body;
+    const { 
+      mollieApiKeyTest, 
+      mollieApiKeyLive, 
+      stripeSecretKeyTest,
+      stripeSecretKeyLive,
+      stripePublishableKeyTest,
+      stripePublishableKeyLive,
+      paymentProvider,
+      useTestMode 
+    } = body;
 
     const currentSettings = await getSettings();
     
     const updatedSettings = {
       ...currentSettings,
-      mollieApiKeyTest: mollieApiKeyTest || currentSettings.mollieApiKeyTest,
-      mollieApiKeyLive: mollieApiKeyLive || currentSettings.mollieApiKeyLive,
+      mollieApiKeyTest: mollieApiKeyTest !== undefined ? mollieApiKeyTest : currentSettings.mollieApiKeyTest,
+      mollieApiKeyLive: mollieApiKeyLive !== undefined ? mollieApiKeyLive : currentSettings.mollieApiKeyLive,
+      stripeSecretKeyTest: stripeSecretKeyTest !== undefined ? stripeSecretKeyTest : currentSettings.stripeSecretKeyTest,
+      stripeSecretKeyLive: stripeSecretKeyLive !== undefined ? stripeSecretKeyLive : currentSettings.stripeSecretKeyLive,
+      stripePublishableKeyTest: stripePublishableKeyTest !== undefined ? stripePublishableKeyTest : currentSettings.stripePublishableKeyTest,
+      stripePublishableKeyLive: stripePublishableKeyLive !== undefined ? stripePublishableKeyLive : currentSettings.stripePublishableKeyLive,
+      paymentProvider: paymentProvider !== undefined ? paymentProvider : currentSettings.paymentProvider || "mollie",
       useTestMode: useTestMode !== undefined ? useTestMode : currentSettings.useTestMode ?? true,
     };
 
@@ -47,11 +64,14 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "Settings updated successfully",
       settings: {
-        mollieApiKeyTest: updatedSettings.mollieApiKeyTest ? "***" + updatedSettings.mollieApiKeyTest.slice(-4) : "",
-        mollieApiKeyLive: updatedSettings.mollieApiKeyLive ? "***" + updatedSettings.mollieApiKeyLive.slice(-4) : "",
+        mollieApiKeyTest: updatedSettings.mollieApiKeyTest || "",
+        mollieApiKeyLive: updatedSettings.mollieApiKeyLive || "",
+        stripeSecretKeyTest: updatedSettings.stripeSecretKeyTest || "",
+        stripeSecretKeyLive: updatedSettings.stripeSecretKeyLive || "",
+        stripePublishableKeyTest: updatedSettings.stripePublishableKeyTest || "",
+        stripePublishableKeyLive: updatedSettings.stripePublishableKeyLive || "",
+        paymentProvider: updatedSettings.paymentProvider || "mollie",
         useTestMode: updatedSettings.useTestMode,
-        hasTestKey: !!updatedSettings.mollieApiKeyTest,
-        hasLiveKey: !!updatedSettings.mollieApiKeyLive,
         updatedAt: updatedSettings.updatedAt,
       },
     });

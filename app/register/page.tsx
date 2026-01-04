@@ -32,6 +32,7 @@ function RegisterContent() {
     { id: 'creditcard', description: 'Creditcard', available: true },
     { id: 'paypal', description: 'PayPal', available: true },
   ]);
+  const [paymentProvider, setPaymentProvider] = useState<"mollie" | "stripe">("mollie");
   const [currentStep, setCurrentStep] = useState(1);
   const [discountCode, setDiscountCode] = useState("");
   const [discountCodeValidating, setDiscountCodeValidating] = useState(false);
@@ -48,29 +49,58 @@ function RegisterContent() {
     }
   }, [prefillEmail]);
 
-  // Fetch available payment methods from Mollie
+  // Fetch payment provider setting
   useEffect(() => {
-    const fetchPaymentMethods = async () => {
+    const fetchPaymentProvider = async () => {
       try {
-        const response = await fetch("/api/payment/methods");
+        const response = await fetch("/api/payment/provider");
         if (response.ok) {
           const data = await response.json();
-          if (data.methods && data.methods.length > 0) {
-            setAvailablePaymentMethods(data.methods);
-            // Set default to first available method
-            if (data.methods[0]?.id) {
-              setSelectedPaymentMethod(data.methods[0].id as "creditcard" | "paypal");
-            }
+          if (data.provider) {
+            setPaymentProvider(data.provider);
           }
         }
       } catch (error) {
-        console.error("Error fetching payment methods:", error);
-        // Keep default methods on error
+        console.error("Error fetching payment provider:", error);
+        // Default to mollie on error
+      }
+    };
+
+    fetchPaymentProvider();
+  }, []);
+
+  // Fetch available payment methods based on provider
+  useEffect(() => {
+    const fetchPaymentMethods = async () => {
+      if (paymentProvider === "mollie") {
+        try {
+          const response = await fetch("/api/payment/methods");
+          if (response.ok) {
+            const data = await response.json();
+            if (data.methods && data.methods.length > 0) {
+              setAvailablePaymentMethods(data.methods);
+              // Set default to first available method
+              if (data.methods[0]?.id) {
+                setSelectedPaymentMethod(data.methods[0].id);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching payment methods:", error);
+          // Keep default methods on error
+        }
+      } else {
+        // For Stripe, we always support card and PayPal
+        setAvailablePaymentMethods([
+          { id: 'card', description: 'Creditcard', available: true },
+          { id: 'paypal', description: 'PayPal', available: true },
+        ]);
+        setSelectedPaymentMethod("card");
       }
     };
 
     fetchPaymentMethods();
-  }, []);
+  }, [paymentProvider]);
 
   // Validate discount code when it changes and a paid plan is selected
   useEffect(() => {
@@ -283,7 +313,12 @@ function RegisterContent() {
         
         // Create payment for subscription WITHOUT creating account first
         // Account will be created in webhook after successful payment
-        const paymentResponse = await fetch("/api/payment/create", {
+        // Use the appropriate endpoint based on payment provider
+        const paymentEndpoint = paymentProvider === "stripe" 
+          ? "/api/stripe/payment/create"
+          : "/api/payment/create";
+        
+        const paymentResponse = await fetch(paymentEndpoint, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
