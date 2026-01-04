@@ -403,7 +403,17 @@ export async function POST(request: NextRequest) {
         subscriptionDataKeys: Object.keys(subscriptionData),
       });
       
-      subscription = await (mollieClient.customerSubscriptions as any).create(finalCustomerId, subscriptionData);
+      // Try to get customer first, then create subscription via customer object
+      // This might be the correct way for the Mollie client library
+      try {
+        const customer = await mollieClient.customers.get(finalCustomerId);
+        console.log("Customer retrieved, creating subscription via customer object");
+        subscription = await (customer.subscriptions as any).create(subscriptionData);
+      } catch (customerError: any) {
+        console.log("Could not create via customer object, trying direct method:", customerError.message);
+        // Fallback to direct method
+        subscription = await (mollieClient.customerSubscriptions as any).create(finalCustomerId, subscriptionData);
+      }
       
       console.log("Subscription created successfully:", {
         subscriptionId: subscription?.id,
