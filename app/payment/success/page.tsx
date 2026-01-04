@@ -48,6 +48,19 @@ function PaymentSuccessContent() {
                 const specificPage = pagesData.pages.find((p: any) => p.id === pageId);
                 if (!specificPage) {
                   // Page was deleted - payment must have failed, or still processing
+                  // In development, try to manually trigger webhook if we have subscription info
+                  const subscriptionId = searchParams.get("subscriptionId");
+                  const customerId = searchParams.get("customerId");
+                  if (subscriptionId && customerId && window.location.hostname === "localhost") {
+                    // Try to manually trigger webhook in development
+                    fetch("/api/payment/manual-webhook", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ subscriptionId, customerId }),
+                    }).catch(() => {
+                      // Ignore errors
+                    });
+                  }
                   if (retries < maxRetries) {
                     retries++;
                     setTimeout(checkPaymentStatus, 2000);
