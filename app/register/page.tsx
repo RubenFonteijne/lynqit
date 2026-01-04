@@ -277,120 +277,12 @@ function RegisterContent() {
         ? sessionStorage.getItem("pending_slug")!
         : cleanedSlug.trim().toLowerCase();
 
-      // Register user if they don't exist (and create page in the same call)
-      let accessToken: string | null = null;
-      let pageId: string | null = null;
-      
-      if (!userExists) {
-        const registerResponse = await fetch("/api/auth/register", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ 
-            email, 
-            password,
-            slug: finalSlug, // Send slug to create page during registration
-          }),
-        });
-
-        const registerData = await registerResponse.json();
-
-        if (!registerResponse.ok) {
-          setError(registerData.error || "An error occurred during registration");
-          setIsLoading(false);
-          return;
-        }
-
-        // Store user in localStorage for authentication
-        if (registerData.user) {
-          localStorage.setItem("lynqit_user", JSON.stringify(registerData.user));
-        }
-
-        // Get page ID if page was created
-        if (registerData.page) {
-          pageId = registerData.page.id;
-        }
-
-        // Get access token from session if available
-        if (registerData.accessToken) {
-          accessToken = registerData.accessToken;
-        } else if (registerData.session?.access_token) {
-          accessToken = registerData.session.access_token;
-        }
-        // Note: If no accessToken, email confirmation is required
-        // But we can still proceed with payment for paid plans
-      } else {
-        // User already exists, try to get session and create page if needed
-        try {
-          const supabase = createClientClient();
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            accessToken = session.access_token;
-          }
-          
-          // If we have a slug and no page yet, create it
-          if (finalSlug && !fromPayment) {
-            const pageHeaders: HeadersInit = {
-              "Content-Type": "application/json",
-            };
-            
-            if (accessToken) {
-              pageHeaders["Authorization"] = `Bearer ${accessToken}`;
-            }
-
-            const pageResponse = await fetch("/api/pages", {
-              method: "POST",
-              headers: pageHeaders,
-              body: JSON.stringify({
-                userId: email,
-                slug: finalSlug,
-              }),
-            });
-
-            if (pageResponse.ok) {
-              const pageData = await pageResponse.json();
-              pageId = pageData.page?.id;
-            }
-          }
-        } catch (err) {
-          console.error("Error getting session or creating page:", err);
-        }
-      }
-
-      // If we still don't have a page ID and we have a slug, try to create it
-      if (!pageId && finalSlug && accessToken) {
-        const pageHeaders: HeadersInit = {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`,
-        };
-
-        const pageResponse = await fetch("/api/pages", {
-          method: "POST",
-          headers: pageHeaders,
-          body: JSON.stringify({
-            userId: email,
-            slug: finalSlug,
-          }),
-        });
-
-        if (pageResponse.ok) {
-          const pageData = await pageResponse.json();
-          pageId = pageData.page?.id;
-        }
-      }
-
-      // Clear pending slug from sessionStorage
-      if (fromPayment) {
-        sessionStorage.removeItem("pending_slug");
-      }
-
-      // Handle paid plans - create payment via Mollie (with pageId)
-      // This works even without accessToken because the user exists in the database
+      // Handle paid plans FIRST - create payment, account will be created after payment
       if (selectedPlan !== "free" && !fromPayment) {
         setIsProcessingPayment(true);
         
-        // Create payment for subscription with pageId
+        // Create payment for subscription WITHOUT creating account first
+        // Account will be created in webhook after successful payment
         const paymentResponse = await fetch("/api/payment/create", {
           method: "POST",
           headers: {
@@ -399,9 +291,11 @@ function RegisterContent() {
           body: JSON.stringify({
             email,
             plan: selectedPlan,
-            pageId: pageId,
             paymentMethod: selectedPaymentMethod,
             discountCode: discountCode.trim() || undefined,
+            slug: finalSlug, // Include slug for account creation after payment
+            password: password, // Include password for account creation after payment
+            createAccount: true, // Flag to indicate this is a new registration
           }),
         });
 
@@ -415,7 +309,10 @@ function RegisterContent() {
         }
 
         // Redirect to Mollie payment page
+        // After successful payment, webhook will create account and page
         if (paymentData.paymentUrl) {
+          // Store slug in sessionStorage for payment success page
+          sessionStorage.setItem("pending_slug", finalSlug);
           window.location.href = paymentData.paymentUrl;
         } else {
           setError("Kon betalingslink niet genereren");
@@ -425,16 +322,125 @@ function RegisterContent() {
         return;
       }
 
-      // For free plan - check if email confirmation is required
-      if (!accessToken) {
-        // Email confirmation required - redirect to confirmation page
-        const confirmPage = isDutch ? "/bevestig-registratie" : "/confirm-registration";
-        router.push(`${confirmPage}?email=${encodeURIComponent(email)}${pageId ? `&pageId=${pageId}` : ''}`);
-        return;
-      }
+      // Handle free plan - register user and create page
+      if (selectedPlan === "free") {
+        // Register user if they don't exist (and create page in the same call)
+        let accessToken: string | null = null;
+        let pageId: string | null = null;
+        
+        if (!userExists) {
+          const registerResponse = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ 
+              email, 
+              password,
+              slug: finalSlug, // Send slug to create page during registration
+            }),
+          });
 
-      // For free plan with accessToken - redirect to edit page
-      router.push(`/dashboard/pages/${pageId}/edit`);
+          const registerData = await registerResponse.json();
+
+          if (!registerResponse.ok) {
+            setError(registerData.error || "An error occurred during registration");
+            setIsLoading(false);
+            return;
+          }
+
+          // Store user in localStorage for authentication
+          if (registerData.user) {
+            localStorage.setItem("lynqit_user", JSON.stringify(registerData.user));
+          }
+
+          // Get page ID if page was created
+          if (registerData.page) {
+            pageId = registerData.page.id;
+          }
+
+          // Get access token from session if available
+          if (registerData.accessToken) {
+            accessToken = registerData.accessToken;
+          } else if (registerData.session?.access_token) {
+            accessToken = registerData.session.access_token;
+          }
+        } else {
+          // User already exists, try to get session and create page if needed
+          try {
+            const supabase = createClientClient();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+              accessToken = session.access_token;
+            }
+            
+            // If we have a slug and no page yet, create it
+            if (finalSlug && !fromPayment) {
+              const pageHeaders: HeadersInit = {
+                "Content-Type": "application/json",
+              };
+              
+              if (accessToken) {
+                pageHeaders["Authorization"] = `Bearer ${accessToken}`;
+              }
+
+              const pageResponse = await fetch("/api/pages", {
+                method: "POST",
+                headers: pageHeaders,
+                body: JSON.stringify({
+                  userId: email,
+                  slug: finalSlug,
+                }),
+              });
+
+              if (pageResponse.ok) {
+                const pageData = await pageResponse.json();
+                pageId = pageData.page?.id;
+              }
+            }
+          } catch (err) {
+            console.error("Error getting session or creating page:", err);
+          }
+        }
+
+        // If we still don't have a page ID and we have a slug, try to create it
+        if (!pageId && finalSlug && accessToken) {
+          const pageHeaders: HeadersInit = {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`,
+          };
+
+          const pageResponse = await fetch("/api/pages", {
+            method: "POST",
+            headers: pageHeaders,
+            body: JSON.stringify({
+              userId: email,
+              slug: finalSlug,
+            }),
+          });
+
+          if (pageResponse.ok) {
+            const pageData = await pageResponse.json();
+            pageId = pageData.page?.id;
+          }
+        }
+
+        // Clear pending slug from sessionStorage
+        if (fromPayment) {
+          sessionStorage.removeItem("pending_slug");
+        }
+
+        // For free plan - check if email confirmation is required
+        if (!accessToken) {
+          // Email confirmation required - redirect to confirmation page
+          const confirmPage = isDutch ? "/bevestig-registratie" : "/confirm-registration";
+          router.push(`${confirmPage}?email=${encodeURIComponent(email)}${pageId ? `&pageId=${pageId}` : ''}`);
+          return;
+        }
+
+        // For free plan with accessToken - redirect to edit page
+        router.push(`/dashboard/pages/${pageId}/edit`);
+      }
     } catch (err) {
       setError("An error occurred. Please try again.");
       setIsLoading(false);

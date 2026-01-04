@@ -10,11 +10,14 @@ import { calculatePriceWithDiscount } from "@/lib/pricing";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, plan, pageId, paymentMethod, discountCode } = body;
+    const { email, plan, pageId, paymentMethod, discountCode, slug, password, createAccount } = body;
 
-    if (!email || !plan || !pageId) {
+    // For new registrations (createAccount = true), we don't need existing user/page
+    const isNewRegistration = createAccount === true;
+    
+    if (!email || !plan) {
       return NextResponse.json(
-        { error: "Email, plan en pageId zijn verplicht" },
+        { error: "Email en plan zijn verplicht" },
         { status: 400 }
       );
     }
@@ -26,29 +29,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await getUserByEmail(email);
-    if (!user) {
+    // For new registrations, slug and password are required
+    if (isNewRegistration && (!slug || !password)) {
       return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
+        { error: "Slug en password zijn verplicht voor nieuwe registratie" },
+        { status: 400 }
       );
     }
 
-    // Verify page exists and belongs to user
-    const page = await getPageById(pageId);
-    if (!page) {
-      return NextResponse.json(
-        { error: "Page not found" },
-        { status: 404 }
-      );
-    }
+    // For existing users, verify user and page exist
+    let user = null;
+    let page = null;
+    
+    if (!isNewRegistration) {
+      if (!pageId) {
+        return NextResponse.json(
+          { error: "PageId is verplicht voor bestaande gebruikers" },
+          { status: 400 }
+        );
+      }
 
-    // Check if user owns the page or is admin
-    if (page.userId !== email && !(await isAdminUserAsync(email))) {
-      return NextResponse.json(
-        { error: "Page does not belong to user" },
-        { status: 403 }
-      );
+      user = await getUserByEmail(email);
+      if (!user) {
+        return NextResponse.json(
+          { error: "User not found" },
+          { status: 404 }
+        );
+      }
+
+      // Verify page exists and belongs to user
+      page = await getPageById(pageId);
+      if (!page) {
+        return NextResponse.json(
+          { error: "Page not found" },
+          { status: 404 }
+        );
+      }
+
+      // Check if user owns the page or is admin
+      if (page.userId !== email && !(await isAdminUserAsync(email))) {
+        return NextResponse.json(
+          { error: "Page does not belong to user" },
+          { status: 403 }
+        );
+      }
     }
 
     // Validate and apply discount code if provided
@@ -109,7 +133,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create or get customer
-    let customerId: string | undefined = user.mollieCustomerId;
+    let customerId: string | undefined = user?.mollieCustomerId;
     
     // Ensure customerId is a valid string (not empty)
     if (customerId && customerId.trim() === "") {
@@ -117,7 +141,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Try to use existing customer, but create new one if it fails (mode mismatch)
-    if (customerId) {
+    if (customerId && user) {
       try {
         // Try to get the customer to verify it exists in current mode
         await mollieClient.customers.get(customerId);
@@ -139,12 +163,23 @@ export async function POST(request: NextRequest) {
     if (!customerId) {
       let customer;
       try {
+        // For new registrations, include slug and password in metadata
+        const customerMetadata: any = {
+          email: email,
+        };
+        
+        if (isNewRegistration) {
+          customerMetadata.slug = slug;
+          customerMetadata.password = password; // Will be used to create account after payment
+          customerMetadata.createAccount = "true";
+        } else if (user) {
+          customerMetadata.userId = user.email;
+        }
+        
         customer = await mollieClient.customers.create({
-          name: user.email.split("@")[0],
-          email: user.email,
-          metadata: {
-            userId: user.email,
-          },
+          name: email.split("@")[0],
+          email: email,
+          metadata: customerMetadata,
         });
       } catch (customerError: any) {
         console.error("Mollie customer creation error:", customerError);
@@ -174,10 +209,12 @@ export async function POST(request: NextRequest) {
       
       customerId = customer.id;
 
-      // Save customer ID to user
-      await updateUser(user.email, {
-        mollieCustomerId: customerId,
-      });
+      // Save customer ID to user (if user exists)
+      if (user) {
+        await updateUser(user.email, {
+          mollieCustomerId: customerId,
+        });
+      }
     }
 
     // Create monthly subscription (not a one-time payment)
@@ -288,8 +325,11 @@ export async function POST(request: NextRequest) {
         metadata: {
           email,
           plan,
-          pageId,
-          userId: user.email,
+          pageId: pageId || undefined,
+          userId: user?.email || email,
+          slug: isNewRegistration ? slug : undefined,
+          password: isNewRegistration ? password : undefined,
+          createAccount: isNewRegistration ? "true" : undefined,
           discountCodeId: discountCodeId || undefined,
           appliedDiscount: appliedDiscount ? "true" : undefined,
           recurringDiscount: recurringDiscountApplied ? "true" : undefined,
@@ -322,15 +362,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update page with pending subscription info
+    // Update page with pending subscription info (only if page exists)
+    // For new registrations, page will be created in webhook after payment
     // Subscription will be confirmed by webhook after first payment
     // Don't set status to "active" yet - wait for successful payment
     // Discount code usage will be incremented in the payment webhook after successful payment
-    await updatePage(pageId, {
-      subscriptionPlan: plan as SubscriptionPlan,
-      subscriptionStatus: "expired", // Will be set to "active" by webhook after successful payment
-      mollieSubscriptionId: subscription.id,
-    });
+    if (pageId && page) {
+      await updatePage(pageId, {
+        subscriptionPlan: plan as SubscriptionPlan,
+        subscriptionStatus: "expired", // Will be set to "active" by webhook after successful payment
+        mollieSubscriptionId: subscription.id,
+      });
+    }
 
     // Get checkout URL from subscription links (for first payment)
     // Mollie subscriptions create a payment for the first charge
