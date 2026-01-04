@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
         console.log(`Deleted page ${page.id} due to failed payment`);
       } else {
         // For existing pages (upgrades), just revert to free plan
-        await updatePage(pageId, {
+        await updatePage(page.id, {
           subscriptionPlan: "free",
           subscriptionStatus: "expired",
         });
