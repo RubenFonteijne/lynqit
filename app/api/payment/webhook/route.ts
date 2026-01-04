@@ -115,7 +115,9 @@ export async function POST(request: NextRequest) {
         user = {
           id: newUser.id,
           email: newUser.email,
-          role: newUser.role || 'user',
+          role: (newUser.role || 'user') as 'admin' | 'user',
+          createdAt: newUser.created_at || new Date().toISOString(),
+          updatedAt: newUser.updated_at,
         };
 
         console.log("Created user account for:", email);
