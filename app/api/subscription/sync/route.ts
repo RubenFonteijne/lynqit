@@ -45,10 +45,11 @@ export async function POST(request: NextRequest) {
 
       try {
         // Get subscription from Mollie
-        // Based on create() signature: create(customerId, data), so get() should be: get(customerId, subscriptionId)
+        // Error analysis: "The subscription id appears invalid: cst_dummy" means
+        // the FIRST parameter is used as subscriptionId, so we need: get(subscriptionId, customerId)
         const subscription = await (mollieClient.customerSubscriptions as any).get(
-          user.mollieCustomerId,
-          page.mollieSubscriptionId
+          page.mollieSubscriptionId,
+          user.mollieCustomerId
         );
 
         // Update page with latest subscription data

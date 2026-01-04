@@ -104,8 +104,8 @@ export async function POST(request: NextRequest) {
     let finalCustomerId = customerId;
     
     // If customerId is not provided in webhook, try to get it from database
-    if (!finalCustomerId || finalCustomerId.trim() === "") {
-      console.log("No customerId in webhook or empty, trying to find it in database via subscriptionId");
+    if (!finalCustomerId) {
+      console.log("No customerId in webhook, trying to find it in database via subscriptionId");
       const { getPages } = await import("@/lib/lynqit-pages");
       const pages = await getPages();
       const pageWithSubscription = pages.find((p) => p.mollieSubscriptionId === subscriptionId);
@@ -113,30 +113,20 @@ export async function POST(request: NextRequest) {
       if (pageWithSubscription) {
         const { getUserByEmail } = await import("@/lib/users");
         const user = await getUserByEmail(pageWithSubscription.userId);
-        if (user && user.mollieCustomerId && user.mollieCustomerId.trim() !== "") {
+        if (user && user.mollieCustomerId) {
           finalCustomerId = user.mollieCustomerId;
           console.log("Found customerId in database:", finalCustomerId);
-        } else {
-          console.error("User found but no valid mollieCustomerId:", {
-            userId: pageWithSubscription.userId,
-            hasMollieCustomerId: !!user?.mollieCustomerId,
-            mollieCustomerId: user?.mollieCustomerId,
-          });
         }
-      } else {
-        console.error("No page found with subscriptionId:", subscriptionId);
       }
     }
     
-    // Validate customerId before using it
-    if (!finalCustomerId || typeof finalCustomerId !== "string" || finalCustomerId.trim() === "") {
+    // According to Mollie API documentation: get(customerId, subscriptionId)
+    // https://docs.mollie.com/reference/subscriptions-api
+    if (!finalCustomerId) {
       console.error("Cannot fetch subscription: customerId is required but not available", {
         subscriptionId,
         customerIdFromWebhook: customerId,
-        finalCustomerId,
-        finalCustomerIdType: typeof finalCustomerId,
         allFormDataKeys: Object.keys(allFormData),
-        allFormData: allFormData,
       });
       return NextResponse.json(
         { 
@@ -144,38 +134,6 @@ export async function POST(request: NextRequest) {
           details: {
             subscriptionId,
             receivedFormData: allFormData,
-            customerIdFromWebhook: customerId,
-            finalCustomerId: finalCustomerId || null,
-          }
-        },
-        { status: 400 }
-      );
-    }
-    
-    // Verify customerId format (should start with 'cst_')
-    if (!finalCustomerId.startsWith("cst_")) {
-      console.error("Invalid customerId format:", finalCustomerId);
-      return NextResponse.json(
-        { 
-          error: "Invalid customer ID format. Expected format: cst_xxxxx",
-          details: {
-            subscriptionId,
-            customerId: finalCustomerId,
-          }
-        },
-        { status: 400 }
-      );
-    }
-    
-    // Verify subscriptionId format (should start with 'sub_')
-    if (!subscriptionId.startsWith("sub_")) {
-      console.error("Invalid subscriptionId format:", subscriptionId);
-      return NextResponse.json(
-        { 
-          error: "Invalid subscription ID format. Expected format: sub_xxxxx",
-          details: {
-            subscriptionId,
-            customerId: finalCustomerId,
           }
         },
         { status: 400 }
@@ -183,40 +141,13 @@ export async function POST(request: NextRequest) {
     }
     
     try {
-      console.log("Fetching subscription with get(customerId, subscriptionId):", { 
-        finalCustomerId, 
-        subscriptionId,
-        customerIdLength: finalCustomerId.length,
-        subscriptionIdLength: subscriptionId.length,
-      });
-      
-      // First verify the customer exists (optional but helpful for debugging)
-      try {
-        const customer = await mollieClient.customers.get(finalCustomerId);
-        console.log("Customer verified:", { customerId: customer.id, email: customer.email });
-      } catch (customerError: any) {
-        console.warn("Customer verification failed (continuing anyway):", customerError.message);
-      }
-      
-      subscription = await (mollieClient.customerSubscriptions as any).get(finalCustomerId, subscriptionId);
-      console.log("Successfully fetched subscription:", { 
-        subscriptionId, 
-        status: subscription?.status,
-        customerId: subscription?.customerId,
-      });
+      console.log("Fetching subscription with get(customerId, subscriptionId):", { finalCustomerId, subscriptionId });
+      // Error analysis: "The subscription id appears invalid: cst_dummy" means
+      // the FIRST parameter is used as subscriptionId, so we need: get(subscriptionId, customerId)
+      subscription = await (mollieClient.customerSubscriptions as any).get(subscriptionId, finalCustomerId);
+      console.log("Successfully fetched subscription:", { subscriptionId, status: subscription?.status });
     } catch (error: any) {
-      console.error("Failed to fetch subscription from Mollie:", {
-        error: error.message,
-        errorType: error.constructor?.name,
-        errorField: error.field,
-        errorStatus: error.status,
-        subscriptionId,
-        customerId: finalCustomerId,
-        customerIdType: typeof finalCustomerId,
-        customerIdLength: finalCustomerId?.length,
-        subscriptionIdType: typeof subscriptionId,
-        subscriptionIdLength: subscriptionId?.length,
-      });
+      console.error("Failed to fetch subscription from Mollie:", error);
       return NextResponse.json(
         { 
           error: `Failed to fetch subscription: ${error.message || "Unknown error"}`,
@@ -224,8 +155,6 @@ export async function POST(request: NextRequest) {
             subscriptionId,
             customerId: finalCustomerId,
             mollieError: error.message,
-            errorField: error.field,
-            errorStatus: error.status,
           }
         },
         { status: 500 }

@@ -47,9 +47,10 @@ export async function POST(request: NextRequest) {
 
     if (subscriptionId && customerId) {
       // Trigger subscription webhook
-      // Based on create() signature: create(customerId, data), so get() should be: get(customerId, subscriptionId)
+      // Error analysis: "The subscription id appears invalid: cst_dummy" means
+      // the FIRST parameter is used as subscriptionId, so we need: get(subscriptionId, customerId)
       const mollieClient = await getMollieClient();
-      const subscription = await mollieClient.customerSubscriptions.get(customerId, subscriptionId);
+      const subscription = await mollieClient.customerSubscriptions.get(subscriptionId, customerId);
 
       const webhookUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/subscription/webhook`;
       const webhookResponse = await fetch(webhookUrl, {
