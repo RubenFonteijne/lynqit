@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { createClientClient } from "@/lib/supabase-client";
+import { SUBSCRIPTION_PRICES, calculatePriceWithBTW, calculatePriceWithDiscount } from "@/lib/pricing";
 
 function RegisterContent() {
   useEffect(() => {
@@ -27,10 +28,12 @@ function RegisterContent() {
   const [slug, setSlug] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<"free" | "start" | "pro">(planParam || "free");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"creditcard" | "paypal">("creditcard");
+  const [currentStep, setCurrentStep] = useState(1);
   const [discountCode, setDiscountCode] = useState("");
   const [discountCodeValidating, setDiscountCodeValidating] = useState(false);
   const [discountCodeValid, setDiscountCodeValid] = useState<boolean | null>(null);
   const [discountCodeMessage, setDiscountCodeMessage] = useState("");
+  const [discountCodeData, setDiscountCodeData] = useState<any>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -59,6 +62,7 @@ function RegisterContent() {
             setDiscountCodeValid(true);
             if (data.discountCode) {
               const discount = data.discountCode;
+              setDiscountCodeData(discount);
               const discountText = discount.isPercentage
                 ? `${discount.discountValue}%`
                 : `€${discount.discountValue.toFixed(2)}`;
@@ -67,6 +71,7 @@ function RegisterContent() {
             }
           } else {
             setDiscountCodeValid(false);
+            setDiscountCodeData(null);
             setDiscountCodeMessage(data.error || "Ongeldige kortingscode");
           }
         } catch (error) {
@@ -83,8 +88,99 @@ function RegisterContent() {
     } else {
       setDiscountCodeValid(null);
       setDiscountCodeMessage("");
+      setDiscountCodeData(null);
     }
   }, [discountCode, selectedPlan]);
+
+  // Calculate pricing with discount
+  const calculatePricing = () => {
+    if (selectedPlan === "free") {
+      return {
+        priceExBTW: 0,
+        priceWithBTW: 0,
+        discount: 0,
+        finalPriceExBTW: 0,
+        finalPriceWithBTW: 0,
+      };
+    }
+
+    const basePriceExBTW = SUBSCRIPTION_PRICES[selectedPlan];
+    let finalPriceExBTW = basePriceExBTW;
+    let discount = 0;
+
+    if (discountCodeValid && discountCodeData && selectedPlan !== "free") {
+      // Only apply discount if it's for first payment or recurring
+      if (discountCodeData.discountType === "first_payment" || discountCodeData.discountType === "recurring") {
+        finalPriceExBTW = calculatePriceWithDiscount(
+          basePriceExBTW,
+          discountCodeData.discountValue,
+          discountCodeData.isPercentage
+        );
+        discount = basePriceExBTW - finalPriceExBTW;
+      }
+    }
+
+    const finalPriceWithBTW = calculatePriceWithBTW(finalPriceExBTW);
+    const basePriceWithBTW = calculatePriceWithBTW(basePriceExBTW);
+
+    return {
+      priceExBTW: basePriceExBTW,
+      priceWithBTW: basePriceWithBTW,
+      discount,
+      finalPriceExBTW,
+      finalPriceWithBTW,
+    };
+  };
+
+  const pricing = calculatePricing();
+
+  const validateStep1 = () => {
+    if (!slug || slug.trim() === "") {
+      setError("Lynqit pagina slug is verplicht");
+      return false;
+    }
+
+    const cleanedSlug = slug.replace(/^-+|-+$/g, "");
+    
+    if (!cleanedSlug || cleanedSlug.trim() === "") {
+      setError("Lynqit pagina slug mag niet alleen uit streepjes bestaan");
+      return false;
+    }
+
+    if (!/^[a-z0-9-]+$/.test(cleanedSlug)) {
+      setError("Slug mag alleen kleine letters, cijfers en streepjes bevatten");
+      return false;
+    }
+    
+    if (cleanedSlug.startsWith("-") || cleanedSlug.endsWith("-")) {
+      setError("Slug mag niet beginnen of eindigen met een streepje");
+      return false;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return false;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleNextStep = () => {
+    setError("");
+    if (validateStep1()) {
+      setCurrentStep(2);
+    }
+  };
+
+  const handlePreviousStep = () => {
+    setCurrentStep(1);
+    setError("");
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -344,116 +440,136 @@ function RegisterContent() {
         <div className="w-full max-w-md">
           <div className="p-0">
             <div className="mb-8">
+              <div className="flex items-center gap-2 mb-4">
+                <div className={`flex-1 h-1 rounded-full ${currentStep >= 1 ? 'bg-[#2E47FF]' : 'bg-zinc-700'}`}></div>
+                <div className={`flex-1 h-1 rounded-full ${currentStep >= 2 ? 'bg-[#2E47FF]' : 'bg-zinc-700'}`}></div>
+              </div>
               <h1 className="text-3xl font-semibold text-black dark:text-zinc-50 mb-2">
-                Create Account
+                {currentStep === 1 ? "Accountgegevens" : "Abonnement & Betaling"}
               </h1>
               <p className="text-zinc-600 dark:text-zinc-400">
-                Sign up to get started with Lynqit
+                {currentStep === 1 ? "Stap 1 van 2: Maak je account aan" : "Stap 2 van 2: Kies je abonnement"}
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
-                >
-                  Email address
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={!!prefillEmail}
-                  className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder="you@example.com"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
-                >
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors pr-10"
-                    placeholder="Enter your password"
-                  />
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
+              {/* STEP 1: Account Information */}
+              {currentStep === 1 && (
+                <>
+                  <div>
+                    <label
+                      htmlFor="slug"
+                      className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                    >
+                      Lynqit pagina slug
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-zinc-500 dark:text-zinc-400">lynqit.nl/</span>
+                      <input
+                        id="slug"
+                        type="text"
+                        value={slug}
+                        onChange={(e) => {
+                          let value = e.target.value.toLowerCase().replace(/\s+/g, "-");
+                          value = value.replace(/[^a-z0-9-]/g, "");
+                          value = value.replace(/-+/g, "-");
+                          setSlug(value);
+                        }}
+                        required
+                        pattern="[a-z0-9-]+"
+                        className="flex-1 px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors"
+                        placeholder="jouw-pagina-naam"
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                      Alleen kleine letters, cijfers en streepjes toegestaan
+                    </p>
                   </div>
-                </div>
-              </div>
 
-              <div>
-                <label
-                  htmlFor="confirmPassword"
-                  className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
-                >
-                  Confirm Password
-                </label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors"
-                  placeholder="Confirm your password"
-                />
-              </div>
+                  <div>
+                    <label
+                      htmlFor="email"
+                      className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                    >
+                      Email address
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      disabled={!!prefillEmail}
+                      className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      placeholder="you@example.com"
+                    />
+                  </div>
 
-              <div>
-                <label
-                  htmlFor="slug"
-                  className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
-                >
-                  Lynqit pagina slug
-                </label>
-                <div className="flex items-center gap-2">
-                  <span className="text-zinc-500 dark:text-zinc-400">lynqit.nl/</span>
-                  <input
-                    id="slug"
-                    type="text"
-                    value={slug}
-                    onChange={(e) => {
-                      // Convert to lowercase and replace spaces with hyphens
-                      let value = e.target.value.toLowerCase().replace(/\s+/g, "-");
-                      
-                      // Remove invalid characters (keep only a-z, 0-9, and hyphens)
-                      value = value.replace(/[^a-z0-9-]/g, "");
-                      
-                      // Replace multiple consecutive hyphens with single hyphen
-                      value = value.replace(/-+/g, "-");
-                      
-                      setSlug(value);
-                    }}
-                    required
-                    pattern="[a-z0-9-]+"
-                    className="flex-1 px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors"
-                    placeholder="jouw-pagina-naam"
-                  />
-                </div>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  Alleen kleine letters, cijfers en streepjes toegestaan
-                </p>
-              </div>
+                  <div>
+                    <label
+                      htmlFor="password"
+                      className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                    >
+                      Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors pr-10"
+                        placeholder="Enter your password"
+                      />
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Plan Selection */}
+                  <div>
+                    <label
+                      htmlFor="confirmPassword"
+                      className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                    >
+                      Confirm Password
+                    </label>
+                    <input
+                      id="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors"
+                      placeholder="Confirm your password"
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                      <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="w-full py-3 px-4 rounded-lg bg-[#2E47FF] text-white font-medium hover:bg-[#1E37E6] focus:outline-none focus:ring-2 focus:ring-[#2E47FF] focus:ring-offset-2 transition-colors"
+                  >
+                    Volgende
+                  </button>
+                </>
+              )}
+
+              {/* STEP 2: Subscription & Payment */}
+              {currentStep === 2 && (
+                <>
+                  {/* Plan Selection */}
               <div>
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                   Abonnement
@@ -589,25 +705,73 @@ function RegisterContent() {
                 </div>
               )}
 
+              {/* Pricing Summary */}
+              {selectedPlan !== "free" && (
+                <div className="p-4 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800">
+                  <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">
+                    Kostenoverzicht
+                  </h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
+                      <span>Abonnement ({selectedPlan === "start" ? "Start" : "Pro"})</span>
+                      <span>€{pricing.priceWithBTW.toFixed(2)}/maand</span>
+                    </div>
+                    {pricing.discount > 0 && discountCodeValid && (
+                      <>
+                        <div className="flex justify-between text-green-600 dark:text-green-400">
+                          <span>Korting</span>
+                          <span>-€{calculatePriceWithBTW(pricing.discount).toFixed(2)}</span>
+                        </div>
+                        <div className="border-t border-zinc-300 dark:border-zinc-700 pt-2 mt-2">
+                          <div className="flex justify-between font-semibold text-zinc-700 dark:text-zinc-300">
+                            <span>Totaal per maand</span>
+                            <span>€{pricing.finalPriceWithBTW.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                    {pricing.discount === 0 && (
+                      <div className="border-t border-zinc-300 dark:border-zinc-700 pt-2 mt-2">
+                        <div className="flex justify-between font-semibold text-zinc-700 dark:text-zinc-300">
+                          <span>Totaal per maand</span>
+                          <span>€{pricing.finalPriceWithBTW.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {error && (
                 <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
                   <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={isLoading || isProcessingPayment}
-                className="w-full py-3 px-4 rounded-lg bg-[#2E47FF] text-white font-medium hover:bg-[#1E37E6] focus:outline-none focus:ring-2 focus:ring-[#2E47FF] focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isProcessingPayment
-                  ? "Verwerken..."
-                  : isLoading
-                  ? "Creating account..."
-                  : selectedPlan !== "free"
-                  ? "Account aanmaken en afrekenen"
-                  : "Account aanmaken"}
-              </button>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={handlePreviousStep}
+                  className="flex-1 py-3 px-4 rounded-lg border-2 border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium hover:bg-zinc-50 dark:hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-500 transition-colors"
+                >
+                  Terug
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading || isProcessingPayment}
+                  className="flex-1 py-3 px-4 rounded-lg bg-[#2E47FF] text-white font-medium hover:bg-[#1E37E6] focus:outline-none focus:ring-2 focus:ring-[#2E47FF] focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isProcessingPayment
+                    ? "Verwerken..."
+                    : isLoading
+                    ? "Creating account..."
+                    : selectedPlan !== "free"
+                    ? "Account aanmaken en afrekenen"
+                    : "Account aanmaken"}
+                </button>
+              </div>
+                </>
+              )}
             </form>
 
             <div className="mt-6 text-center">
