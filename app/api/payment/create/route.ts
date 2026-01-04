@@ -203,9 +203,18 @@ export async function POST(request: NextRequest) {
     // Validate redirect URL - must be HTTPS in production
     const redirectUrl = `${baseUrl}/payment/success?email=${encodeURIComponent(email)}&plan=${plan}&pageId=${pageId}`;
     
+    // Log webhook URL for debugging
+    if (webhookUrl) {
+      console.log("Webhook URL:", webhookUrl);
+      console.log("Redirect URL:", redirectUrl);
+    }
+    
     if (isLocalhost) {
       console.warn("WARNING: Running in localhost mode. Webhook will not be set. Mollie may show 'offline' status.");
       console.warn("TIP: Voor development, gebruik ngrok of een andere tunneling service en zet NEXT_PUBLIC_BASE_URL naar de ngrok URL.");
+    } else {
+      console.log("INFO: Using production webhook URL:", webhookUrl);
+      console.log("INFO: Test webhook reachability at:", `${baseUrl}/api/subscription/webhook/test`);
     }
     
     // Determine payment method: use provided method or default to creditcard
