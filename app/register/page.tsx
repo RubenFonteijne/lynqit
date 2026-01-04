@@ -289,12 +289,9 @@ function RegisterContent() {
           accessToken = registerData.accessToken;
         } else if (registerData.session?.access_token) {
           accessToken = registerData.session.access_token;
-        } else {
-          // Email confirmation required - redirect to confirmation page
-          const confirmPage = isDutch ? "/bevestig-registratie" : "/confirm-registration";
-          router.push(`${confirmPage}?email=${encodeURIComponent(email)}${pageId ? `&pageId=${pageId}` : ''}`);
-          return;
         }
+        // Note: If no accessToken, email confirmation is required
+        // But we can still proceed with payment for paid plans
       } else {
         // User already exists, try to get session and create page if needed
         try {
@@ -361,6 +358,7 @@ function RegisterContent() {
       }
 
       // Handle paid plans - create payment via Mollie (with pageId)
+      // This works even without accessToken because the user exists in the database
       if (selectedPlan !== "free" && !fromPayment) {
         setIsProcessingPayment(true);
         
@@ -399,7 +397,15 @@ function RegisterContent() {
         return;
       }
 
-      // For free plan - redirect to edit page
+      // For free plan - check if email confirmation is required
+      if (!accessToken) {
+        // Email confirmation required - redirect to confirmation page
+        const confirmPage = isDutch ? "/bevestig-registratie" : "/confirm-registration";
+        router.push(`${confirmPage}?email=${encodeURIComponent(email)}${pageId ? `&pageId=${pageId}` : ''}`);
+        return;
+      }
+
+      // For free plan with accessToken - redirect to edit page
       router.push(`/dashboard/pages/${pageId}/edit`);
     } catch (err) {
       setError("An error occurred. Please try again.");
