@@ -182,11 +182,31 @@ export async function POST(request: NextRequest) {
 
     // Create monthly subscription (not a one-time payment)
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const isLocalhost = baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1");
+    const isLocalhost = baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1") || baseUrl.includes("0.0.0.0");
+    
+    // Validate base URL for production
+    if (!isLocalhost && (!baseUrl.startsWith("https://") || baseUrl === "http://localhost:3000")) {
+      console.warn("WARNING: NEXT_PUBLIC_BASE_URL is not set correctly for production. Using:", baseUrl);
+      // Return error if base URL is not HTTPS in production
+      if (process.env.NODE_ENV === "production" && !baseUrl.startsWith("https://")) {
+        return NextResponse.json(
+          { error: "NEXT_PUBLIC_BASE_URL moet een HTTPS URL zijn in productie. Controleer je environment variables." },
+          { status: 500 }
+        );
+      }
+    }
     
     // Only set webhook URL if not localhost (Mollie can't reach localhost)
     // For local development, use a tunneling service like ngrok or skip webhook
     const webhookUrl = isLocalhost ? undefined : `${baseUrl}/api/subscription/webhook`;
+    
+    // Validate redirect URL - must be HTTPS in production
+    const redirectUrl = `${baseUrl}/payment/success?email=${encodeURIComponent(email)}&plan=${plan}&pageId=${pageId}`;
+    
+    if (isLocalhost) {
+      console.warn("WARNING: Running in localhost mode. Webhook will not be set. Mollie may show 'offline' status.");
+      console.warn("TIP: Voor development, gebruik ngrok of een andere tunneling service en zet NEXT_PUBLIC_BASE_URL naar de ngrok URL.");
+    }
     
     // Determine payment method: use provided method or default to creditcard
     // For test mode, allow iDEAL as fallback
@@ -254,7 +274,7 @@ export async function POST(request: NextRequest) {
         description: `Lynqit ${plan} subscription`,
         method: selectedPaymentMethod,
         webhookUrl: webhookUrl,
-        redirectUrl: `${baseUrl}/payment/success?email=${encodeURIComponent(email)}&plan=${plan}&pageId=${pageId}`,
+        redirectUrl: redirectUrl,
         metadata: {
           email,
           plan,
