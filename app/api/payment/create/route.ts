@@ -382,7 +382,16 @@ export async function POST(request: NextRequest) {
           recurringDiscount: recurringDiscountApplied ? "true" : undefined,
           firstPaymentPrice: appliedDiscount ? firstPaymentPriceWithBTW.toFixed(2) : undefined,
         },
+      };
+      
+      console.log("Subscription data prepared:", {
+        customerId: finalCustomerId,
+        amount: subscriptionData.amount,
+        method: subscriptionData.method,
+        hasWebhookUrl: !!subscriptionData.webhookUrl,
       });
+      
+      subscription = await (mollieClient.customerSubscriptions as any).create(finalCustomerId, subscriptionData);
     } catch (subscriptionError: any) {
       console.error("Mollie subscription creation error:", subscriptionError);
       console.error("Error details:", {
