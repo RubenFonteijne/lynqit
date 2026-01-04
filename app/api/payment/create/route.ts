@@ -203,17 +203,25 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      if (!customer || !customer.id) {
-        console.error("Failed to create customer - customer or customer.id is undefined", customer);
+      if (!customer) {
+        console.error("Failed to create customer - customer object is null/undefined");
         return NextResponse.json(
-          { error: "Failed to create customer in Mollie" },
+          { error: "Failed to create customer in Mollie: customer object is null" },
+          { status: 500 }
+        );
+      }
+      
+      if (!customer.id || typeof customer.id !== "string" || customer.id.trim() === "") {
+        console.error("Failed to create customer - customer.id is invalid", customer.id, typeof customer.id, "Full customer object:", JSON.stringify(customer, null, 2));
+        return NextResponse.json(
+          { error: "Failed to create customer in Mollie: customer ID is invalid" },
           { status: 500 }
         );
       }
       
       customerId = customer.id;
       
-      console.log("Created Mollie customer with ID:", customerId, "Type:", typeof customerId);
+      console.log("Created Mollie customer with ID:", customerId, "Type:", typeof customerId, "Length:", customerId.length);
 
       // Save customer ID to user (if user exists)
       if (user) {
