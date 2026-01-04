@@ -37,8 +37,17 @@ export async function POST(request: NextRequest) {
     // Mollie sends webhooks as form-url-encoded (id=sub_..., customerId=cst_...)
     // Read body only once using formData() for App Router
     const formData = await request.formData();
+    
+    // Log all form data keys for debugging
+    const allFormData: Record<string, string> = {};
+    formData.forEach((value, key) => {
+      allFormData[key] = value.toString();
+    });
+    console.log("All form data received:", allFormData);
+    
     const subscriptionId = formData.get("id") as string | null;
-    const customerId = formData.get("customerId") as string | null;
+    // Try both customerId and customer_id (Mollie might use either)
+    const customerId = (formData.get("customerId") || formData.get("customer_id")) as string | null;
 
     // Handle Mollie's webhook connectivity test (empty body or test requests)
     if (!subscriptionId || !customerId) {
