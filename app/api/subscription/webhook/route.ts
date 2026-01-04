@@ -100,6 +100,26 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Check if this is a test request (dummy data from Mollie)
+    const isTestRequest = subscriptionId === "sub_dummy" || customerId === "cst_dummy" || 
+                          subscriptionId?.includes("dummy") || customerId?.includes("dummy");
+    
+    if (isTestRequest) {
+      console.log("Test webhook request received from Mollie, returning success");
+      return NextResponse.json(
+        { 
+          success: true,
+          message: "Webhook endpoint is reachable (test request)",
+        },
+        { 
+          status: 200,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
+      );
+    }
+    
     // Instead of trying to fetch subscription from Mollie (which keeps failing),
     // get the page from our database using the subscriptionId
     const { getPages } = await import("@/lib/lynqit-pages");
@@ -108,15 +128,23 @@ export async function POST(request: NextRequest) {
     
     if (!page) {
       console.error("Page not found for subscriptionId:", subscriptionId);
+      // Don't return error - just log it and return success to prevent Mollie retries
+      // The subscription might not exist in our database yet
       return NextResponse.json(
         { 
-          error: "Page not found for this subscription",
+          success: false,
+          message: "Page not found for this subscription (may not be created yet)",
           details: {
             subscriptionId,
             receivedFormData: allFormData,
           }
         },
-        { status: 404 }
+        { 
+          status: 200, // Return 200 so Mollie doesn't retry
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
       );
     }
     
