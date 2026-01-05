@@ -5,12 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
 import {
   Elements,
-  CardElement,
+  PaymentElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
 
-function PaymentForm({ clientSecret, subscriptionId }: { clientSecret: string; subscriptionId: string | null }) {
+function PaymentForm({ clientSecret, subscriptionId, paymentMethod }: { clientSecret: string; subscriptionId: string | null; paymentMethod: string }) {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
@@ -31,26 +31,21 @@ function PaymentForm({ clientSecret, subscriptionId }: { clientSecret: string; s
     setIsProcessing(true);
     setError(null);
 
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) {
-      setError("Payment method not found");
-      setIsProcessing(false);
-      return;
-    }
-
     try {
-      // Confirm payment with the card element
-      const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
+      // Use confirmPayment which works with PaymentElement and handles all payment methods
+      const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
+        elements,
         clientSecret,
-        {
-          payment_method: {
-            card: cardElement,
+        confirmParams: {
+          return_url: `${window.location.origin}/payment/success?email=${encodeURIComponent(email || "")}&plan=${plan || ""}&provider=stripe&subscriptionId=${subscriptionId || ""}`,
+          payment_method_data: {
             billing_details: {
               email: email || undefined,
             },
           },
-        }
-      );
+        },
+        redirect: 'if_required', // Only redirect if required (e.g., for PayPal)
+      });
 
       if (confirmError) {
         setError(confirmError.message || "Payment failed");
@@ -58,12 +53,17 @@ function PaymentForm({ clientSecret, subscriptionId }: { clientSecret: string; s
         return;
       }
 
+      // Check payment status
       if (paymentIntent?.status === "succeeded" || paymentIntent?.status === "requires_capture") {
         // Payment successful - redirect to success page
-        const baseUrl = window.location.origin;
         router.push(
           `/payment/success?email=${encodeURIComponent(email || "")}&plan=${plan || ""}&provider=stripe&subscriptionId=${subscriptionId || ""}`
         );
+      } else if (paymentIntent?.status === "requires_action") {
+        // Payment requires additional action (e.g., 3D Secure)
+        // Stripe will handle this automatically
+        setError("Je betaling vereist extra verificatie. Volg de instructies op het scherm.");
+        setIsProcessing(false);
       } else {
         setError("Payment status: " + paymentIntent?.status);
         setIsProcessing(false);
@@ -87,26 +87,10 @@ function PaymentForm({ clientSecret, subscriptionId }: { clientSecret: string; s
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-zinc-300 mb-2">
-          Kaartgegevens
-        </label>
-        <div className="p-4 rounded-lg border border-zinc-700 bg-zinc-900 min-h-[50px]">
-          <CardElement
+        <div className="p-4 rounded-lg border border-zinc-700 bg-zinc-900 min-h-[200px]">
+          <PaymentElement
             options={{
-              style: {
-                base: {
-                  fontSize: "16px",
-                  color: "#ffffff",
-                  fontFamily: "system-ui, sans-serif",
-                  "::placeholder": {
-                    color: "#9ca3af",
-                  },
-                },
-                invalid: {
-                  color: "#ef4444",
-                  iconColor: "#ef4444",
-                },
-              },
+              layout: "tabs",
             }}
           />
         </div>
@@ -305,7 +289,7 @@ function PaymentContent() {
 
         <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-8 shadow-xl">
           <Elements stripe={stripePromise} options={options}>
-            <PaymentForm clientSecret={clientSecret} subscriptionId={subscriptionId} />
+            <PaymentForm clientSecret={clientSecret} subscriptionId={subscriptionId} paymentMethod={paymentMethod} />
           </Elements>
         </div>
 
