@@ -63,41 +63,54 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate price with discount
-    let finalPriceExBTW: number = SUBSCRIPTION_PRICES[plan as "start" | "pro"];
+    // Validate discount code if provided and try to find Stripe coupon
+    let stripeCouponId: string | undefined;
     let discountCodeId: string | undefined;
-    let appliedDiscount = false;
-    let recurringDiscountApplied = false;
-
+    
     if (discountCode) {
+      // First validate in our database (optional, for tracking)
       const validation = await validateDiscountCode(discountCode, plan as "start" | "pro");
       if (validation.valid && validation.discountCode) {
         discountCodeId = validation.discountCode.id;
+      }
+      
+      // Try to find the coupon in Stripe by code
+      try {
+        const stripe = await getStripeClient();
+        const promotionCodes = await stripe.promotionCodes.list({
+          code: discountCode.toUpperCase(),
+          active: true,
+          limit: 1,
+        });
         
-        if (validation.discountCode.discountType === "first_payment") {
-          finalPriceExBTW = calculatePriceWithDiscount(
-            finalPriceExBTW,
-            validation.discountCode.discountValue,
-            validation.discountCode.isPercentage
+        if (promotionCodes.data.length > 0) {
+          stripeCouponId = promotionCodes.data[0].coupon.id;
+        } else {
+          // If promotion code not found, try to find coupon directly
+          const coupons = await stripe.coupons.list({
+            limit: 100,
+          });
+          const matchingCoupon = coupons.data.find(c => 
+            c.id.toLowerCase() === discountCode.toLowerCase() || 
+            c.name?.toLowerCase() === discountCode.toLowerCase()
           );
-          appliedDiscount = true;
-        } else if (validation.discountCode.discountType === "recurring") {
-          finalPriceExBTW = calculatePriceWithDiscount(
-            finalPriceExBTW,
-            validation.discountCode.discountValue,
-            validation.discountCode.isPercentage
-          );
-          recurringDiscountApplied = true;
+          if (matchingCoupon) {
+            stripeCouponId = matchingCoupon.id;
+          }
         }
-      } else {
+      } catch (error) {
+        console.error("Error looking up Stripe coupon:", error);
+        // Continue without Stripe coupon if lookup fails
+      }
+      
+      // If we have a discount code but no Stripe coupon found, return error
+      if (!stripeCouponId) {
         return NextResponse.json(
-          { error: validation.error || "Ongeldige kortingscode" },
+          { error: "Kortingscode niet gevonden in Stripe. Controleer of de code correct is." },
           { status: 400 }
         );
       }
     }
-
-    const priceWithBTW = calculatePriceWithBTW(finalPriceExBTW);
 
     const stripe = await getStripeClient();
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
@@ -145,7 +158,10 @@ export async function POST(request: NextRequest) {
     
     if (!finalPriceId) {
       // Fallback: create or get product and price (for backward compatibility)
-      const amountInCents = Math.round(priceWithBTW * 100);
+      // Use original price without discount - Stripe will apply the coupon
+      const basePriceExBTW = SUBSCRIPTION_PRICES[plan as "start" | "pro"];
+      const basePriceWithBTW = calculatePriceWithBTW(basePriceExBTW);
+      const amountInCents = Math.round(basePriceWithBTW * 100);
       
       let product = await stripe.products.search({
         query: `name:'Lynqit ${plan}' AND active:'true'`,
@@ -184,7 +200,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create checkout session with the price ID
-    const checkoutSession = await stripe.checkout.sessions.create({
+    const checkoutSessionConfig: any = {
       customer: customerId,
       payment_method_types: [paymentMethod],
       line_items: [{
@@ -201,10 +217,8 @@ export async function POST(request: NextRequest) {
         slug: isNewRegistration ? slug : undefined,
         password: isNewRegistration ? password : undefined,
         createAccount: isNewRegistration ? "true" : undefined,
+        discountCode: discountCode || undefined,
         discountCodeId: discountCodeId || undefined,
-        appliedDiscount: appliedDiscount ? "true" : undefined,
-        recurringDiscount: recurringDiscountApplied ? "true" : undefined,
-        firstPaymentPrice: appliedDiscount ? priceWithBTW.toFixed(2) : undefined,
       },
       subscription_data: {
         metadata: {
@@ -215,13 +229,20 @@ export async function POST(request: NextRequest) {
           slug: isNewRegistration ? slug : undefined,
           password: isNewRegistration ? password : undefined,
           createAccount: isNewRegistration ? "true" : undefined,
+          discountCode: discountCode || undefined,
           discountCodeId: discountCodeId || undefined,
-          appliedDiscount: appliedDiscount ? "true" : undefined,
-          recurringDiscount: recurringDiscountApplied ? "true" : undefined,
-          firstPaymentPrice: appliedDiscount ? priceWithBTW.toFixed(2) : undefined,
         },
       },
-    });
+    };
+
+    // Apply Stripe coupon if available
+    if (stripeCouponId) {
+      checkoutSessionConfig.discounts = [{
+        coupon: stripeCouponId,
+      }];
+    }
+
+    const checkoutSession = await stripe.checkout.sessions.create(checkoutSessionConfig);
 
     if (!checkoutSession.url) {
       return NextResponse.json(
