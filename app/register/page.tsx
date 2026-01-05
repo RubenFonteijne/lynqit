@@ -28,14 +28,8 @@ function RegisterContent() {
   const [slug, setSlug] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<"free" | "start" | "pro">(planParam || "free");
   const [currentStep, setCurrentStep] = useState(1);
-  const [discountCode, setDiscountCode] = useState("");
-  const [discountCodeValidating, setDiscountCodeValidating] = useState(false);
-  const [discountCodeValid, setDiscountCodeValid] = useState<boolean | null>(null);
-  const [discountCodeMessage, setDiscountCodeMessage] = useState("");
-  const [discountCodeData, setDiscountCodeData] = useState<any>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   useEffect(() => {
     if (prefillEmail) {
@@ -44,133 +38,14 @@ function RegisterContent() {
   }, [prefillEmail]);
 
 
-  // Validate discount code when it changes and a paid plan is selected
-  useEffect(() => {
-    if (discountCode && discountCode.trim() !== "" && selectedPlan !== "free") {
-      const validateDiscount = async () => {
-        setDiscountCodeValidating(true);
-        setDiscountCodeValid(null);
-        setDiscountCodeMessage("");
-
-        try {
-          // Check our database for discount codes
-          const selectedProduct = stripeProducts.find(p => p.priceId === selectedPlan);
-          const planName = selectedProduct?.plan || selectedPlan;
-          
-          const dbResponse = await fetch(
-            `/api/discount-codes/validate?code=${encodeURIComponent(discountCode.trim())}&plan=${planName}`
-          );
-          const dbData = await dbResponse.json();
-
-          if (dbData.valid && dbData.discountCode) {
-            setDiscountCodeValid(true);
-            const discount = dbData.discountCode;
-            setDiscountCodeData(discount);
-            const discountText = discount.isPercentage
-              ? `${discount.discountValue}%`
-              : `€${discount.discountValue.toFixed(2)}`;
-            const typeText = discount.discountType === "first_payment" ? "eerste betaling" : "elke maand";
-            setDiscountCodeMessage(`Kortingscode geldig: ${discountText} korting op ${typeText}`);
-          } else {
-            setDiscountCodeValid(false);
-            setDiscountCodeData(null);
-            setDiscountCodeMessage(dbData.error || "Ongeldige kortingscode");
-          }
-        } catch (error) {
-          setDiscountCodeValid(false);
-          setDiscountCodeMessage("Fout bij valideren van kortingscode");
-        } finally {
-          setDiscountCodeValidating(false);
-        }
-      };
-
-      // Debounce validation
-      const timeoutId = setTimeout(validateDiscount, 500);
-      return () => clearTimeout(timeoutId);
-    } else {
-      setDiscountCodeValid(null);
-      setDiscountCodeMessage("");
-      setDiscountCodeData(null);
-    }
-  }, [discountCode, selectedPlan, stripeProducts]);
-
-  // Calculate pricing with discount using Stripe product data
+  // Calculate pricing - only free plan supported
   const calculatePricing = () => {
-    if (selectedPlan === "free") {
-      return {
-        priceExBTW: 0,
-        priceWithBTW: 0,
-        discount: 0,
-        finalPriceExBTW: 0,
-        finalPriceWithBTW: 0,
-        selectedProduct: null,
-      };
-    }
-
-    // Find the selected product from Stripe
-    const selectedProduct = stripeProducts.find(p => p.priceId === selectedPlan);
-    if (!selectedProduct) {
-      return {
-        priceExBTW: 0,
-        priceWithBTW: 0,
-        discount: 0,
-        discountAmount: 0,
-        finalPriceExBTW: 0,
-        finalPriceWithBTW: 0,
-        selectedProduct: null,
-      };
-    }
-
-    // Amount from Stripe is already including BTW, so we need to calculate ex BTW
-    const basePriceWithBTW = selectedProduct.amount;
-    const basePriceExBTW = basePriceWithBTW / 1.21; // Remove BTW (21%)
-    
-    let finalPriceExBTW: number = basePriceExBTW;
-    let finalPriceWithBTW: number = basePriceWithBTW;
-    let discount = 0;
-    let discountAmount = 0;
-
-    if (discountCodeValid && discountCodeData) {
-      // Check if it's a Stripe coupon (has percentOff or amountOff)
-      if (discountCodeData.percentOff !== undefined || discountCodeData.amountOff !== undefined) {
-        // Stripe coupon - calculate discount
-        if (discountCodeData.percentOff) {
-          // Percentage discount
-          discountAmount = (basePriceWithBTW * discountCodeData.percentOff) / 100;
-          finalPriceWithBTW = basePriceWithBTW - discountAmount;
-          finalPriceExBTW = finalPriceWithBTW / 1.21;
-          discount = basePriceExBTW - finalPriceExBTW;
-        } else if (discountCodeData.amountOff) {
-          // Fixed amount discount (in cents, convert to euros)
-          discountAmount = discountCodeData.amountOff / 100;
-          finalPriceWithBTW = Math.max(0, basePriceWithBTW - discountAmount);
-          finalPriceExBTW = finalPriceWithBTW / 1.21;
-          discount = basePriceExBTW - finalPriceExBTW;
-        }
-      } else if (discountCodeData.discountType) {
-        // Database discount code (legacy)
-        // Only apply discount if it's for first payment or recurring
-        if (discountCodeData.discountType === "first_payment" || discountCodeData.discountType === "recurring") {
-          finalPriceExBTW = calculatePriceWithDiscount(
-            basePriceExBTW,
-            discountCodeData.discountValue,
-            discountCodeData.isPercentage
-          );
-          finalPriceWithBTW = calculatePriceWithBTW(finalPriceExBTW);
-          discount = basePriceExBTW - finalPriceExBTW;
-          discountAmount = basePriceWithBTW - finalPriceWithBTW;
-        }
-      }
-    }
-
     return {
-      priceExBTW: basePriceExBTW,
-      priceWithBTW: basePriceWithBTW,
-      discount,
-      discountAmount,
-      finalPriceExBTW,
-      finalPriceWithBTW,
-      selectedProduct,
+      priceExBTW: 0,
+      priceWithBTW: 0,
+      discount: 0,
+      finalPriceExBTW: 0,
+      finalPriceWithBTW: 0,
     };
   };
 
@@ -585,12 +460,12 @@ function RegisterContent() {
               {/* STEP 2: Subscription & Payment */}
               {currentStep === 2 && (
                 <>
-                  {/* Plan Selection */}
+                  {/* Plan Selection - Only free plan available */}
               <div>
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                   Abonnement
                 </label>
-                <div className={`grid gap-3 ${stripeProducts.length === 0 ? 'grid-cols-1' : `grid-cols-${stripeProducts.length + 1}`}`}>
+                <div className="grid gap-3 grid-cols-1">
                   <button
                     type="button"
                     onClick={() => setSelectedPlan("free")}
@@ -607,152 +482,8 @@ function RegisterContent() {
                       Gratis
                     </div>
                   </button>
-                  {productsLoading ? (
-                    <div className="col-span-2 text-center py-3 text-zinc-500 dark:text-zinc-400">
-                      Laden...
-                    </div>
-                  ) : (
-                    stripeProducts.map((product) => {
-                      const isSelected = selectedPlan === product.priceId;
-                      return (
-                        <button
-                          key={product.id}
-                          type="button"
-                          onClick={() => setSelectedPlan(product.priceId)}
-                          className={`px-4 py-3 rounded-lg border-2 transition-colors ${
-                            isSelected
-                              ? "border-[#2E47FF] bg-blue-50 dark:bg-blue-900/20"
-                              : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
-                          }`}
-                        >
-                          <div className="text-sm font-semibold text-black dark:text-zinc-50 capitalize">
-                            {product.plan}
-                          </div>
-                          <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-                            €{product.amount.toFixed(2)}/{product.interval === 'month' ? 'maand' : product.interval}
-                          </div>
-                        </button>
-                      );
-                    })
-                  )}
                 </div>
               </div>
-
-              {/* Discount Code - Only show for paid plans */}
-              {selectedPlan !== "free" && (
-                <div>
-                  <label
-                    htmlFor="discountCode"
-                    className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
-                  >
-                    Kortingscode (optioneel)
-                  </label>
-                  <input
-                    id="discountCode"
-                    type="text"
-                    value={discountCode}
-                    onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-                    placeholder="WELCOME10"
-                    className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors"
-                  />
-                  {discountCodeValidating && (
-                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                      Valideren...
-                    </p>
-                  )}
-                  {!discountCodeValidating && discountCodeMessage && (
-                    <p
-                      className={`mt-1 text-xs ${
-                        discountCodeValid
-                          ? "text-green-600 dark:text-green-400"
-                          : "text-red-600 dark:text-red-400"
-                      }`}
-                    >
-                      {discountCodeMessage}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Payment Method Selection - Only show for paid plans */}
-              {selectedPlan !== "free" && (
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    Betaalmethode
-                  </label>
-                  <div className={`grid gap-3 ${availablePaymentMethods.length === 2 ? 'grid-cols-2' : availablePaymentMethods.length === 3 ? 'grid-cols-3' : availablePaymentMethods.length >= 4 ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2'}`}>
-                    {availablePaymentMethods.filter(m => m.available).map((method) => {
-                      const methodId = method.id.toLowerCase();
-                      const isSelected = selectedPaymentMethod === methodId;
-                      const iconClass = methodId === 'card' || methodId === 'creditcard' ? 'fas fa-credit-card' :
-                                       methodId === 'paypal' ? 'fab fa-paypal' :
-                                       methodId === 'sepa_debit' || methodId === 'sepa' || methodId === 'directdebit' ? 'fas fa-university' :
-                                       methodId === 'ideal' ? 'fas fa-building' :
-                                       methodId === 'bancontact' ? 'fas fa-credit-card' :
-                                       methodId === 'sofort' ? 'fas fa-bank' :
-                                       methodId === 'giropay' ? 'fas fa-bank' :
-                                       'fas fa-money-bill';
-                      
-                      return (
-                        <button
-                          key={method.id}
-                          type="button"
-                          onClick={() => setSelectedPaymentMethod(methodId)}
-                          className={`px-4 py-3 rounded-lg border-2 transition-colors ${
-                            isSelected
-                              ? "border-[#2E47FF] bg-blue-50 dark:bg-blue-900/20"
-                              : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
-                          }`}
-                        >
-                          <div className="flex items-center justify-center gap-2">
-                            <i className={`${iconClass} text-lg`}></i>
-                            <div className="text-sm font-semibold text-black dark:text-zinc-50">
-                              {method.description}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Pricing Summary */}
-              {selectedPlan !== "free" && (
-                <div className="p-4 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800">
-                  <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">
-                    Kostenoverzicht
-                  </h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
-                      <span>Abonnement ({pricing.selectedProduct ? pricing.selectedProduct.plan.charAt(0).toUpperCase() + pricing.selectedProduct.plan.slice(1) : selectedPlan})</span>
-                      <span>€{pricing.priceWithBTW.toFixed(2)}/maand</span>
-                    </div>
-                    {(pricing.discount > 0 || (pricing.discountAmount && pricing.discountAmount > 0)) && discountCodeValid && (
-                      <>
-                        <div className="flex justify-between text-green-600 dark:text-green-400">
-                          <span>Korting</span>
-                          <span>-€{(pricing.discountAmount && pricing.discountAmount > 0 ? pricing.discountAmount : calculatePriceWithBTW(pricing.discount)).toFixed(2)}</span>
-                        </div>
-                        <div className="border-t border-zinc-300 dark:border-zinc-700 pt-2 mt-2">
-                          <div className="flex justify-between font-semibold text-zinc-700 dark:text-zinc-300">
-                            <span>Totaal per maand</span>
-                            <span>€{pricing.finalPriceWithBTW.toFixed(2)}</span>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                    {pricing.discount === 0 && (!pricing.discountAmount || pricing.discountAmount === 0) && (
-                      <div className="border-t border-zinc-300 dark:border-zinc-700 pt-2 mt-2">
-                        <div className="flex justify-between font-semibold text-zinc-700 dark:text-zinc-300">
-                          <span>Totaal per maand</span>
-                          <span>€{pricing.finalPriceWithBTW.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
 
               {error && (
                 <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
