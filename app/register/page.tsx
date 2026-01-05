@@ -235,26 +235,48 @@ function RegisterContent() {
     const basePriceExBTW = basePriceWithBTW / 1.21; // Remove BTW (21%)
     
     let finalPriceExBTW: number = basePriceExBTW;
+    let finalPriceWithBTW: number = basePriceWithBTW;
     let discount = 0;
+    let discountAmount = 0;
 
     if (discountCodeValid && discountCodeData) {
-      // Only apply discount if it's for first payment or recurring
-      if (discountCodeData.discountType === "first_payment" || discountCodeData.discountType === "recurring") {
-        finalPriceExBTW = calculatePriceWithDiscount(
-          basePriceExBTW,
-          discountCodeData.discountValue,
-          discountCodeData.isPercentage
-        );
-        discount = basePriceExBTW - finalPriceExBTW;
+      // Check if it's a Stripe coupon (has percentOff or amountOff)
+      if (discountCodeData.percentOff !== undefined || discountCodeData.amountOff !== undefined) {
+        // Stripe coupon - calculate discount
+        if (discountCodeData.percentOff) {
+          // Percentage discount
+          discountAmount = (basePriceWithBTW * discountCodeData.percentOff) / 100;
+          finalPriceWithBTW = basePriceWithBTW - discountAmount;
+          finalPriceExBTW = finalPriceWithBTW / 1.21;
+          discount = basePriceExBTW - finalPriceExBTW;
+        } else if (discountCodeData.amountOff) {
+          // Fixed amount discount (in cents, convert to euros)
+          discountAmount = discountCodeData.amountOff / 100;
+          finalPriceWithBTW = Math.max(0, basePriceWithBTW - discountAmount);
+          finalPriceExBTW = finalPriceWithBTW / 1.21;
+          discount = basePriceExBTW - finalPriceExBTW;
+        }
+      } else if (discountCodeData.discountType) {
+        // Database discount code (legacy)
+        // Only apply discount if it's for first payment or recurring
+        if (discountCodeData.discountType === "first_payment" || discountCodeData.discountType === "recurring") {
+          finalPriceExBTW = calculatePriceWithDiscount(
+            basePriceExBTW,
+            discountCodeData.discountValue,
+            discountCodeData.isPercentage
+          );
+          finalPriceWithBTW = calculatePriceWithBTW(finalPriceExBTW);
+          discount = basePriceExBTW - finalPriceExBTW;
+          discountAmount = basePriceWithBTW - finalPriceWithBTW;
+        }
       }
     }
-
-    const finalPriceWithBTW = calculatePriceWithBTW(finalPriceExBTW);
 
     return {
       priceExBTW: basePriceExBTW,
       priceWithBTW: basePriceWithBTW,
       discount,
+      discountAmount,
       finalPriceExBTW,
       finalPriceWithBTW,
       selectedProduct,
@@ -878,11 +900,11 @@ function RegisterContent() {
                       <span>Abonnement ({pricing.selectedProduct ? pricing.selectedProduct.plan.charAt(0).toUpperCase() + pricing.selectedProduct.plan.slice(1) : selectedPlan})</span>
                       <span>€{pricing.priceWithBTW.toFixed(2)}/maand</span>
                     </div>
-                    {pricing.discount > 0 && discountCodeValid && (
+                    {(pricing.discount > 0 || pricing.discountAmount > 0) && discountCodeValid && (
                       <>
                         <div className="flex justify-between text-green-600 dark:text-green-400">
                           <span>Korting</span>
-                          <span>-€{calculatePriceWithBTW(pricing.discount).toFixed(2)}</span>
+                          <span>-€{pricing.discountAmount > 0 ? pricing.discountAmount.toFixed(2) : calculatePriceWithBTW(pricing.discount).toFixed(2)}</span>
                         </div>
                         <div className="border-t border-zinc-300 dark:border-zinc-700 pt-2 mt-2">
                           <div className="flex justify-between font-semibold text-zinc-700 dark:text-zinc-300">
@@ -892,7 +914,7 @@ function RegisterContent() {
                         </div>
                       </>
                     )}
-                    {pricing.discount === 0 && (
+                    {pricing.discount === 0 && pricing.discountAmount === 0 && (
                       <div className="border-t border-zinc-300 dark:border-zinc-700 pt-2 mt-2">
                         <div className="flex justify-between font-semibold text-zinc-700 dark:text-zinc-300">
                           <span>Totaal per maand</span>
