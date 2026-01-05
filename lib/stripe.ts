@@ -1,47 +1,44 @@
 import Stripe from 'stripe';
 import { getSettings } from './settings';
 
-// Re-export pricing utilities for convenience
-export { SUBSCRIPTION_PRICES, calculatePriceWithBTW } from "./pricing";
-
-// Initialize Stripe client
+/**
+ * Get Stripe client instance
+ * Uses API key from settings or environment variables
+ */
 export async function getStripeClient(): Promise<Stripe> {
-  try {
-    const settings = await getSettings();
-    
-    // Get API key from settings or environment variable
-    const apiKey = settings.stripeSecretKey || 
-                   settings.stripeSecretKeyLive || 
-                   settings.stripeSecretKeyTest ||
-                   process.env.STRIPE_SECRET_KEY ||
-                   process.env.STRIPE_SECRET_KEY_LIVE ||
-                   process.env.STRIPE_SECRET_KEY_TEST;
-    
-    if (!apiKey) {
-      throw new Error("Stripe secret key is not set. Please configure it in the admin settings.");
-    }
-
-    const stripe = new Stripe(apiKey, {
-      apiVersion: '2024-12-18.acacia', // Use latest stable API version
-      typescript: true,
-    });
-    
-    return stripe;
-  } catch (error: any) {
-    console.error("Error initializing Stripe client:", error);
-    throw new Error(`Stripe client initialization failed: ${error instanceof Error ? error.message : "Unknown error"}`);
-  }
-}
-
-// Get Stripe publishable key (for frontend)
-export async function getStripePublishableKey(): Promise<string | undefined> {
   const settings = await getSettings();
   const isTestMode = settings.useTestMode ?? true;
   
-  if (isTestMode) {
-    return settings.stripePublishableKeyTest || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_TEST;
-  } else {
-    return settings.stripePublishableKeyLive || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_LIVE;
+  // Get API key based on test/live mode
+  const apiKey = isTestMode
+    ? (settings.stripeSecretKeyTest || process.env.STRIPE_SECRET_KEY_TEST)
+    : (settings.stripeSecretKeyLive || process.env.STRIPE_SECRET_KEY_LIVE);
+  
+  if (!apiKey) {
+    throw new Error("Stripe secret key is not configured. Please set it in admin settings.");
   }
+
+  return new Stripe(apiKey, {
+    apiVersion: '2024-12-18.acacia',
+    typescript: true,
+  });
+}
+
+/**
+ * Get Stripe publishable key for frontend
+ */
+export async function getStripePublishableKey(): Promise<string> {
+  const settings = await getSettings();
+  const isTestMode = settings.useTestMode ?? true;
+  
+  const publishableKey = isTestMode
+    ? (settings.stripePublishableKeyTest || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_TEST)
+    : (settings.stripePublishableKeyLive || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_LIVE);
+  
+  if (!publishableKey) {
+    throw new Error("Stripe publishable key is not configured. Please set it in admin settings.");
+  }
+  
+  return publishableKey;
 }
 

@@ -1,33 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripeClient } from "@/lib/stripe";
 
+/**
+ * Get all active Stripe products with prices
+ * Returns products that contain "Lynqit" in the name
+ */
 export async function GET(request: NextRequest) {
   try {
     const stripe = await getStripeClient();
     
-    // Get all active products from Stripe that contain "Lynqit" in the name
     const products = await stripe.products.list({
       active: true,
       limit: 100,
     });
 
-    // Filter products that are related to Lynqit (must contain 'lynqit' in name)
-    // We check for 'lynqit' in the name, and optionally 'subscription' (but not required)
+    // Filter Lynqit products
     const lynqitProducts = products.data.filter(product => 
       product.name.toLowerCase().includes('lynqit')
     );
 
-    // For each product, get the associated prices
+    // Get prices for each product
     const productsWithPrices = await Promise.all(
       lynqitProducts.map(async (product) => {
-        // Get prices for this product
         const prices = await stripe.prices.list({
           product: product.id,
           active: true,
           type: 'recurring',
         });
 
-        // Get the monthly recurring price (if multiple, take the first one)
         const monthlyPrice = prices.data.find(price => 
           price.recurring?.interval === 'month'
         ) || prices.data[0];
@@ -37,36 +37,29 @@ export async function GET(request: NextRequest) {
         }
 
         // Extract plan name from product name
-        // Examples: "Lynqit start subscription" -> "start", "Lynqit Pro" -> "pro"
-        let planName = product.name.toLowerCase();
-        // Remove "lynqit" prefix
-        planName = planName.replace(/^lynqit\s+/i, '');
-        // Remove "subscription" suffix if present
-        planName = planName.replace(/\s+subscription$/i, '');
-        // Trim whitespace
-        planName = planName.trim();
+        let planName = product.name.toLowerCase()
+          .replace(/^lynqit\s+/i, '')
+          .replace(/\s+subscription$/i, '')
+          .trim();
 
         return {
           id: product.id,
           priceId: monthlyPrice.id,
           name: product.name,
           description: product.description || '',
-          plan: planName, // 'start', 'pro', etc.
-          amount: monthlyPrice.unit_amount ? monthlyPrice.unit_amount / 100 : 0, // Convert from cents to euros
+          plan: planName,
+          amount: monthlyPrice.unit_amount ? monthlyPrice.unit_amount / 100 : 0,
           currency: monthlyPrice.currency,
           interval: monthlyPrice.recurring?.interval || 'month',
         };
       })
     );
 
-    // Filter out null values and sort by amount
     const validProducts = productsWithPrices
       .filter((p): p is NonNullable<typeof p> => p !== null)
       .sort((a, b) => a.amount - b.amount);
 
-    return NextResponse.json({
-      products: validProducts,
-    });
+    return NextResponse.json({ products: validProducts });
   } catch (error: any) {
     console.error("Error fetching Stripe products:", error);
     return NextResponse.json(

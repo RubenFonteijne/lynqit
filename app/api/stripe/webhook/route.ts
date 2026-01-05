@@ -1,18 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripeClient } from "@/lib/stripe";
 import { getUserByEmail, updateUser } from "@/lib/users";
-import { getPageById, updatePage, deletePage, createPage, getPages } from "@/lib/lynqit-pages";
-import type { SubscriptionPlan } from "@/lib/lynqit-pages";
-import { getDiscountCodeById, incrementDiscountCodeUsage } from "@/lib/discount-codes";
+import { createPage, updatePage, getPages } from "@/lib/lynqit-pages";
 import { createServerClient } from "@/lib/supabase-server";
 import Stripe from "stripe";
 
-// Stripe webhook secret from environment or settings
-const getWebhookSecret = async (): Promise<string | undefined> => {
-  // In production, this should come from settings or environment variable
-  return process.env.STRIPE_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET_TEST;
-};
-
+/**
+ * Stripe webhook handler
+ * Handles checkout.session.completed and subscription events
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
@@ -25,7 +21,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const webhookSecret = await getWebhookSecret();
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET_TEST;
     if (!webhookSecret) {
       console.error("Stripe webhook secret not configured");
       return NextResponse.json(
@@ -57,7 +53,6 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      case "customer.subscription.created":
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
         await handleSubscriptionUpdate(subscription);
@@ -76,12 +71,6 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      case "invoice.payment_failed": {
-        const invoice = event.data.object as Stripe.Invoice;
-        await handleInvoicePaymentFailed(invoice);
-        break;
-      }
-
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
@@ -96,215 +85,178 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * Handle checkout.session.completed
+ * Creates user account and page if this is a new registration
+ */
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const metadata = session.metadata || {};
   const email = metadata.email;
-  const plan = metadata.plan as SubscriptionPlan;
-  const pageId = metadata.pageId;
   const slug = metadata.slug;
   const password = metadata.password;
-  const createAccount = metadata.createAccount === "true";
 
-  if (!email || !plan) {
-    console.error("Missing email or plan in checkout session metadata");
+  if (!email || !slug || !password) {
+    console.error("Missing required metadata in checkout session");
     return;
   }
 
-  // Create account if this is a new registration
-  if (createAccount && slug && password) {
-    let user = await getUserByEmail(email);
+  // Check if user already exists
+  let user = await getUserByEmail(email);
+  
+  if (!user) {
+    // Create user account via Supabase Auth
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error("Missing Supabase configuration");
+    }
+
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     
-    if (!user) {
-      try {
-        // Create user account via Supabase Auth
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    const { data: authData, error: authError } = await supabaseAnon.auth.signUp({
+      email: email.toLowerCase(),
+      password,
+      options: {
+        emailRedirectTo: `${baseUrl}/account-confirmed`,
+      },
+    });
 
-        if (!supabaseUrl || !supabaseAnonKey) {
-          throw new Error("Missing Supabase configuration");
-        }
-
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey, {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
-        });
-
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-        
-        const { data: authData, error: authError } = await supabaseAnon.auth.signUp({
-          email: email.toLowerCase(),
-          password,
-          options: {
-            emailRedirectTo: `${baseUrl}/account-confirmed`,
-          },
-        });
-
-        if (authError || !authData.user) {
-          console.error("Error creating user account:", authError);
-          throw new Error(authError?.message || "Failed to create user account");
-        }
-
-        // Create user in database
-        const supabaseAdmin = createServerClient();
-        const { data: newUser, error: createError } = await supabaseAdmin
-          .from('users')
-          .insert({
-            id: authData.user.id,
-            email: email.toLowerCase(),
-            role: 'user',
-            stripe_customer_id: session.customer as string,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .select()
-          .single();
-        
-        if (createError) {
-          console.error("Error creating user in database:", createError);
-          throw new Error(`Failed to create user in database: ${createError.message}`);
-        }
-
-        user = {
-          id: newUser.id,
-          email: newUser.email,
-          role: (newUser.role || 'user') as 'admin' | 'user',
-          stripeCustomerId: newUser.stripe_customer_id,
-          createdAt: newUser.created_at || new Date().toISOString(),
-          updatedAt: newUser.updated_at,
-        };
-
-        console.log("Created user account for:", email);
-      } catch (error: any) {
-        console.error("Error creating account in webhook:", error);
-        return;
-      }
-    } else {
-      // Update existing user with Stripe customer ID
-      await updateUser(email, {
-        stripeCustomerId: session.customer as string,
-      });
+    if (authError || !authData.user) {
+      console.error("Error creating user account:", authError);
+      throw new Error(authError?.message || "Failed to create user account");
     }
 
-    // Create page if it doesn't exist
-    if (slug && user) {
-      try {
-        const newPage = await createPage(
-          user.email,
-          slug,
-          {
-            subscriptionPlan: plan,
-            subscriptionStatus: "expired", // Will be set to active below
-          }
-        );
-        
-        // Get subscription from Stripe
-        const stripe = await getStripeClient();
-        const subscriptionId = session.subscription as string;
-        if (subscriptionId) {
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-          await updatePage(newPage.id, {
-            subscriptionPlan: plan,
-            subscriptionStatus: subscription.status === "active" ? "active" : "expired",
-            subscriptionStartDate: new Date(subscription.current_period_start * 1000).toISOString(),
-            subscriptionEndDate: new Date(subscription.current_period_end * 1000).toISOString(),
-            stripeSubscriptionId: subscriptionId,
-          });
-        }
-      } catch (error: any) {
-        console.error("Error creating page in webhook:", error);
-      }
+    // Create user in database
+    const supabaseAdmin = createServerClient();
+    const { data: newUser, error: createError } = await supabaseAdmin
+      .from('users')
+      .insert({
+        id: authData.user.id,
+        email: email.toLowerCase(),
+        role: 'user',
+        stripe_customer_id: session.customer as string,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+    
+    if (createError) {
+      console.error("Error creating user in database:", createError);
+      throw new Error(`Failed to create user in database: ${createError.message}`);
     }
-  } else if (pageId) {
-    // Update existing page
-    const page = await getPageById(pageId);
-    if (page) {
-      const stripe = await getStripeClient();
-      const subscriptionId = session.subscription as string;
-      if (subscriptionId) {
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        await updatePage(pageId, {
-          subscriptionPlan: plan,
-          subscriptionStatus: subscription.status === "active" ? "active" : "expired",
-          subscriptionStartDate: new Date(subscription.current_period_start * 1000).toISOString(),
-          subscriptionEndDate: new Date(subscription.current_period_end * 1000).toISOString(),
-          stripeSubscriptionId: subscriptionId,
-        });
-      }
-    }
-  }
 
-  // Increment discount code usage if applied
-  if (metadata.discountCodeId && metadata.appliedDiscount === "true") {
-    try {
-      await incrementDiscountCodeUsage(metadata.discountCodeId);
-    } catch (error) {
-      console.error("Error incrementing discount code usage:", error);
-    }
-  }
-}
+    user = {
+      id: newUser.id,
+      email: newUser.email,
+      role: (newUser.role || 'user') as 'admin' | 'user',
+      stripeCustomerId: newUser.stripe_customer_id,
+      createdAt: newUser.created_at || new Date().toISOString(),
+      updatedAt: newUser.updated_at,
+    };
 
-async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
-  const metadata = subscription.metadata || {};
-  const email = metadata.email;
-  const plan = metadata.plan as SubscriptionPlan;
-  const pageId = metadata.pageId;
-
-  if (!email || !plan) {
-    console.error("Missing email or plan in subscription metadata");
-    return;
-  }
-
-  // Find page by subscription ID
-  const pages = await getPages();
-  const page = pages.find((p) => p.stripeSubscriptionId === subscription.id);
-
-  if (!page) {
-    console.error("Page not found for subscription:", subscription.id);
-    return;
-  }
-
-  const now = new Date();
-  const subscriptionEndDate = new Date(subscription.current_period_end * 1000);
-
-  await updatePage(page.id, {
-    subscriptionPlan: plan,
-    subscriptionStatus: subscription.status === "active" ? "active" : "expired",
-    subscriptionStartDate: subscription.start_date 
-      ? new Date(subscription.start_date * 1000).toISOString()
-      : page.subscriptionStartDate || now.toISOString(),
-    subscriptionEndDate: subscriptionEndDate.toISOString(),
-    stripeSubscriptionId: subscription.id,
-  });
-}
-
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  const pages = await getPages();
-  const page = pages.find((p) => p.stripeSubscriptionId === subscription.id);
-
-  if (!page) {
-    console.error("Page not found for subscription:", subscription.id);
-    return;
-  }
-
-  // Only delete page if it was just created (expired status with paid plan)
-  if (page.subscriptionStatus === "expired" && page.subscriptionPlan !== "free") {
-    await deletePage(page.id);
-    console.log(`Deleted page ${page.id} due to cancelled subscription`);
+    console.log("Created user account for:", email);
   } else {
-    // For existing pages, just revert to free plan
+    // Update existing user with Stripe customer ID if needed
+    if (session.customer && !user.stripeCustomerId) {
+      await updateUser(email, { stripeCustomerId: session.customer as string });
+    }
+  }
+
+  // Get subscription from session
+  const subscriptionId = session.subscription as string;
+  if (!subscriptionId) {
+    console.error("No subscription ID in checkout session");
+    return;
+  }
+
+  const stripe = await getStripeClient();
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const priceId = subscription.items.data[0]?.price.id;
+  
+  if (!priceId) {
+    console.error("No price ID in subscription");
+    return;
+  }
+
+  // Determine plan from price
+  const price = await stripe.prices.retrieve(priceId);
+  const product = await stripe.products.retrieve(price.product as string);
+  const plan = product.name.toLowerCase().includes('pro') ? 'pro' : 
+               product.name.toLowerCase().includes('start') ? 'start' : 'free';
+
+  // Create or update page
+  const pages = await getPages();
+  const existingPage = pages.find(p => p.userId === user.id && p.slug === slug);
+
+  if (existingPage) {
+    // Update existing page
+    await updatePage(existingPage.id, {
+      stripeSubscriptionId: subscriptionId,
+      subscriptionPlan: plan as any,
+      subscriptionStatus: subscription.status === 'active' ? 'active' : 'inactive',
+      subscriptionStartDate: new Date(subscription.current_period_start * 1000).toISOString(),
+      subscriptionEndDate: new Date(subscription.current_period_end * 1000).toISOString(),
+    });
+  } else {
+    // Create new page
+    await createPage({
+      userId: user.id,
+      slug: slug,
+      title: slug,
+      subscriptionPlan: plan as any,
+      stripeSubscriptionId: subscriptionId,
+      subscriptionStatus: subscription.status === 'active' ? 'active' : 'inactive',
+      subscriptionStartDate: new Date(subscription.current_period_start * 1000).toISOString(),
+      subscriptionEndDate: new Date(subscription.current_period_end * 1000).toISOString(),
+    });
+  }
+
+  console.log("Checkout completed for:", email, "subscription:", subscriptionId);
+}
+
+/**
+ * Handle subscription updates
+ */
+async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
+  const pages = await getPages();
+  const page = pages.find(p => p.stripeSubscriptionId === subscription.id);
+
+  if (page) {
     await updatePage(page.id, {
-      subscriptionPlan: "free",
-      subscriptionStatus: "expired",
-      stripeSubscriptionId: undefined,
+      subscriptionStatus: subscription.status === 'active' ? 'active' : 'inactive',
+      subscriptionEndDate: new Date(subscription.current_period_end * 1000).toISOString(),
     });
   }
 }
 
+/**
+ * Handle subscription deletion
+ */
+async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+  const pages = await getPages();
+  const page = pages.find(p => p.stripeSubscriptionId === subscription.id);
+
+  if (page) {
+    await updatePage(page.id, {
+      subscriptionStatus: 'cancelled',
+    });
+  }
+}
+
+/**
+ * Handle successful invoice payment
+ */
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
-  // Update subscription dates when payment succeeds
   if (invoice.subscription) {
     const subscriptionId = typeof invoice.subscription === 'string' 
       ? invoice.subscription 
@@ -324,10 +276,3 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
     }
   }
 }
-
-async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
-  // Handle failed payment - could send notification or update status
-  console.log("Invoice payment failed:", invoice.id);
-  // For now, just log it - Stripe will retry automatically
-}
-
