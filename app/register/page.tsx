@@ -501,16 +501,10 @@ function RegisterContent() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isLoading || isProcessingPayment}
+                  disabled={isLoading}
                   className="flex-1 py-3 px-4 rounded-lg bg-[#2E47FF] text-white font-medium hover:bg-[#1E37E6] focus:outline-none focus:ring-2 focus:ring-[#2E47FF] focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isProcessingPayment
-                    ? "Verwerken..."
-                    : isLoading
-                    ? "Creating account..."
-                    : selectedPlan !== "free"
-                    ? "Account aanmaken en afrekenen"
-                    : "Account aanmaken"}
+                  {isLoading ? "Account aanmaken..." : "Account aanmaken"}
                 </button>
               </div>
                 </>
