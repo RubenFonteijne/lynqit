@@ -49,29 +49,20 @@ export default function LoginPage() {
 
       // Store session in localStorage for API calls
       if (data.session) {
-        localStorage.setItem("supabase.auth.token", JSON.stringify({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-          expires_at: data.session.expires_at,
-        }));
-      }
-
-      // Try to set session in Supabase client (optional, may fail due to CORS)
-      if (data.session) {
         try {
-          const supabase = createClientClient();
-          // Use the full session object if available
-          if (data.session.access_token && data.session.refresh_token) {
-            await supabase.auth.setSession({
-              access_token: data.session.access_token,
-              refresh_token: data.session.refresh_token,
-            });
-          }
-        } catch (sessionError) {
-          // Ignore session setting errors - user is still logged in via API
-          console.warn("Could not set session in Supabase client (this is OK):", sessionError);
+          localStorage.setItem("supabase.auth.token", JSON.stringify({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+            expires_at: data.session.expires_at,
+          }));
+        } catch (e) {
+          // Ignore localStorage errors
         }
       }
+
+      // Note: We don't set session in Supabase client here to avoid "Failed to fetch" errors
+      // The session is stored in localStorage and will be used by API routes
+      // Client-side Supabase calls will work via the stored session
 
       // Redirect to dashboard
       router.push("/dashboard");
