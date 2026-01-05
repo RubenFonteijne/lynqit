@@ -279,18 +279,67 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const checkoutSession = await stripe.checkout.sessions.create(checkoutSessionConfig);
+    // Instead of creating a checkout session, create a subscription with payment intent
+    // This allows us to use Stripe Elements for embedded payment
+    const subscriptionData: any = {
+      customer: customerId,
+      items: [{
+        price: finalPriceId,
+        quantity: 1,
+      }],
+      payment_behavior: 'default_incomplete',
+      payment_settings: {
+        payment_method_types: [paymentMethod],
+        save_default_payment_method: 'on_subscription',
+      },
+      metadata: {
+        email,
+        plan,
+        pageId: pageId || undefined,
+        userId: user?.email || email,
+        slug: isNewRegistration ? slug : undefined,
+        password: isNewRegistration ? password : undefined,
+        createAccount: isNewRegistration ? "true" : undefined,
+        discountCode: discountCode || undefined,
+        discountCodeId: discountCodeId || undefined,
+      },
+    };
 
-    if (!checkoutSession.url) {
+    // Apply coupon if available
+    if (stripeCouponId) {
+      if (stripePromotionCodeId) {
+        subscriptionData.discounts = [{
+          promotion_code: stripePromotionCodeId,
+        }];
+      } else {
+        subscriptionData.coupon = stripeCouponId;
+      }
+    }
+
+    const subscription = await stripe.subscriptions.create(subscriptionData);
+
+    // Get the latest invoice and its payment intent
+    const invoice = await stripe.invoices.retrieve(subscription.latest_invoice as string);
+    const paymentIntentId = invoice.payment_intent;
+
+    if (!paymentIntentId || typeof paymentIntentId !== 'string') {
       return NextResponse.json(
-        { error: "Failed to create checkout session" },
+        { error: "Failed to create payment intent" },
         { status: 500 }
       );
     }
 
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    // Get publishable key
+    const { getStripePublishableKey } = await import("@/lib/stripe");
+    const publishableKey = await getStripePublishableKey();
+
     return NextResponse.json({
       success: true,
-      paymentUrl: checkoutSession.url,
+      clientSecret: paymentIntent.client_secret,
+      subscriptionId: subscription.id,
+      publishableKey: publishableKey,
     });
   } catch (error: any) {
     console.error("Stripe payment creation error:", error);

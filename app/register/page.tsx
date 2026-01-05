@@ -455,10 +455,29 @@ function RegisterContent() {
           return;
         }
 
-        // Redirect to Mollie payment page
+        // Redirect to embedded Stripe payment page
         // After successful payment, webhook will create account and page
-        if (paymentData.paymentUrl) {
+        if (paymentData.clientSecret && paymentData.subscriptionId) {
           // Store slug in sessionStorage for payment success page
+          sessionStorage.setItem("pending_slug", finalSlug);
+          
+          // Build URL with all necessary parameters
+          const paymentUrl = new URL("/payment/stripe", window.location.origin);
+          paymentUrl.searchParams.set("email", email);
+          paymentUrl.searchParams.set("plan", planName);
+          paymentUrl.searchParams.set("priceId", priceIdToSend);
+          paymentUrl.searchParams.set("paymentMethod", selectedPaymentMethod);
+          paymentUrl.searchParams.set("clientSecret", paymentData.clientSecret);
+          paymentUrl.searchParams.set("subscriptionId", paymentData.subscriptionId);
+          if (discountCode.trim()) {
+            paymentUrl.searchParams.set("discountCode", discountCode.trim());
+          }
+          paymentUrl.searchParams.set("slug", finalSlug);
+          paymentUrl.searchParams.set("password", password);
+          
+          router.push(paymentUrl.toString());
+        } else if (paymentData.paymentUrl) {
+          // Fallback: if paymentUrl is returned (old checkout session), use it
           sessionStorage.setItem("pending_slug", finalSlug);
           window.location.href = paymentData.paymentUrl;
         } else {
