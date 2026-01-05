@@ -348,6 +348,29 @@ function RegisterContent() {
         // Create payment for subscription WITHOUT creating account first
         // Account will be created in webhook after successful payment
         // Always use Stripe for /register
+        // Get plan name and price ID from selected product
+        let planName = selectedPlan;
+        let priceIdToSend: string | undefined;
+        
+        // If selectedPlan is a priceId (starts with "price_"), extract the product info
+        if (selectedPlan !== "free" && selectedPlan.startsWith("price_")) {
+          const selectedProduct = stripeProducts.find(p => p.priceId === selectedPlan);
+          if (!selectedProduct) {
+            setError("Selecteer een geldig abonnement");
+            setIsLoading(false);
+            setIsProcessingPayment(false);
+            return;
+          }
+          planName = selectedProduct.plan;
+          priceIdToSend = selectedProduct.priceId;
+        } else if (selectedPlan !== "free") {
+          // Fallback: if it's not a priceId, assume it's a plan name and try to find the product
+          const selectedProduct = stripeProducts.find(p => p.plan === selectedPlan);
+          if (selectedProduct) {
+            priceIdToSend = selectedProduct.priceId;
+          }
+        }
+
         const paymentResponse = await fetch("/api/stripe/payment/create", {
           method: "POST",
           headers: {
@@ -355,7 +378,8 @@ function RegisterContent() {
           },
           body: JSON.stringify({
             email,
-            plan: selectedPlan,
+            plan: planName, // Use plan name (start, pro, etc.)
+            priceId: priceIdToSend, // Use Stripe price ID
             paymentMethod: selectedPaymentMethod,
             discountCode: discountCode.trim() || undefined,
             slug: finalSlug, // Include slug for account creation after payment
