@@ -10,7 +10,7 @@ import {
   useElements,
 } from "@stripe/react-stripe-js";
 
-function PaymentForm() {
+function PaymentForm({ clientSecret, subscriptionId }: { clientSecret: string; subscriptionId: string | null }) {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
@@ -20,8 +20,6 @@ function PaymentForm() {
 
   const email = searchParams.get("email");
   const plan = searchParams.get("plan");
-  const clientSecret = searchParams.get("clientSecret");
-  const subscriptionId = searchParams.get("subscriptionId");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -76,13 +74,23 @@ function PaymentForm() {
     }
   };
 
+  // Check if Elements is ready
+  if (!stripe || !elements) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+        <p className="text-zinc-400">Stripe wordt geladen...</p>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-2">
         <label className="block text-sm font-medium text-zinc-300 mb-2">
           Kaartgegevens
         </label>
-        <div className="p-4 rounded-lg border border-zinc-700 bg-zinc-900">
+        <div className="p-4 rounded-lg border border-zinc-700 bg-zinc-900 min-h-[50px]">
           <CardElement
             options={{
               style: {
@@ -297,7 +305,7 @@ function PaymentContent() {
 
         <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-8 shadow-xl">
           <Elements stripe={stripePromise} options={options}>
-            <PaymentForm />
+            <PaymentForm clientSecret={clientSecret} subscriptionId={subscriptionId} />
           </Elements>
         </div>
 

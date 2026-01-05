@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "frame-src 'self' https://open.spotify.com https://www.youtube.com;",
+            value: "frame-src 'self' https://open.spotify.com https://www.youtube.com https://js.stripe.com https://hooks.stripe.com; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com; connect-src 'self' https://api.stripe.com https://hooks.stripe.com;",
           },
         ],
       },
