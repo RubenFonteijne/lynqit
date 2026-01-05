@@ -125,45 +125,62 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Stripe uses cents, so multiply by 100
-    const amountInCents = Math.round(priceWithBTW * 100);
+    // Use provided priceId if available, otherwise create/get product and price
+    let finalPriceId: string;
     
-    // Create or get product first
-    let product = await stripe.products.search({
-      query: `name:'Lynqit ${plan}' AND active:'true'`,
-      limit: 1,
-    });
-
-    let productId: string;
-    if (product.data.length > 0) {
-      productId = product.data[0].id;
-    } else {
-      const newProduct = await stripe.products.create({
-        name: `Lynqit ${plan} subscription`,
-        description: `Monthly subscription for Lynqit ${plan} plan`,
-      });
-      productId = newProduct.id;
+    if (priceId && typeof priceId === 'string') {
+      // Verify the price exists and is active
+      try {
+        const price = await stripe.prices.retrieve(priceId);
+        if (!price.active) {
+          throw new Error("Price is not active");
+        }
+        finalPriceId = price.id;
+      } catch (error) {
+        console.error("Invalid priceId provided, creating new price:", error);
+        // Will create price below
+        finalPriceId = undefined as any;
+      }
     }
-
-    // Create or get price for this product
-    let price = await stripe.prices.search({
-      query: `product:'${productId}' AND active:'true' AND type:'recurring'`,
-      limit: 1,
-    });
-
-    let priceId: string;
-    if (price.data.length > 0 && price.data[0].unit_amount === amountInCents) {
-      priceId = price.data[0].id;
-    } else {
-      const newPrice = await stripe.prices.create({
-        product: productId,
-        currency: 'eur',
-        unit_amount: amountInCents,
-        recurring: {
-          interval: 'month',
-        },
+    
+    if (!finalPriceId) {
+      // Fallback: create or get product and price (for backward compatibility)
+      const amountInCents = Math.round(priceWithBTW * 100);
+      
+      let product = await stripe.products.search({
+        query: `name:'Lynqit ${plan}' AND active:'true'`,
+        limit: 1,
       });
-      priceId = newPrice.id;
+
+      let productId: string;
+      if (product.data.length > 0) {
+        productId = product.data[0].id;
+      } else {
+        const newProduct = await stripe.products.create({
+          name: `Lynqit ${plan} subscription`,
+          description: `Monthly subscription for Lynqit ${plan} plan`,
+        });
+        productId = newProduct.id;
+      }
+
+      let price = await stripe.prices.search({
+        query: `product:'${productId}' AND active:'true' AND type:'recurring'`,
+        limit: 1,
+      });
+
+      if (price.data.length > 0 && price.data[0].unit_amount === amountInCents) {
+        finalPriceId = price.data[0].id;
+      } else {
+        const newPrice = await stripe.prices.create({
+          product: productId,
+          currency: 'eur',
+          unit_amount: amountInCents,
+          recurring: {
+            interval: 'month',
+          },
+        });
+        finalPriceId = newPrice.id;
+      }
     }
 
     // Create checkout session with the price ID
@@ -171,7 +188,7 @@ export async function POST(request: NextRequest) {
       customer: customerId,
       payment_method_types: [paymentMethod],
       line_items: [{
-        price: priceId,
+        price: finalPriceId,
         quantity: 1,
       }],
       mode: 'subscription',
