@@ -180,7 +180,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 
   const stripe = await getStripeClient();
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const subscription: Stripe.Subscription = await stripe.subscriptions.retrieve(subscriptionId);
   const priceId = subscription.items.data[0]?.price.id;
   
   if (!priceId) {
