@@ -5,7 +5,6 @@ import {
   deletePage,
   userOwnsPage,
 } from "@/lib/lynqit-pages";
-import { getMollieClient } from "@/lib/mollie";
 import { isAdminUserAsync } from "@/lib/users";
 
 // GET - Get a specific page (requires authentication and ownership)
@@ -120,12 +119,12 @@ export async function DELETE(
     }
 
     // If page has a paid subscription, mark subscription as cancelled
-    // Note: The actual Mollie subscription cancellation should be done manually or via webhook
+    // Note: The actual Stripe subscription cancellation should be done manually or via webhook
     // The page will be deleted, but the subscription will remain active until manually cancelled
-    if (page.mollieSubscriptionId && page.subscriptionPlan && page.subscriptionPlan !== "free") {
+    if (page.stripeSubscriptionId && page.subscriptionPlan && page.subscriptionPlan !== "free") {
       // Mark subscription as cancelled in our system
-      // The actual Mollie subscription should be cancelled separately
-      console.log(`Page ${page.id} with subscription ${page.mollieSubscriptionId} is being deleted. Subscription should be cancelled manually in Mollie.`);
+      // The actual Stripe subscription should be cancelled separately
+      console.log(`Page ${page.id} with subscription ${page.stripeSubscriptionId} is being deleted. Subscription should be cancelled manually in Stripe.`);
     }
 
     // Delete the page
