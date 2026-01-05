@@ -11,10 +11,10 @@ export async function GET(request: NextRequest) {
       limit: 100,
     });
 
-    // Filter products that are related to Lynqit subscriptions
+    // Filter products that are related to Lynqit (must contain 'lynqit' in name)
+    // We check for 'lynqit' in the name, and optionally 'subscription' (but not required)
     const lynqitProducts = products.data.filter(product => 
-      product.name.toLowerCase().includes('lynqit') && 
-      product.name.toLowerCase().includes('subscription')
+      product.name.toLowerCase().includes('lynqit')
     );
 
     // For each product, get the associated prices
