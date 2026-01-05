@@ -36,9 +36,15 @@ export async function GET(request: NextRequest) {
           return null;
         }
 
-        // Extract plan name from product name (e.g., "Lynqit start subscription" -> "start")
-        const planNameMatch = product.name.match(/lynqit\s+(\w+)\s+subscription/i);
-        const planName = planNameMatch ? planNameMatch[1].toLowerCase() : product.name.toLowerCase();
+        // Extract plan name from product name
+        // Examples: "Lynqit start subscription" -> "start", "Lynqit Pro" -> "pro"
+        let planName = product.name.toLowerCase();
+        // Remove "lynqit" prefix
+        planName = planName.replace(/^lynqit\s+/i, '');
+        // Remove "subscription" suffix if present
+        planName = planName.replace(/\s+subscription$/i, '');
+        // Trim whitespace
+        planName = planName.trim();
 
         return {
           id: product.id,
