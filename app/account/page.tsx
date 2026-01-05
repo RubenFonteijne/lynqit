@@ -71,14 +71,31 @@ export default function AccountPage() {
         
         if (!isMounted) return;
         
+        // Fallback to localStorage if session is not available
+        let userEmail = "";
         if (error || !session || !session.user) {
-          setIsLoading(false);
-          router.push("/");
-          return;
+          // Try to get user from localStorage
+          const cachedUser = localStorage.getItem("lynqit_user");
+          if (cachedUser) {
+            try {
+              const user = JSON.parse(cachedUser);
+              userEmail = user.email || "";
+            } catch (e) {
+              // Ignore parse errors
+            }
+          }
+          
+          if (!userEmail) {
+            setIsLoading(false);
+            router.push("/");
+            return;
+          }
+        } else {
+          userEmail = session.user.email || "";
         }
 
         // Get user info from API
-        const userResponse = await fetch(`/api/user?email=${encodeURIComponent(session.user.email || "")}`);
+        const userResponse = await fetch(`/api/user?email=${encodeURIComponent(userEmail)}`);
         if (!isMounted) return;
         
         if (userResponse.ok) {
@@ -103,10 +120,10 @@ export default function AccountPage() {
             }
             
             // Store access token for later use
-            setAccessToken(session.access_token);
+            setAccessToken(session?.access_token || "");
             
             // Fetch user's pages with access token
-            await fetchPages(session.access_token);
+            await fetchPages(session?.access_token || "");
             // Fetch full user data from API
             await fetchUserData(user.email);
           }

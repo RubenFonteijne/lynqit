@@ -124,7 +124,7 @@ export default function SettingsPage() {
             // Fetch settings
             await fetchSettings();
             // Fetch discount codes
-            await fetchDiscountCodes(session.user.email);
+            await fetchDiscountCodes(userEmail || session?.user?.email || "");
           } else {
             router.push("/");
           }
