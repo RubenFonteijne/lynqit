@@ -47,17 +47,29 @@ export default function LoginPage() {
         localStorage.setItem("lynqit_user", JSON.stringify(data.user));
       }
 
-      // Store session in Supabase client if available
+      // Store session in localStorage for API calls
+      if (data.session) {
+        localStorage.setItem("supabase.auth.token", JSON.stringify({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+          expires_at: data.session.expires_at,
+        }));
+      }
+
+      // Try to set session in Supabase client (optional, may fail due to CORS)
       if (data.session) {
         try {
           const supabase = createClientClient();
-          await supabase.auth.setSession({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
-          });
+          // Use the full session object if available
+          if (data.session.access_token && data.session.refresh_token) {
+            await supabase.auth.setSession({
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token,
+            });
+          }
         } catch (sessionError) {
-          console.warn("Could not set session in client:", sessionError);
-          // Continue anyway - user can still be logged in via API
+          // Ignore session setting errors - user is still logged in via API
+          console.warn("Could not set session in Supabase client (this is OK):", sessionError);
         }
       }
 
