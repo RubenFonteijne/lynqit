@@ -198,12 +198,28 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const pages = await getPages();
   const existingPage = pages.find(p => p.userId === user.id && p.slug === slug);
 
+  // Map Stripe subscription status to our status
+  const mapSubscriptionStatus = (stripeStatus: string): "active" | "cancelled" | "expired" | undefined => {
+    if (stripeStatus === 'active' || stripeStatus === 'trialing') {
+      return 'active';
+    }
+    if (stripeStatus === 'canceled' || stripeStatus === 'cancelled') {
+      return 'cancelled';
+    }
+    if (stripeStatus === 'past_due' || stripeStatus === 'unpaid' || stripeStatus === 'incomplete_expired') {
+      return 'expired';
+    }
+    return undefined; // For other statuses like 'incomplete', 'paused', etc.
+  };
+
+  const subscriptionStatus = mapSubscriptionStatus(subscription.status);
+
   if (existingPage) {
     // Update existing page
     await updatePage(existingPage.id, {
       stripeSubscriptionId: subscriptionId,
       subscriptionPlan: plan as any,
-      subscriptionStatus: subscription.status === 'active' ? 'active' : 'inactive',
+      subscriptionStatus: subscriptionStatus,
       subscriptionStartDate: new Date(subscription.current_period_start * 1000).toISOString(),
       subscriptionEndDate: new Date(subscription.current_period_end * 1000).toISOString(),
     });
@@ -215,7 +231,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       title: slug,
       subscriptionPlan: plan as any,
       stripeSubscriptionId: subscriptionId,
-      subscriptionStatus: subscription.status === 'active' ? 'active' : 'inactive',
+      subscriptionStatus: subscriptionStatus,
       subscriptionStartDate: new Date(subscription.current_period_start * 1000).toISOString(),
       subscriptionEndDate: new Date(subscription.current_period_end * 1000).toISOString(),
     });
@@ -232,8 +248,18 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   const page = pages.find(p => p.stripeSubscriptionId === subscription.id);
 
   if (page) {
+    // Map Stripe subscription status to our status
+    let subscriptionStatus: "active" | "cancelled" | "expired" | undefined;
+    if (subscription.status === 'active' || subscription.status === 'trialing') {
+      subscriptionStatus = 'active';
+    } else if (subscription.status === 'canceled' || subscription.status === 'cancelled') {
+      subscriptionStatus = 'cancelled';
+    } else if (subscription.status === 'past_due' || subscription.status === 'unpaid' || subscription.status === 'incomplete_expired') {
+      subscriptionStatus = 'expired';
+    }
+
     await updatePage(page.id, {
-      subscriptionStatus: subscription.status === 'active' ? 'active' : 'inactive',
+      subscriptionStatus: subscriptionStatus,
       subscriptionEndDate: new Date(subscription.current_period_end * 1000).toISOString(),
     });
   }
