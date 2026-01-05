@@ -65,37 +65,41 @@ export async function POST(request: NextRequest) {
 
     // Validate discount code if provided and try to find Stripe coupon
     let stripeCouponId: string | undefined;
+    let stripePromotionCodeId: string | undefined;
     let discountCodeId: string | undefined;
     
     if (discountCode) {
-      // First validate in our database (optional, for tracking)
-      const validation = await validateDiscountCode(discountCode, plan as "start" | "pro");
-      if (validation.valid && validation.discountCode) {
-        discountCodeId = validation.discountCode.id;
-      }
+      const stripe = await getStripeClient();
+      const codeToSearch = discountCode.trim().toUpperCase();
       
-      // Try to find the coupon in Stripe by code
+      // Try to find the promotion code in Stripe first (most common case)
       try {
-        const stripe = await getStripeClient();
         const promotionCodes = await stripe.promotionCodes.list({
-          code: discountCode.toUpperCase(),
           active: true,
-          limit: 1,
+          limit: 100,
         });
         
-        if (promotionCodes.data.length > 0) {
-          stripeCouponId = promotionCodes.data[0].coupon.id;
+        // Search for exact match (case-insensitive)
+        const matchingPromoCode = promotionCodes.data.find(pc => 
+          pc.code.toUpperCase() === codeToSearch
+        );
+        
+        if (matchingPromoCode) {
+          stripeCouponId = matchingPromoCode.coupon.id;
+          stripePromotionCodeId = matchingPromoCode.id;
+          console.log(`Found Stripe promotion code: ${matchingPromoCode.code} -> coupon: ${stripeCouponId}`);
         } else {
-          // If promotion code not found, try to find coupon directly
+          // If promotion code not found, try to find coupon directly by ID or name
           const coupons = await stripe.coupons.list({
             limit: 100,
           });
           const matchingCoupon = coupons.data.find(c => 
-            c.id.toLowerCase() === discountCode.toLowerCase() || 
-            c.name?.toLowerCase() === discountCode.toLowerCase()
+            c.id.toUpperCase() === codeToSearch || 
+            c.name?.toUpperCase() === codeToSearch
           );
           if (matchingCoupon) {
             stripeCouponId = matchingCoupon.id;
+            console.log(`Found Stripe coupon: ${matchingCoupon.id}`);
           }
         }
       } catch (error) {
@@ -103,10 +107,21 @@ export async function POST(request: NextRequest) {
         // Continue without Stripe coupon if lookup fails
       }
       
+      // Optional: validate in our database for tracking (don't fail if not found)
+      try {
+        const validation = await validateDiscountCode(discountCode, plan as "start" | "pro");
+        if (validation.valid && validation.discountCode) {
+          discountCodeId = validation.discountCode.id;
+        }
+      } catch (error) {
+        // Ignore database validation errors, Stripe is the source of truth
+        console.log("Discount code not found in database, but checking Stripe...");
+      }
+      
       // If we have a discount code but no Stripe coupon found, return error
       if (!stripeCouponId) {
         return NextResponse.json(
-          { error: "Kortingscode niet gevonden in Stripe. Controleer of de code correct is." },
+          { error: "Kortingscode niet gevonden. Controleer of de code correct is." },
           { status: 400 }
         );
       }
