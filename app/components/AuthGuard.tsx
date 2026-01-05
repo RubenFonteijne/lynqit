@@ -22,22 +22,44 @@ export default function AuthGuard({ children, requiredUserId }: AuthGuardProps) 
         const supabase = createClientClient();
         
         // Get current session
-        const { data: { session }, error } = await supabase.auth.getSession();
+        let session = null;
+        let error = null;
+        
+        try {
+          const sessionData = await supabase.auth.getSession();
+          session = sessionData.data?.session || null;
+          error = sessionData.error || null;
+        } catch (e) {
+          error = e as any;
+        }
+        
+        // Fallback: check localStorage for user data if Supabase session is not available
+        if ((error || !session || !session.user)) {
+          const cachedUser = localStorage.getItem("lynqit_user");
+          if (cachedUser) {
+            try {
+              const user = JSON.parse(cachedUser);
+              // User exists in localStorage, create a mock session
+              session = {
+                user: { email: user.email },
+              } as any;
+            } catch (e) {
+              // Invalid cache
+              if (!isMounted) return;
+              setIsLoading(false);
+              router.push("/");
+              return;
+            }
+          } else {
+            // No session and no cached user
+            if (!isMounted) return;
+            setIsLoading(false);
+            router.push("/");
+            return;
+          }
+        }
         
         if (!isMounted) return;
-        
-        if (error) {
-          console.error("[AuthGuard] Auth error:", error);
-          setIsLoading(false);
-          router.push("/");
-          return;
-        }
-        
-        if (!session || !session.user) {
-          setIsLoading(false);
-          router.push("/");
-          return;
-        }
 
         // Get user from session
         const user = session.user;

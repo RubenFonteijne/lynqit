@@ -69,17 +69,45 @@ export default function SettingsPage() {
         const supabase = createClientClient();
         
         // Get current session from Supabase
-        const { data: { session }, error } = await supabase.auth.getSession();
+        let session = null;
+        let error = null;
+        
+        try {
+          const sessionData = await supabase.auth.getSession();
+          session = sessionData.data?.session || null;
+          error = sessionData.error || null;
+        } catch (e) {
+          error = e as any;
+        }
+        
+        // Fallback: check localStorage for user data if Supabase session is not available
+        let userEmail = null;
+        if ((error || !session || !session.user || !session.user.email)) {
+          const cachedUser = localStorage.getItem("lynqit_user");
+          if (cachedUser) {
+            try {
+              const user = JSON.parse(cachedUser);
+              userEmail = user.email;
+            } catch (e) {
+              // Invalid cache
+              if (!isMounted) return;
+              router.push("/");
+              return;
+            }
+          } else {
+            // No session and no cached user
+            if (!isMounted) return;
+            router.push("/");
+            return;
+          }
+        } else {
+          userEmail = session.user.email;
+        }
         
         if (!isMounted) return;
-        
-        if (error || !session || !session.user || !session.user.email) {
-          router.push("/");
-          return;
-        }
 
         // Get user info from API
-        const userResponse = await fetch(`/api/user?email=${encodeURIComponent(session.user.email)}`);
+        const userResponse = await fetch(`/api/user?email=${encodeURIComponent(userEmail)}`);
         if (!isMounted) return;
         
         if (userResponse.ok) {
