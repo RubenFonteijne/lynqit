@@ -252,9 +252,16 @@ export async function POST(request: NextRequest) {
 
     // Apply Stripe coupon if available
     if (stripeCouponId) {
-      checkoutSessionConfig.discounts = [{
-        coupon: stripeCouponId,
-      }];
+      // Use promotion code if available, otherwise use coupon directly
+      if (stripePromotionCodeId) {
+        checkoutSessionConfig.discounts = [{
+          promotion_code: stripePromotionCodeId,
+        }];
+      } else {
+        checkoutSessionConfig.discounts = [{
+          coupon: stripeCouponId,
+        }];
+      }
     }
 
     const checkoutSession = await stripe.checkout.sessions.create(checkoutSessionConfig);
