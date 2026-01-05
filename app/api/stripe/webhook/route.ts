@@ -303,7 +303,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 
     if (page) {
       const stripe = await getStripeClient();
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      const subscription: Stripe.Subscription = await stripe.subscriptions.retrieve(subscriptionId);
       
       await updatePage(page.id, {
         subscriptionStatus: "active",
