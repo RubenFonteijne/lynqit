@@ -120,7 +120,7 @@ export default function SettingsPage() {
             }
             
             setIsAdmin(true);
-            setUserEmail(session.user.email);
+            setUserEmail(userEmail || session?.user?.email || "");
             // Fetch settings
             await fetchSettings();
             // Fetch discount codes
