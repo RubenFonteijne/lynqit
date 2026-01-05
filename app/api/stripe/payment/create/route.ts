@@ -9,7 +9,7 @@ import { SUBSCRIPTION_PRICES, calculatePriceWithBTW, calculatePriceWithDiscount 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, plan, pageId, paymentMethod, discountCode, slug, password, createAccount } = body;
+    const { email, plan, pageId, priceId, paymentMethod, discountCode, slug, password, createAccount } = body;
 
     // For new registrations (createAccount = true), we don't need existing user/page
     const isNewRegistration = createAccount === true;

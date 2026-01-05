@@ -26,12 +26,23 @@ function RegisterContent() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [slug, setSlug] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState<"free" | "start" | "pro">(planParam || "free");
+  const [selectedPlan, setSelectedPlan] = useState<"free" | string>(planParam || "free");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("card");
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<Array<{ id: string; description: string; available: boolean }>>([
     { id: 'card', description: 'Creditcard / Debitcard', available: true },
     { id: 'paypal', description: 'PayPal', available: true },
   ]);
+  const [stripeProducts, setStripeProducts] = useState<Array<{
+    id: string;
+    priceId: string;
+    name: string;
+    description: string;
+    plan: string;
+    amount: number;
+    currency: string;
+    interval: string;
+  }>>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
   const [discountCode, setDiscountCode] = useState("");
   const [discountCodeValidating, setDiscountCodeValidating] = useState(false);
@@ -47,6 +58,35 @@ function RegisterContent() {
       setEmail(prefillEmail);
     }
   }, [prefillEmail]);
+
+  // Fetch Stripe products
+  useEffect(() => {
+    const fetchStripeProducts = async () => {
+      setProductsLoading(true);
+      try {
+        const response = await fetch("/api/stripe/products");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.products && data.products.length > 0) {
+            setStripeProducts(data.products);
+            // If planParam is set and matches a product, select it
+            if (planParam && planParam !== "free") {
+              const matchingProduct = data.products.find((p: any) => p.plan === planParam);
+              if (matchingProduct) {
+                setSelectedPlan(matchingProduct.priceId);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching Stripe products:", error);
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+
+    fetchStripeProducts();
+  }, [planParam]);
 
   // Fetch available payment methods from Stripe
   useEffect(() => {
@@ -86,8 +126,12 @@ function RegisterContent() {
         setDiscountCodeMessage("");
 
         try {
+          // Get plan name from selected product
+          const selectedProduct = stripeProducts.find(p => p.priceId === selectedPlan);
+          const planName = selectedProduct?.plan || selectedPlan;
+          
           const response = await fetch(
-            `/api/discount-codes/validate?code=${encodeURIComponent(discountCode.trim())}&plan=${selectedPlan}`
+            `/api/discount-codes/validate?code=${encodeURIComponent(discountCode.trim())}&plan=${planName}`
           );
           const data = await response.json();
 
@@ -622,7 +666,7 @@ function RegisterContent() {
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                   Abonnement
                 </label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className={`grid gap-3 ${stripeProducts.length === 0 ? 'grid-cols-1' : `grid-cols-${stripeProducts.length + 1}`}`}>
                   <button
                     type="button"
                     onClick={() => setSelectedPlan("free")}
@@ -639,38 +683,34 @@ function RegisterContent() {
                       Gratis
                     </div>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPlan("start")}
-                    className={`px-4 py-3 rounded-lg border-2 transition-colors ${
-                      selectedPlan === "start"
-                        ? "border-[#2E47FF] bg-blue-50 dark:bg-blue-900/20"
-                        : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
-                    }`}
-                  >
-                    <div className="text-sm font-semibold text-black dark:text-zinc-50">
-                      Start
+                  {productsLoading ? (
+                    <div className="col-span-2 text-center py-3 text-zinc-500 dark:text-zinc-400">
+                      Laden...
                     </div>
-                    <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-                      €9,95/maand
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPlan("pro")}
-                    className={`px-4 py-3 rounded-lg border-2 transition-colors ${
-                      selectedPlan === "pro"
-                        ? "border-[#2E47FF] bg-blue-50 dark:bg-blue-900/20"
-                        : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
-                    }`}
-                  >
-                    <div className="text-sm font-semibold text-black dark:text-zinc-50">
-                      Pro
-                    </div>
-                    <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-                      €14,95/maand
-                    </div>
-                  </button>
+                  ) : (
+                    stripeProducts.map((product) => {
+                      const isSelected = selectedPlan === product.priceId;
+                      return (
+                        <button
+                          key={product.id}
+                          type="button"
+                          onClick={() => setSelectedPlan(product.priceId)}
+                          className={`px-4 py-3 rounded-lg border-2 transition-colors ${
+                            isSelected
+                              ? "border-[#2E47FF] bg-blue-50 dark:bg-blue-900/20"
+                              : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
+                          }`}
+                        >
+                          <div className="text-sm font-semibold text-black dark:text-zinc-50 capitalize">
+                            {product.plan}
+                          </div>
+                          <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
+                            €{product.amount.toFixed(2)}/{product.interval === 'month' ? 'maand' : product.interval}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
