@@ -169,7 +169,7 @@ function RegisterContent() {
     }
   }, [discountCode, selectedPlan]);
 
-  // Calculate pricing with discount
+  // Calculate pricing with discount using Stripe product data
   const calculatePricing = () => {
     if (selectedPlan === "free") {
       return {
@@ -178,12 +178,27 @@ function RegisterContent() {
         discount: 0,
         finalPriceExBTW: 0,
         finalPriceWithBTW: 0,
+        selectedProduct: null,
       };
     }
 
-    // TypeScript now knows selectedPlan is "start" | "pro"
-    const plan = selectedPlan as "start" | "pro";
-    const basePriceExBTW = SUBSCRIPTION_PRICES[plan];
+    // Find the selected product from Stripe
+    const selectedProduct = stripeProducts.find(p => p.priceId === selectedPlan);
+    if (!selectedProduct) {
+      return {
+        priceExBTW: 0,
+        priceWithBTW: 0,
+        discount: 0,
+        finalPriceExBTW: 0,
+        finalPriceWithBTW: 0,
+        selectedProduct: null,
+      };
+    }
+
+    // Amount from Stripe is already including BTW, so we need to calculate ex BTW
+    const basePriceWithBTW = selectedProduct.amount;
+    const basePriceExBTW = basePriceWithBTW / 1.21; // Remove BTW (21%)
+    
     let finalPriceExBTW: number = basePriceExBTW;
     let discount = 0;
 
@@ -200,7 +215,6 @@ function RegisterContent() {
     }
 
     const finalPriceWithBTW = calculatePriceWithBTW(finalPriceExBTW);
-    const basePriceWithBTW = calculatePriceWithBTW(basePriceExBTW);
 
     return {
       priceExBTW: basePriceExBTW,
@@ -208,6 +222,7 @@ function RegisterContent() {
       discount,
       finalPriceExBTW,
       finalPriceWithBTW,
+      selectedProduct,
     };
   };
 

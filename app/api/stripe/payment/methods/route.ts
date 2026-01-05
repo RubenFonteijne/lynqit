@@ -38,14 +38,15 @@ export async function GET(request: NextRequest) {
       'giropay': 'Giropay',
     };
 
-    // Return all subscription-supported payment methods
-    // Stripe will automatically filter which ones are available in the checkout session
-    // based on account settings, customer location, and payment method availability
-    const availableMethods = subscriptionSupportedTypes.map(type => ({
-      id: type,
-      description: methodDescriptions[type] || type,
-      available: true,
-    }));
+    // Only return card and paypal
+    const allowedMethods = ['card', 'paypal'];
+    const availableMethods = subscriptionSupportedTypes
+      .filter(type => allowedMethods.includes(type))
+      .map(type => ({
+        id: type,
+        description: methodDescriptions[type] || type,
+        available: true,
+      }));
 
     return NextResponse.json({
       methods: availableMethods,
