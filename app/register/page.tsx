@@ -716,7 +716,7 @@ function RegisterContent() {
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                     Betaalmethode
                   </label>
-                  <div className={`grid gap-3 ${availablePaymentMethods.length === 2 ? 'grid-cols-2' : availablePaymentMethods.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                  <div className={`grid gap-3 ${availablePaymentMethods.length === 2 ? 'grid-cols-2' : availablePaymentMethods.length === 3 ? 'grid-cols-3' : availablePaymentMethods.length >= 4 ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2'}`}>
                     {availablePaymentMethods.filter(m => m.available).map((method) => {
                       const methodId = method.id.toLowerCase();
                       const isSelected = selectedPaymentMethod === methodId;
