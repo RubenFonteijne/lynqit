@@ -26,23 +26,7 @@ function RegisterContent() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [slug, setSlug] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState<"free" | string>(planParam || "free");
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("card");
-  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<Array<{ id: string; description: string; available: boolean }>>([
-    { id: 'card', description: 'Creditcard / Debitcard', available: true },
-    { id: 'paypal', description: 'PayPal', available: true },
-  ]);
-  const [stripeProducts, setStripeProducts] = useState<Array<{
-    id: string;
-    priceId: string;
-    name: string;
-    description: string;
-    plan: string;
-    amount: number;
-    currency: string;
-    interval: string;
-  }>>([]);
-  const [productsLoading, setProductsLoading] = useState(true);
+  const [selectedPlan, setSelectedPlan] = useState<"free" | "start" | "pro">(planParam || "free");
   const [currentStep, setCurrentStep] = useState(1);
   const [discountCode, setDiscountCode] = useState("");
   const [discountCodeValidating, setDiscountCodeValidating] = useState(false);
@@ -59,63 +43,6 @@ function RegisterContent() {
     }
   }, [prefillEmail]);
 
-  // Fetch Stripe products
-  useEffect(() => {
-    const fetchStripeProducts = async () => {
-      setProductsLoading(true);
-      try {
-        const response = await fetch("/api/stripe/products");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.products && data.products.length > 0) {
-            setStripeProducts(data.products);
-            // If planParam is set and matches a product, select it
-            if (planParam && planParam !== "free") {
-              const matchingProduct = data.products.find((p: any) => p.plan === planParam);
-              if (matchingProduct) {
-                setSelectedPlan(matchingProduct.priceId);
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching Stripe products:", error);
-      } finally {
-        setProductsLoading(false);
-      }
-    };
-
-    fetchStripeProducts();
-  }, [planParam]);
-
-  // Fetch available payment methods from Stripe
-  useEffect(() => {
-    const fetchPaymentMethods = async () => {
-      try {
-        const response = await fetch("/api/stripe/payment/methods");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.methods && data.methods.length > 0) {
-            setAvailablePaymentMethods(data.methods);
-            // Set default to first available method
-            if (data.methods[0]?.id) {
-              setSelectedPaymentMethod(data.methods[0].id);
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching Stripe payment methods:", error);
-        // Keep default methods on error
-        setAvailablePaymentMethods([
-          { id: 'card', description: 'Creditcard / Debitcard', available: true },
-          { id: 'paypal', description: 'PayPal', available: true },
-        ]);
-        setSelectedPaymentMethod("card");
-      }
-    };
-
-    fetchPaymentMethods();
-  }, []);
 
   // Validate discount code when it changes and a paid plan is selected
   useEffect(() => {
@@ -362,60 +289,10 @@ function RegisterContent() {
         ? sessionStorage.getItem("pending_slug")!
         : cleanedSlug.trim().toLowerCase();
 
-      // Handle paid plans - create Stripe Checkout Session
-      if (selectedPlan !== "free" && !fromPayment) {
-        setIsProcessingPayment(true);
-        
-        // Get price ID from selected product
-        let priceId: string | undefined;
-        
-        if (selectedPlan.startsWith("price_")) {
-          priceId = selectedPlan;
-        } else {
-          const selectedProduct = stripeProducts.find(p => p.plan === selectedPlan);
-          if (selectedProduct) {
-            priceId = selectedProduct.priceId;
-          }
-        }
-
-        if (!priceId) {
-          setError("Selecteer een geldig abonnement");
-          setIsLoading(false);
-          setIsProcessingPayment(false);
-          return;
-        }
-
-        // Create Stripe Checkout Session
-        const checkoutResponse = await fetch("/api/stripe/checkout/create", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email,
-            priceId,
-            slug: finalSlug,
-            password,
-          }),
-        });
-
-        const checkoutData = await checkoutResponse.json();
-
-        if (!checkoutResponse.ok) {
-          setError(checkoutData.error || "Kon checkout session niet aanmaken");
-          setIsLoading(false);
-          setIsProcessingPayment(false);
-          return;
-        }
-
-        // Redirect to Stripe Checkout
-        if (checkoutData.url) {
-          window.location.href = checkoutData.url;
-        } else {
-          setError("Kon checkout link niet genereren");
-          setIsLoading(false);
-          setIsProcessingPayment(false);
-        }
+      // Only free plan is supported for now
+      if (selectedPlan !== "free") {
+        setError("Alleen het gratis plan is momenteel beschikbaar");
+        setIsLoading(false);
         return;
       }
 
