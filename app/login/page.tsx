@@ -22,30 +22,45 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const supabase = createClientClient();
-
-      // Sign in with Supabase Auth (client-side)
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.toLowerCase(),
-        password,
+      // Use API route for login to avoid client-side fetch issues
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.toLowerCase(),
+          password,
+        }),
       });
 
-      if (authError || !authData.user) {
-        setError(authError?.message || "Invalid email or password");
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Invalid email or password");
         setIsLoading(false);
         return;
       }
 
-      // Get user info from API to get role
-      const response = await fetch(`/api/user?email=${encodeURIComponent(email)}`);
-      const userData = await response.json();
-
-      // Store user info in localStorage for backward compatibility
-      if (userData.user) {
-        localStorage.setItem("lynqit_user", JSON.stringify(userData.user));
+      // Store user info in localStorage
+      if (data.user) {
+        localStorage.setItem("lynqit_user", JSON.stringify(data.user));
       }
 
-      // Supabase session is automatically stored by the client
+      // Store session in Supabase client if available
+      if (data.session) {
+        try {
+          const supabase = createClientClient();
+          await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
+        } catch (sessionError) {
+          console.warn("Could not set session in client:", sessionError);
+          // Continue anyway - user can still be logged in via API
+        }
+      }
+
       // Redirect to dashboard
       router.push("/dashboard");
     } catch (err: any) {
