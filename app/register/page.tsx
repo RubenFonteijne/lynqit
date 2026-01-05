@@ -362,97 +362,57 @@ function RegisterContent() {
         ? sessionStorage.getItem("pending_slug")!
         : cleanedSlug.trim().toLowerCase();
 
-      // Handle paid plans FIRST - create payment, account will be created after payment
+      // Handle paid plans - create Stripe Checkout Session
       if (selectedPlan !== "free" && !fromPayment) {
         setIsProcessingPayment(true);
         
-        // Create payment for subscription WITHOUT creating account first
-        // Account will be created in webhook after successful payment
-        // Always use Stripe for /register
-        // Get plan name and price ID from selected product
-        let planName = selectedPlan;
-        let priceIdToSend: string | undefined;
+        // Get price ID from selected product
+        let priceId: string | undefined;
         
-        // If selectedPlan is a priceId (starts with "price_"), extract the product info
-        if (selectedPlan !== "free" && selectedPlan.startsWith("price_")) {
-          const selectedProduct = stripeProducts.find(p => p.priceId === selectedPlan);
-          if (!selectedProduct) {
-            setError("Selecteer een geldig abonnement");
-            setIsLoading(false);
-            setIsProcessingPayment(false);
-            return;
-          }
-          planName = selectedProduct.plan;
-          priceIdToSend = selectedProduct.priceId;
-        } else if (selectedPlan !== "free") {
-          // Fallback: if it's not a priceId, assume it's a plan name and try to find the product
+        if (selectedPlan.startsWith("price_")) {
+          priceId = selectedPlan;
+        } else {
           const selectedProduct = stripeProducts.find(p => p.plan === selectedPlan);
           if (selectedProduct) {
-            priceIdToSend = selectedProduct.priceId;
+            priceId = selectedProduct.priceId;
           }
         }
 
-        // Ensure we have a priceId before proceeding
-        if (!priceIdToSend) {
+        if (!priceId) {
           setError("Selecteer een geldig abonnement");
           setIsLoading(false);
           setIsProcessingPayment(false);
           return;
         }
 
-        const paymentResponse = await fetch("/api/stripe/payment/create", {
+        // Create Stripe Checkout Session
+        const checkoutResponse = await fetch("/api/stripe/checkout/create", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             email,
-            plan: planName, // Use plan name (start, pro, etc.)
-            priceId: priceIdToSend, // Use Stripe price ID
-            paymentMethod: selectedPaymentMethod,
-            discountCode: discountCode.trim() || undefined,
-            slug: finalSlug, // Include slug for account creation after payment
-            password: password, // Include password for account creation after payment
-            createAccount: true, // Flag to indicate this is a new registration
+            priceId,
+            slug: finalSlug,
+            password,
           }),
         });
 
-        const paymentData = await paymentResponse.json();
+        const checkoutData = await checkoutResponse.json();
 
-        if (!paymentResponse.ok) {
-          setError(paymentData.error || "Kon betaling niet aanmaken");
+        if (!checkoutResponse.ok) {
+          setError(checkoutData.error || "Kon checkout session niet aanmaken");
           setIsLoading(false);
           setIsProcessingPayment(false);
           return;
         }
 
-        // Redirect to embedded Stripe payment page
-        // After successful payment, webhook will create account and page
-        if (paymentData.clientSecret && paymentData.subscriptionId) {
-          // Store slug in sessionStorage for payment success page
-          sessionStorage.setItem("pending_slug", finalSlug);
-          
-          // Build URL with all necessary parameters
-          const paymentUrl = new URL("/payment/stripe", window.location.origin);
-          paymentUrl.searchParams.set("email", email);
-          paymentUrl.searchParams.set("plan", planName);
-          paymentUrl.searchParams.set("priceId", priceIdToSend!);
-          paymentUrl.searchParams.set("paymentMethod", selectedPaymentMethod);
-          paymentUrl.searchParams.set("clientSecret", paymentData.clientSecret);
-          paymentUrl.searchParams.set("subscriptionId", paymentData.subscriptionId);
-          if (discountCode.trim()) {
-            paymentUrl.searchParams.set("discountCode", discountCode.trim());
-          }
-          paymentUrl.searchParams.set("slug", finalSlug);
-          paymentUrl.searchParams.set("password", password);
-          
-          router.push(paymentUrl.toString());
-        } else if (paymentData.paymentUrl) {
-          // Fallback: if paymentUrl is returned (old checkout session), use it
-          sessionStorage.setItem("pending_slug", finalSlug);
-          window.location.href = paymentData.paymentUrl;
+        // Redirect to Stripe Checkout
+        if (checkoutData.url) {
+          window.location.href = checkoutData.url;
         } else {
-          setError("Kon betalingslink niet genereren");
+          setError("Kon checkout link niet genereren");
           setIsLoading(false);
           setIsProcessingPayment(false);
         }
