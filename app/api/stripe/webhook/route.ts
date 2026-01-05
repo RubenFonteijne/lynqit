@@ -225,16 +225,26 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     });
   } else {
     // Create new page
-    await createPage({
-      userId: user.id,
-      slug: slug,
-      title: slug,
-      subscriptionPlan: plan as any,
-      stripeSubscriptionId: subscriptionId,
-      subscriptionStatus: subscriptionStatus,
-      subscriptionStartDate: new Date(subscription.current_period_start * 1000).toISOString(),
-      subscriptionEndDate: new Date(subscription.current_period_end * 1000).toISOString(),
-    });
+    await createPage(
+      user.id,
+      slug,
+      {
+        subscriptionPlan: plan as any,
+        subscriptionStatus: subscriptionStatus,
+      }
+    );
+    
+    // Update page with Stripe subscription details
+    const newPage = pages.find(p => p.userId === user.id && p.slug === slug) || 
+                    (await getPages()).find(p => p.userId === user.id && p.slug === slug);
+    
+    if (newPage) {
+      await updatePage(newPage.id, {
+        stripeSubscriptionId: subscriptionId,
+        subscriptionStartDate: new Date(subscription.current_period_start * 1000).toISOString(),
+        subscriptionEndDate: new Date(subscription.current_period_end * 1000).toISOString(),
+      });
+    }
   }
 
   console.log("Checkout completed for:", email, "subscription:", subscriptionId);
