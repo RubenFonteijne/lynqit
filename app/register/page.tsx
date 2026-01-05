@@ -720,9 +720,13 @@ function RegisterContent() {
                     {availablePaymentMethods.filter(m => m.available).map((method) => {
                       const methodId = method.id.toLowerCase();
                       const isSelected = selectedPaymentMethod === methodId;
-                      const iconClass = methodId === 'creditcard' ? 'fas fa-credit-card' :
+                      const iconClass = methodId === 'card' || methodId === 'creditcard' ? 'fas fa-credit-card' :
                                        methodId === 'paypal' ? 'fab fa-paypal' :
-                                       methodId === 'sepa' || methodId === 'directdebit' ? 'fas fa-university' :
+                                       methodId === 'sepa_debit' || methodId === 'sepa' || methodId === 'directdebit' ? 'fas fa-university' :
+                                       methodId === 'ideal' ? 'fas fa-building' :
+                                       methodId === 'bancontact' ? 'fas fa-credit-card' :
+                                       methodId === 'sofort' ? 'fas fa-bank' :
+                                       methodId === 'giropay' ? 'fas fa-bank' :
                                        'fas fa-money-bill';
                       
                       return (
