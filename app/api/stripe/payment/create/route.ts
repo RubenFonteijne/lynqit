@@ -191,8 +191,6 @@ export async function POST(request: NextRequest) {
           slug: isNewRegistration ? slug : undefined,
           password: isNewRegistration ? password : undefined,
           createAccount: isNewRegistration ? "true" : undefined,
-          discountCode: discountCode || undefined,
-          discountCodeId: discountCodeId || undefined,
         },
       },
     };
