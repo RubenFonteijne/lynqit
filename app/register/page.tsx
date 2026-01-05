@@ -224,6 +224,7 @@ function RegisterContent() {
         priceExBTW: 0,
         priceWithBTW: 0,
         discount: 0,
+        discountAmount: 0,
         finalPriceExBTW: 0,
         finalPriceWithBTW: 0,
         selectedProduct: null,
