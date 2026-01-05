@@ -110,14 +110,17 @@ export async function POST(request: NextRequest) {
       }
       
       // Optional: validate in our database for tracking (don't fail if not found)
-      try {
-        const validation = await validateDiscountCode(discountCode, plan as "start" | "pro");
-        if (validation.valid && validation.discountCode) {
-          discountCodeId = validation.discountCode.id;
+      // Only validate if plan is "start" or "pro" (our database plans)
+      if (plan === "start" || plan === "pro") {
+        try {
+          const validation = await validateDiscountCode(discountCode, plan as "start" | "pro");
+          if (validation.valid && validation.discountCode) {
+            discountCodeId = validation.discountCode.id;
+          }
+        } catch (error) {
+          // Ignore database validation errors, Stripe is the source of truth
+          console.log("Discount code not found in database, but checking Stripe...");
         }
-      } catch (error) {
-        // Ignore database validation errors, Stripe is the source of truth
-        console.log("Discount code not found in database, but checking Stripe...");
       }
       
       // If we have a discount code but no Stripe coupon found, return error
@@ -176,7 +179,17 @@ export async function POST(request: NextRequest) {
     if (!finalPriceId) {
       // Fallback: create or get product and price (for backward compatibility)
       // Use original price without discount - Stripe will apply the coupon
-      const basePriceExBTW = SUBSCRIPTION_PRICES[plan as "start" | "pro"];
+      // Only use SUBSCRIPTION_PRICES if plan is "start" or "pro", otherwise we need priceId
+      let basePriceExBTW: number;
+      if (plan === "start" || plan === "pro") {
+        basePriceExBTW = SUBSCRIPTION_PRICES[plan as "start" | "pro"];
+      } else {
+        // If plan is not start/pro, we must have priceId - return error
+        return NextResponse.json(
+          { error: "Price ID is required for this plan" },
+          { status: 400 }
+        );
+      }
       const basePriceWithBTW = calculatePriceWithBTW(basePriceExBTW);
       const amountInCents = Math.round(basePriceWithBTW * 100);
       
