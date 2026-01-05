@@ -900,11 +900,11 @@ function RegisterContent() {
                       <span>Abonnement ({pricing.selectedProduct ? pricing.selectedProduct.plan.charAt(0).toUpperCase() + pricing.selectedProduct.plan.slice(1) : selectedPlan})</span>
                       <span>€{pricing.priceWithBTW.toFixed(2)}/maand</span>
                     </div>
-                    {(pricing.discount > 0 || pricing.discountAmount > 0) && discountCodeValid && (
+                    {(pricing.discount > 0 || (pricing.discountAmount && pricing.discountAmount > 0)) && discountCodeValid && (
                       <>
                         <div className="flex justify-between text-green-600 dark:text-green-400">
                           <span>Korting</span>
-                          <span>-€{pricing.discountAmount > 0 ? pricing.discountAmount.toFixed(2) : calculatePriceWithBTW(pricing.discount).toFixed(2)}</span>
+                          <span>-€{(pricing.discountAmount && pricing.discountAmount > 0 ? pricing.discountAmount : calculatePriceWithBTW(pricing.discount)).toFixed(2)}</span>
                         </div>
                         <div className="border-t border-zinc-300 dark:border-zinc-700 pt-2 mt-2">
                           <div className="flex justify-between font-semibold text-zinc-700 dark:text-zinc-300">
@@ -914,7 +914,7 @@ function RegisterContent() {
                         </div>
                       </>
                     )}
-                    {pricing.discount === 0 && pricing.discountAmount === 0 && (
+                    {pricing.discount === 0 && (!pricing.discountAmount || pricing.discountAmount === 0) && (
                       <div className="border-t border-zinc-300 dark:border-zinc-700 pt-2 mt-2">
                         <div className="flex justify-between font-semibold text-zinc-700 dark:text-zinc-300">
                           <span>Totaal per maand</span>
