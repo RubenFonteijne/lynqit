@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Use provided priceId if available, otherwise create/get product and price
-    let finalPriceId: string;
+    let finalPriceId: string | undefined;
     
     if (priceId && typeof priceId === 'string') {
       // Verify the price exists and is active
