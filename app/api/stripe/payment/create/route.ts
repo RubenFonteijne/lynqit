@@ -3,13 +3,12 @@ import { getStripeClient } from "@/lib/stripe";
 import { getUserByEmail, updateUser } from "@/lib/users";
 import { getPageById, updatePage, createPage } from "@/lib/lynqit-pages";
 import type { SubscriptionPlan } from "@/lib/lynqit-pages";
-import { validateDiscountCode } from "@/lib/discount-codes";
-import { SUBSCRIPTION_PRICES, calculatePriceWithBTW, calculatePriceWithDiscount } from "@/lib/pricing";
+import { SUBSCRIPTION_PRICES, calculatePriceWithBTW } from "@/lib/pricing";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, plan, pageId, priceId, paymentMethod, discountCode, slug, password, createAccount } = body;
+    const { email, plan, pageId, priceId, paymentMethod, slug, password, createAccount } = body;
 
     // For new registrations (createAccount = true), we don't need existing user/page
     const isNewRegistration = createAccount === true;
@@ -65,72 +64,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate discount code if provided and try to find Stripe coupon
-    let stripeCouponId: string | undefined;
-    let stripePromotionCodeId: string | undefined;
-    let discountCodeId: string | undefined;
-    
-    if (discountCode) {
-      const stripe = await getStripeClient();
-      const codeToSearch = discountCode.trim().toUpperCase();
-      
-      // Try to find the promotion code in Stripe first (most common case)
-      try {
-        const promotionCodes = await stripe.promotionCodes.list({
-          active: true,
-          limit: 100,
-        });
-        
-        // Search for exact match (case-insensitive)
-        const matchingPromoCode = promotionCodes.data.find(pc => 
-          pc.code.toUpperCase() === codeToSearch
-        );
-        
-        if (matchingPromoCode) {
-          stripeCouponId = matchingPromoCode.coupon.id;
-          stripePromotionCodeId = matchingPromoCode.id;
-          console.log(`Found Stripe promotion code: ${matchingPromoCode.code} -> coupon: ${stripeCouponId}`);
-        } else {
-          // If promotion code not found, try to find coupon directly by ID or name
-          const coupons = await stripe.coupons.list({
-            limit: 100,
-          });
-          const matchingCoupon = coupons.data.find(c => 
-            c.id.toUpperCase() === codeToSearch || 
-            c.name?.toUpperCase() === codeToSearch
-          );
-          if (matchingCoupon) {
-            stripeCouponId = matchingCoupon.id;
-            console.log(`Found Stripe coupon: ${matchingCoupon.id}`);
-          }
-        }
-      } catch (error) {
-        console.error("Error looking up Stripe coupon:", error);
-        // Continue without Stripe coupon if lookup fails
-      }
-      
-      // Optional: validate in our database for tracking (don't fail if not found)
-      // Only validate if plan is "start" or "pro" (our database plans)
-      if (plan === "start" || plan === "pro") {
-        try {
-          const validation = await validateDiscountCode(discountCode, plan as "start" | "pro");
-          if (validation.valid && validation.discountCode) {
-            discountCodeId = validation.discountCode.id;
-          }
-        } catch (error) {
-          // Ignore database validation errors, Stripe is the source of truth
-          console.log("Discount code not found in database, but checking Stripe...");
-        }
-      }
-      
-      // If we have a discount code but no Stripe coupon found, return error
-      if (!stripeCouponId) {
-        return NextResponse.json(
-          { error: "Kortingscode niet gevonden. Controleer of de code correct is." },
-          { status: 400 }
-        );
-      }
-    }
+    // Discount codes have been removed - no validation needed
 
     const stripe = await getStripeClient();
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
@@ -247,8 +181,6 @@ export async function POST(request: NextRequest) {
         slug: isNewRegistration ? slug : undefined,
         password: isNewRegistration ? password : undefined,
         createAccount: isNewRegistration ? "true" : undefined,
-        discountCode: discountCode || undefined,
-        discountCodeId: discountCodeId || undefined,
       },
       subscription_data: {
         metadata: {
@@ -265,19 +197,6 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    // Apply Stripe coupon if available
-    if (stripeCouponId) {
-      // Use promotion code if available, otherwise use coupon directly
-      if (stripePromotionCodeId) {
-        checkoutSessionConfig.discounts = [{
-          promotion_code: stripePromotionCodeId,
-        }];
-      } else {
-        checkoutSessionConfig.discounts = [{
-          coupon: stripeCouponId,
-        }];
-      }
-    }
 
     // Instead of creating a checkout session, create a subscription with payment intent
     // This allows us to use Stripe Elements for embedded payment
@@ -300,21 +219,9 @@ export async function POST(request: NextRequest) {
         slug: isNewRegistration ? slug : undefined,
         password: isNewRegistration ? password : undefined,
         createAccount: isNewRegistration ? "true" : undefined,
-        discountCode: discountCode || undefined,
-        discountCodeId: discountCodeId || undefined,
       },
     };
 
-    // Apply coupon if available
-    if (stripeCouponId) {
-      if (stripePromotionCodeId) {
-        subscriptionData.discounts = [{
-          promotion_code: stripePromotionCodeId,
-        }];
-      } else {
-        subscriptionData.coupon = stripeCouponId;
-      }
-    }
 
     const subscription = await stripe.subscriptions.create(subscriptionData);
 
