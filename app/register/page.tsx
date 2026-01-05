@@ -126,65 +126,28 @@ function RegisterContent() {
         setDiscountCodeMessage("");
 
         try {
-          // First check Stripe (source of truth)
-          const stripeResponse = await fetch(
-            `/api/stripe/coupon/validate?code=${encodeURIComponent(discountCode.trim())}`
+          // Check our database for discount codes
+          const selectedProduct = stripeProducts.find(p => p.priceId === selectedPlan);
+          const planName = selectedProduct?.plan || selectedPlan;
+          
+          const dbResponse = await fetch(
+            `/api/discount-codes/validate?code=${encodeURIComponent(discountCode.trim())}&plan=${planName}`
           );
-          const stripeData = await stripeResponse.json();
+          const dbData = await dbResponse.json();
 
-          if (stripeData.valid && stripeData.coupon) {
+          if (dbData.valid && dbData.discountCode) {
             setDiscountCodeValid(true);
-            const coupon = stripeData.coupon;
-            setDiscountCodeData(coupon);
-            
-            // Format discount message based on Stripe coupon
-            let discountText = "";
-            if (coupon.percentOff) {
-              discountText = `${coupon.percentOff}%`;
-            } else if (coupon.amountOff) {
-              discountText = `€${(coupon.amountOff / 100).toFixed(2)}`;
-            }
-            
-            const durationText = coupon.duration === "forever" 
-              ? "voor altijd" 
-              : coupon.duration === "once" 
-              ? "eenmalig" 
-              : "elke maand";
-            
-            setDiscountCodeMessage(`Kortingscode geldig: ${discountText} korting ${durationText}`);
+            const discount = dbData.discountCode;
+            setDiscountCodeData(discount);
+            const discountText = discount.isPercentage
+              ? `${discount.discountValue}%`
+              : `€${discount.discountValue.toFixed(2)}`;
+            const typeText = discount.discountType === "first_payment" ? "eerste betaling" : "elke maand";
+            setDiscountCodeMessage(`Kortingscode geldig: ${discountText} korting op ${typeText}`);
           } else {
-            // If not found in Stripe, check our database (optional, for tracking)
-            try {
-              const selectedProduct = stripeProducts.find(p => p.priceId === selectedPlan);
-              const planName = selectedProduct?.plan || selectedPlan;
-              
-              const dbResponse = await fetch(
-                `/api/discount-codes/validate?code=${encodeURIComponent(discountCode.trim())}&plan=${planName}`
-              );
-              const dbData = await dbResponse.json();
-
-              if (dbData.valid) {
-                setDiscountCodeValid(true);
-                if (dbData.discountCode) {
-                  const discount = dbData.discountCode;
-                  setDiscountCodeData(discount);
-                  const discountText = discount.isPercentage
-                    ? `${discount.discountValue}%`
-                    : `€${discount.discountValue.toFixed(2)}`;
-                  const typeText = discount.discountType === "first_payment" ? "eerste betaling" : "elke maand";
-                  setDiscountCodeMessage(`Kortingscode geldig: ${discountText} korting op ${typeText}`);
-                }
-              } else {
-                setDiscountCodeValid(false);
-                setDiscountCodeData(null);
-                setDiscountCodeMessage(stripeData.error || dbData.error || "Ongeldige kortingscode");
-              }
-            } catch (dbError) {
-              // If database check fails, use Stripe result
-              setDiscountCodeValid(false);
-              setDiscountCodeData(null);
-              setDiscountCodeMessage(stripeData.error || "Ongeldige kortingscode");
-            }
+            setDiscountCodeValid(false);
+            setDiscountCodeData(null);
+            setDiscountCodeMessage(dbData.error || "Ongeldige kortingscode");
           }
         } catch (error) {
           setDiscountCodeValid(false);
