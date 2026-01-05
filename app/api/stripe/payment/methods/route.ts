@@ -5,27 +5,29 @@ export async function GET(request: NextRequest) {
   try {
     const stripe = await getStripeClient();
     
-    // Get available payment methods from Stripe
-    // Stripe supports many payment methods, but for subscriptions we focus on:
-    // card, paypal, sepa_debit, etc.
-    const paymentMethods = await stripe.paymentMethods.list({
-      limit: 100, // Get all available payment methods
-    });
-
-    // Get payment method types that Stripe supports
-    // For subscriptions, we can use: card, paypal, sepa_debit, etc.
-    // We'll return the types that Stripe supports for subscriptions
+    // Get account information to check available payment methods
+    let account;
+    try {
+      account = await stripe.accounts.retrieve();
+    } catch (error) {
+      // If account retrieval fails, we'll use default methods
+      console.warn("Could not retrieve Stripe account, using default payment methods");
+    }
+    
+    // Get payment method types that Stripe supports for subscriptions in checkout sessions
+    // These are the payment methods that can be used in checkout sessions with mode: 'subscription'
+    // Stripe will automatically filter these based on account settings and customer location
     const subscriptionSupportedTypes = [
-      'card',
-      'paypal',
-      'sepa_debit',
-      'ideal',
-      'bancontact',
-      'sofort',
-      'giropay',
+      'card',           // Always available
+      'paypal',         // Available for subscriptions
+      'sepa_debit',     // SEPA Direct Debit for EU
+      'ideal',          // iDEAL for Netherlands
+      'bancontact',     // Bancontact for Belgium
+      'sofort',         // Sofort for Germany/Austria
+      'giropay',        // Giropay for Germany
     ];
 
-    // Map to a simpler format
+    // Map to user-friendly descriptions
     const methodDescriptions: Record<string, string> = {
       'card': 'Creditcard / Debitcard',
       'paypal': 'PayPal',
@@ -36,7 +38,9 @@ export async function GET(request: NextRequest) {
       'giropay': 'Giropay',
     };
 
-    // Return available payment method types for subscriptions
+    // Return all subscription-supported payment methods
+    // Stripe will automatically filter which ones are available in the checkout session
+    // based on account settings, customer location, and payment method availability
     const availableMethods = subscriptionSupportedTypes.map(type => ({
       id: type,
       description: methodDescriptions[type] || type,
@@ -48,7 +52,8 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error fetching Stripe payment methods:", error);
-    // Return default methods on error
+    
+    // Return default methods on error (these are always available)
     return NextResponse.json({
       methods: [
         { id: 'card', description: 'Creditcard / Debitcard', available: true },
