@@ -27,12 +27,11 @@ function RegisterContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [slug, setSlug] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<"free" | "start" | "pro">(planParam || "free");
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("creditcard");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("card");
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<Array<{ id: string; description: string; available: boolean }>>([
-    { id: 'creditcard', description: 'Creditcard', available: true },
+    { id: 'card', description: 'Creditcard / Debitcard', available: true },
     { id: 'paypal', description: 'PayPal', available: true },
   ]);
-  const [paymentProvider, setPaymentProvider] = useState<"mollie" | "stripe">("mollie");
   const [currentStep, setCurrentStep] = useState(1);
   const [discountCode, setDiscountCode] = useState("");
   const [discountCodeValidating, setDiscountCodeValidating] = useState(false);
@@ -49,50 +48,26 @@ function RegisterContent() {
     }
   }, [prefillEmail]);
 
-  // Fetch payment provider setting
+  // Fetch available payment methods from Stripe
   useEffect(() => {
-    const fetchPaymentProvider = async () => {
+    const fetchPaymentMethods = async () => {
       try {
-        const response = await fetch("/api/payment/provider");
+        const response = await fetch("/api/stripe/payment/methods");
         if (response.ok) {
           const data = await response.json();
-          if (data.provider) {
-            setPaymentProvider(data.provider);
+          if (data.methods && data.methods.length > 0) {
+            setAvailablePaymentMethods(data.methods);
+            // Set default to first available method
+            if (data.methods[0]?.id) {
+              setSelectedPaymentMethod(data.methods[0].id);
+            }
           }
         }
       } catch (error) {
-        console.error("Error fetching payment provider:", error);
-        // Default to mollie on error
-      }
-    };
-
-    fetchPaymentProvider();
-  }, []);
-
-  // Fetch available payment methods based on provider
-  useEffect(() => {
-    const fetchPaymentMethods = async () => {
-      if (paymentProvider === "mollie") {
-        try {
-          const response = await fetch("/api/payment/methods");
-          if (response.ok) {
-            const data = await response.json();
-            if (data.methods && data.methods.length > 0) {
-              setAvailablePaymentMethods(data.methods);
-              // Set default to first available method
-              if (data.methods[0]?.id) {
-                setSelectedPaymentMethod(data.methods[0].id);
-              }
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching payment methods:", error);
-          // Keep default methods on error
-        }
-      } else {
-        // For Stripe, we always support card and PayPal
+        console.error("Error fetching Stripe payment methods:", error);
+        // Keep default methods on error
         setAvailablePaymentMethods([
-          { id: 'card', description: 'Creditcard', available: true },
+          { id: 'card', description: 'Creditcard / Debitcard', available: true },
           { id: 'paypal', description: 'PayPal', available: true },
         ]);
         setSelectedPaymentMethod("card");
@@ -100,7 +75,7 @@ function RegisterContent() {
     };
 
     fetchPaymentMethods();
-  }, [paymentProvider]);
+  }, []);
 
   // Validate discount code when it changes and a paid plan is selected
   useEffect(() => {
@@ -313,12 +288,8 @@ function RegisterContent() {
         
         // Create payment for subscription WITHOUT creating account first
         // Account will be created in webhook after successful payment
-        // Use the appropriate endpoint based on payment provider
-        const paymentEndpoint = paymentProvider === "stripe" 
-          ? "/api/stripe/payment/create"
-          : "/api/payment/create";
-        
-        const paymentResponse = await fetch(paymentEndpoint, {
+        // Always use Stripe for /register
+        const paymentResponse = await fetch("/api/stripe/payment/create", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

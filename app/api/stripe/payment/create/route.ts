@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripeClient } from "@/lib/stripe";
-import { SUBSCRIPTION_PRICES, calculatePriceWithBTW } from "@/lib/stripe";
 import { getUserByEmail, updateUser } from "@/lib/users";
 import { getPageById, updatePage, createPage } from "@/lib/lynqit-pages";
 import type { SubscriptionPlan } from "@/lib/lynqit-pages";
 import { validateDiscountCode } from "@/lib/discount-codes";
-import { calculatePriceWithDiscount } from "@/lib/pricing";
+import { SUBSCRIPTION_PRICES, calculatePriceWithBTW, calculatePriceWithDiscount } from "@/lib/pricing";
 
 export async function POST(request: NextRequest) {
   try {
@@ -139,7 +138,7 @@ export async function POST(request: NextRequest) {
       }],
       payment_behavior: 'default_incomplete',
       payment_settings: {
-        payment_method_types: paymentMethod === 'paypal' ? ['paypal'] : ['card'],
+        payment_method_types: [paymentMethod],
         save_default_payment_method: 'on_subscription',
       },
       metadata: {
@@ -160,7 +159,7 @@ export async function POST(request: NextRequest) {
       amount: amountInCents,
       currency: 'eur',
       customer: customerId,
-      payment_method_types: paymentMethod === 'paypal' ? ['paypal'] : ['card'],
+      payment_method_types: [paymentMethod],
       metadata: {
         email,
         plan,
@@ -185,7 +184,7 @@ export async function POST(request: NextRequest) {
     // or create a checkout session
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
-      payment_method_types: paymentMethod === 'paypal' ? ['paypal'] : ['card'],
+      payment_method_types: [paymentMethod],
       line_items: [{
         price_data: {
           currency: 'eur',
