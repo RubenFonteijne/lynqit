@@ -177,34 +177,15 @@ export default function AccountPage() {
     try {
       // Stripe subscriptions are automatically synced via webhooks
       // This function is kept for UI consistency but doesn't need to do anything
-      setIsSyncingSubscriptions(false);
-      return;
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: user.email }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Refresh pages to get updated dates
-        if (accessToken) {
-          await fetchPages(accessToken);
-        }
-        setSubscriptionMessage({
-          type: "success",
-          text: `Abonnementen gesynchroniseerd. ${data.updatedPages.length} abonnement(en) bijgewerkt.`,
-        });
-        setTimeout(() => setSubscriptionMessage(null), 5000);
-      } else {
-        const errorData = await response.json();
-        setSubscriptionMessage({
-          type: "error",
-          text: errorData.error || "Fout bij synchroniseren van abonnementen",
-        });
-        setTimeout(() => setSubscriptionMessage(null), 5000);
+      // Just refresh the pages to show any updates
+      if (accessToken) {
+        await fetchPages(accessToken);
       }
+      setSubscriptionMessage({
+        type: "success",
+        text: "Abonnementen bijgewerkt.",
+      });
+      setTimeout(() => setSubscriptionMessage(null), 5000);
     } catch (error) {
       console.error("Error syncing subscriptions:", error);
       setSubscriptionMessage({
