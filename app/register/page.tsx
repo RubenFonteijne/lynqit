@@ -167,7 +167,7 @@ function RegisterContent() {
       setDiscountCodeMessage("");
       setDiscountCodeData(null);
     }
-  }, [discountCode, selectedPlan]);
+  }, [discountCode, selectedPlan, stripeProducts]);
 
   // Calculate pricing with discount using Stripe product data
   const calculatePricing = () => {
