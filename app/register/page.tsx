@@ -87,11 +87,41 @@ function RegisterContent() {
     return true;
   };
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     setError("");
-    if (validateStep1()) {
-      setCurrentStep(2);
+    
+    // Validate email first
+    if (!email || !email.trim()) {
+      setError("Email is verplicht");
+      return;
     }
+
+    // Validate other step 1 fields
+    if (!validateStep1()) {
+      return;
+    }
+
+    // Check if account already exists
+    setIsLoading(true);
+    try {
+      const checkResponse = await fetch(`/api/auth/check?email=${encodeURIComponent(email.toLowerCase())}`);
+      if (checkResponse.ok) {
+        const checkData = await checkResponse.json();
+        if (checkData.exists) {
+          setError("Een account met dit email adres bestaat al. Log in of gebruik een ander email adres.");
+          setIsLoading(false);
+          return;
+        }
+      }
+    } catch (err) {
+      // If check fails, continue anyway (don't block registration)
+      console.error("Error checking if user exists:", err);
+    } finally {
+      setIsLoading(false);
+    }
+
+    // If validation passes and account doesn't exist, proceed to step 2
+    setCurrentStep(2);
   };
 
   const handlePreviousStep = () => {
@@ -450,9 +480,10 @@ function RegisterContent() {
                   <button
                     type="button"
                     onClick={handleNextStep}
-                    className="w-full py-3 px-4 rounded-lg bg-[#2E47FF] text-white font-medium hover:bg-[#1E37E6] focus:outline-none focus:ring-2 focus:ring-[#2E47FF] focus:ring-offset-2 transition-colors"
+                    disabled={isLoading}
+                    className="w-full py-3 px-4 rounded-lg bg-[#2E47FF] text-white font-medium hover:bg-[#1E37E6] focus:outline-none focus:ring-2 focus:ring-[#2E47FF] focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Volgende
+                    {isLoading ? "Controleren..." : "Volgende"}
                   </button>
                 </>
               )}
