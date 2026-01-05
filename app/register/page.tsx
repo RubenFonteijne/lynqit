@@ -392,6 +392,14 @@ function RegisterContent() {
           }
         }
 
+        // Ensure we have a priceId before proceeding
+        if (!priceIdToSend) {
+          setError("Selecteer een geldig abonnement");
+          setIsLoading(false);
+          setIsProcessingPayment(false);
+          return;
+        }
+
         const paymentResponse = await fetch("/api/stripe/payment/create", {
           method: "POST",
           headers: {
@@ -428,7 +436,7 @@ function RegisterContent() {
           const paymentUrl = new URL("/payment/stripe", window.location.origin);
           paymentUrl.searchParams.set("email", email);
           paymentUrl.searchParams.set("plan", planName);
-          paymentUrl.searchParams.set("priceId", priceIdToSend);
+          paymentUrl.searchParams.set("priceId", priceIdToSend!);
           paymentUrl.searchParams.set("paymentMethod", selectedPaymentMethod);
           paymentUrl.searchParams.set("clientSecret", paymentData.clientSecret);
           paymentUrl.searchParams.set("subscriptionId", paymentData.subscriptionId);
