@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
     let finalPriceExBTW: number = SUBSCRIPTION_PRICES[plan as "start" | "pro"];
     let discountCodeId: string | undefined;
     let appliedDiscount = false;
+    let recurringDiscountApplied = false;
 
     if (discountCode) {
       const validation = await validateDiscountCode(discountCode, plan as "start" | "pro");
@@ -80,6 +81,13 @@ export async function POST(request: NextRequest) {
             validation.discountCode.isPercentage
           );
           appliedDiscount = true;
+        } else if (validation.discountCode.discountType === "recurring") {
+          finalPriceExBTW = calculatePriceWithDiscount(
+            finalPriceExBTW,
+            validation.discountCode.discountValue,
+            validation.discountCode.isPercentage
+          );
+          recurringDiscountApplied = true;
         }
       } else {
         return NextResponse.json(
@@ -117,91 +125,58 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create Stripe subscription
     // Stripe uses cents, so multiply by 100
     const amountInCents = Math.round(priceWithBTW * 100);
     
-    const subscription = await stripe.subscriptions.create({
-      customer: customerId,
-      items: [{
-        price_data: {
-          currency: 'eur',
-          product_data: {
-            name: `Lynqit ${plan} subscription`,
-            description: `Monthly subscription for Lynqit ${plan} plan`,
-          },
-          recurring: {
-            interval: 'month',
-          },
-          unit_amount: amountInCents,
-        },
-      }],
-      payment_behavior: 'default_incomplete',
-      payment_settings: {
-        payment_method_types: [paymentMethod],
-        save_default_payment_method: 'on_subscription',
-      },
-      metadata: {
-        email,
-        plan,
-        pageId: pageId || undefined,
-        userId: user?.email || email,
-        slug: isNewRegistration ? slug : undefined,
-        password: isNewRegistration ? password : undefined,
-        createAccount: isNewRegistration ? "true" : undefined,
-        discountCodeId: discountCodeId || undefined,
-        appliedDiscount: appliedDiscount ? "true" : undefined,
-      },
+    // Create or get product first
+    let product = await stripe.products.search({
+      query: `name:'Lynqit ${plan}' AND active:'true'`,
+      limit: 1,
     });
 
-    // Create payment intent for first payment
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountInCents,
-      currency: 'eur',
-      customer: customerId,
-      payment_method_types: [paymentMethod],
-      metadata: {
-        email,
-        plan,
-        subscriptionId: subscription.id,
-        pageId: pageId || undefined,
-        slug: isNewRegistration ? slug : undefined,
-        createAccount: isNewRegistration ? "true" : undefined,
-      },
-    });
-
-    // Update page if it exists (for upgrades)
-    if (pageId && page) {
-      await updatePage(pageId, {
-        subscriptionPlan: plan as SubscriptionPlan,
-        subscriptionStatus: "expired", // Will be set to "active" by webhook after successful payment
-        stripeSubscriptionId: subscription.id,
+    let productId: string;
+    if (product.data.length > 0) {
+      productId = product.data[0].id;
+    } else {
+      const newProduct = await stripe.products.create({
+        name: `Lynqit ${plan} subscription`,
+        description: `Monthly subscription for Lynqit ${plan} plan`,
       });
+      productId = newProduct.id;
     }
 
-    // Get checkout URL
-    // For Stripe, we use the subscription's latest_invoice.payment_intent.client_secret
-    // or create a checkout session
+    // Create or get price for this product
+    let price = await stripe.prices.search({
+      query: `product:'${productId}' AND active:'true' AND type:'recurring'`,
+      limit: 1,
+    });
+
+    let priceId: string;
+    if (price.data.length > 0 && price.data[0].unit_amount === amountInCents) {
+      priceId = price.data[0].id;
+    } else {
+      const newPrice = await stripe.prices.create({
+        product: productId,
+        currency: 'eur',
+        unit_amount: amountInCents,
+        recurring: {
+          interval: 'month',
+        },
+      });
+      priceId = newPrice.id;
+    }
+
+    // Create checkout session with the price ID
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: [paymentMethod],
       line_items: [{
-        price_data: {
-          currency: 'eur',
-          product_data: {
-            name: `Lynqit ${plan} subscription`,
-            description: `Monthly subscription for Lynqit ${plan} plan`,
-          },
-          recurring: {
-            interval: 'month',
-          },
-          unit_amount: amountInCents,
-        },
+        price: priceId,
         quantity: 1,
       }],
       mode: 'subscription',
-      success_url: `${baseUrl}/payment/success?email=${encodeURIComponent(email)}&plan=${plan}${pageId ? `&pageId=${pageId}` : ''}`,
-      cancel_url: `${baseUrl}/register?error=payment_cancelled`,
+      success_url: `${baseUrl}/payment/success?email=${encodeURIComponent(email)}&plan=${plan}&provider=stripe${pageId ? `&pageId=${pageId}` : ''}`,
+      cancel_url: `${baseUrl}/register?email=${encodeURIComponent(email)}&plan=${plan}&provider=stripe${pageId ? `&pageId=${pageId}` : ''}`,
       metadata: {
         email,
         plan,
@@ -211,6 +186,23 @@ export async function POST(request: NextRequest) {
         createAccount: isNewRegistration ? "true" : undefined,
         discountCodeId: discountCodeId || undefined,
         appliedDiscount: appliedDiscount ? "true" : undefined,
+        recurringDiscount: recurringDiscountApplied ? "true" : undefined,
+        firstPaymentPrice: appliedDiscount ? priceWithBTW.toFixed(2) : undefined,
+      },
+      subscription_data: {
+        metadata: {
+          email,
+          plan,
+          pageId: pageId || undefined,
+          userId: user?.email || email,
+          slug: isNewRegistration ? slug : undefined,
+          password: isNewRegistration ? password : undefined,
+          createAccount: isNewRegistration ? "true" : undefined,
+          discountCodeId: discountCodeId || undefined,
+          appliedDiscount: appliedDiscount ? "true" : undefined,
+          recurringDiscount: recurringDiscountApplied ? "true" : undefined,
+          firstPaymentPrice: appliedDiscount ? priceWithBTW.toFixed(2) : undefined,
+        },
       },
     });
 
@@ -224,7 +216,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       paymentUrl: checkoutSession.url,
-      subscriptionId: subscription.id,
     });
   } catch (error: any) {
     console.error("Stripe payment creation error:", error);
