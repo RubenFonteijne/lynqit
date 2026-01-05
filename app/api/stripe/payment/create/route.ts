@@ -225,7 +225,9 @@ export async function POST(request: NextRequest) {
 
     // Get the latest invoice and its payment intent
     const invoice = await stripe.invoices.retrieve(subscription.latest_invoice as string);
-    const paymentIntentId = invoice.payment_intent;
+    const paymentIntentId = typeof invoice.payment_intent === 'string' 
+      ? invoice.payment_intent 
+      : invoice.payment_intent?.id || null;
 
     if (!paymentIntentId || typeof paymentIntentId !== 'string') {
       return NextResponse.json(
