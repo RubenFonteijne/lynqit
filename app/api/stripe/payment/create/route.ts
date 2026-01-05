@@ -21,9 +21,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (plan !== "start" && plan !== "pro") {
+    // Plan can be "start", "pro", or any other plan name from Stripe products
+    // We'll accept any plan name, not just "start" or "pro"
+    if (!plan || typeof plan !== "string") {
       return NextResponse.json(
-        { error: "Invalid plan. Must be 'start' or 'pro'" },
+        { error: "Plan is required" },
         { status: 400 }
       );
     }
