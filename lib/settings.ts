@@ -1,9 +1,6 @@
 import { createServerClient } from './supabase-server';
 
 export interface Settings {
-  mollieApiKey?: string;
-  mollieApiKeyTest?: string;
-  mollieApiKeyLive?: string;
   useTestMode?: boolean;
   // Stripe settings
   stripeSecretKey?: string;
@@ -11,8 +8,6 @@ export interface Settings {
   stripeSecretKeyLive?: string;
   stripePublishableKeyTest?: string;
   stripePublishableKeyLive?: string;
-  // Payment provider selection
-  paymentProvider?: 'mollie' | 'stripe'; // Default to 'mollie' for backward compatibility
   updatedAt?: string;
 }
 
@@ -39,17 +34,8 @@ export async function getSettings(): Promise<Settings> {
 
     (data || []).forEach((setting: any) => {
       switch (setting.key) {
-        case 'mollie_api_key_test':
-          settings.mollieApiKeyTest = setting.value;
-          break;
-        case 'mollie_api_key_live':
-          settings.mollieApiKeyLive = setting.value;
-          break;
         case 'use_test_mode':
           settings.useTestMode = setting.value === 'true' || setting.value === true;
-          break;
-        case 'mollie_api_key':
-          settings.mollieApiKey = setting.value;
           break;
         case 'stripe_secret_key_test':
           settings.stripeSecretKeyTest = setting.value;
@@ -62,9 +48,6 @@ export async function getSettings(): Promise<Settings> {
           break;
         case 'stripe_publishable_key_live':
           settings.stripePublishableKeyLive = setting.value;
-          break;
-        case 'payment_provider':
-          settings.paymentProvider = setting.value as 'mollie' | 'stripe';
           break;
       }
       if (setting.updated_at) {
@@ -88,31 +71,10 @@ export async function saveSettings(settings: Settings): Promise<void> {
   try {
     const settingsToSave: Array<{ key: string; value: string }> = [];
 
-    if (settings.mollieApiKeyTest !== undefined) {
-      settingsToSave.push({
-        key: 'mollie_api_key_test',
-        value: settings.mollieApiKeyTest,
-      });
-    }
-
-    if (settings.mollieApiKeyLive !== undefined) {
-      settingsToSave.push({
-        key: 'mollie_api_key_live',
-        value: settings.mollieApiKeyLive,
-      });
-    }
-
     if (settings.useTestMode !== undefined) {
       settingsToSave.push({
         key: 'use_test_mode',
         value: settings.useTestMode.toString(),
-      });
-    }
-
-    if (settings.mollieApiKey !== undefined) {
-      settingsToSave.push({
-        key: 'mollie_api_key',
-        value: settings.mollieApiKey,
       });
     }
 
@@ -144,13 +106,6 @@ export async function saveSettings(settings: Settings): Promise<void> {
       });
     }
 
-    if (settings.paymentProvider !== undefined) {
-      settingsToSave.push({
-        key: 'payment_provider',
-        value: settings.paymentProvider,
-      });
-    }
-
     // Use upsert to insert or update each setting
     for (const setting of settingsToSave) {
       const { error } = await supabase
@@ -174,16 +129,3 @@ export async function saveSettings(settings: Settings): Promise<void> {
   }
 }
 
-// Get active Mollie API key (test or live based on useTestMode)
-// HARDCODED FALLBACK KEYS - Replace with your actual keys
-const HARDCODED_TEST_KEY = "test_dHar4XY7LxsDOtmnkVtjNVWXLSlXsM"; // Replace with your test key
-const HARDCODED_LIVE_KEY = "live_MdEcEVWzQtfHdGtvyTrBNvq3Hyhr5u"; // Replace with your live key
-
-export async function getActiveMollieApiKey(): Promise<string | undefined> {
-  const settings = await getSettings();
-  if (settings.useTestMode) {
-    return settings.mollieApiKeyTest || process.env.MOLLIE_API_KEY || HARDCODED_TEST_KEY;
-  } else {
-    return settings.mollieApiKeyLive || process.env.MOLLIE_API_KEY || HARDCODED_LIVE_KEY;
-  }
-}

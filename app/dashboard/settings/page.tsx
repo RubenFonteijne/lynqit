@@ -29,13 +29,10 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string>("");
   const [settings, setSettings] = useState({
-    mollieApiKeyTest: "",
-    mollieApiKeyLive: "",
     stripeSecretKeyTest: "",
     stripeSecretKeyLive: "",
     stripePublishableKeyTest: "",
     stripePublishableKeyLive: "",
-    paymentProvider: "mollie" as "mollie" | "stripe",
     useTestMode: true,
   });
   const [settingsLoading, setSettingsLoading] = useState(false);
@@ -131,13 +128,10 @@ export default function SettingsPage() {
       if (response.ok) {
         const settingsData = await response.json();
         setSettings({
-          mollieApiKeyTest: settingsData.settings.mollieApiKeyTest || "",
-          mollieApiKeyLive: settingsData.settings.mollieApiKeyLive || "",
           stripeSecretKeyTest: settingsData.settings.stripeSecretKeyTest || "",
           stripeSecretKeyLive: settingsData.settings.stripeSecretKeyLive || "",
           stripePublishableKeyTest: settingsData.settings.stripePublishableKeyTest || "",
           stripePublishableKeyLive: settingsData.settings.stripePublishableKeyLive || "",
-          paymentProvider: settingsData.settings.paymentProvider || "mollie",
           useTestMode: settingsData.settings.useTestMode ?? true,
         });
       }
@@ -341,7 +335,7 @@ export default function SettingsPage() {
               Settings
             </h1>
             <p className="text-zinc-400">
-              Beheer Mollie API instellingen
+              Beheer Stripe API instellingen
             </p>
           </div>
 
@@ -367,39 +361,9 @@ export default function SettingsPage() {
 
           <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
             <h2 className="text-xl font-semibold text-white mb-4">
-              Mollie API Instellingen
+              Stripe API Instellingen
             </h2>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  Mollie Test API Key
-                </label>
-                <input
-                  type="password"
-                  value={settings.mollieApiKeyTest}
-                  onChange={(e) => setSettings({ ...settings, mollieApiKeyTest: e.target.value })}
-                  placeholder="test_..."
-                  className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" style={{ border: '1px solid rgba(255, 255, 255, 0.2)', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'white' }}
-                />
-                <p className="mt-1 text-xs text-zinc-400">
-                  Test API key voor ontwikkelomgeving
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  Mollie Live API Key
-                </label>
-                <input
-                  type="password"
-                  value={settings.mollieApiKeyLive}
-                  onChange={(e) => setSettings({ ...settings, mollieApiKeyLive: e.target.value })}
-                  placeholder="live_..."
-                  className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" style={{ border: '1px solid rgba(255, 255, 255, 0.2)', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'white' }}
-                />
-                <p className="mt-1 text-xs text-zinc-400">
-                  Live API key voor productieomgeving
-                </p>
-              </div>
               <div>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -416,57 +380,9 @@ export default function SettingsPage() {
                   Schakel test mode uit om live betalingen te verwerken
                 </p>
               </div>
-              <button
-                onClick={handleSaveSettings}
-                disabled={settingsLoading}
-                className="px-6 py-2 bg-gradient-to-r from-[#2E47FF] to-[#00F0EE] text-white rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {settingsLoading ? "Opslaan..." : "Instellingen opslaan"}
-              </button>
-            </div>
-          </div>
-
-          {/* Payment Provider Selection */}
-          <div className="mt-8 rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-            <h2 className="text-xl font-semibold text-white mb-4">
-              Payment Provider
-            </h2>
-            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  Selecteer Payment Provider
-                </label>
-                <select
-                  value={settings.paymentProvider}
-                  onChange={(e) => setSettings({ ...settings, paymentProvider: e.target.value as "mollie" | "stripe" })}
-                  className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" style={{ border: '1px solid rgba(255, 255, 255, 0.2)', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'white' }}
-                >
-                  <option value="mollie">Mollie (Nederlandse markt)</option>
-                  <option value="stripe">Stripe (Internationaal)</option>
-                </select>
-                <p className="mt-1 text-xs text-zinc-400">
-                  Kies welke payment provider gebruikt wordt voor nieuwe registraties
-                </p>
-              </div>
-              <button
-                onClick={handleSaveSettings}
-                disabled={settingsLoading}
-                className="px-6 py-2 bg-gradient-to-r from-[#2E47FF] to-[#00F0EE] text-white rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {settingsLoading ? "Opslaan..." : "Provider Instellingen opslaan"}
-              </button>
-            </div>
-          </div>
-
-          {/* Stripe API Instellingen */}
-          <div className="mt-8 rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-            <h2 className="text-xl font-semibold text-white mb-4">
-              Stripe API Instellingen
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  Stripe Secret Key (Test)
+                  Stripe Test Secret Key
                 </label>
                 <input
                   type="password"
@@ -481,22 +397,22 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  Stripe Publishable Key (Test)
+                  Stripe Test Publishable Key
                 </label>
                 <input
-                  type="text"
+                  type="password"
                   value={settings.stripePublishableKeyTest}
                   onChange={(e) => setSettings({ ...settings, stripePublishableKeyTest: e.target.value })}
                   placeholder="pk_test_..."
                   className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" style={{ border: '1px solid rgba(255, 255, 255, 0.2)', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'white' }}
                 />
                 <p className="mt-1 text-xs text-zinc-400">
-                  Test publishable key voor frontend
+                  Test publishable key voor ontwikkelomgeving
                 </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  Stripe Secret Key (Live)
+                  Stripe Live Secret Key
                 </label>
                 <input
                   type="password"
@@ -511,17 +427,17 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  Stripe Publishable Key (Live)
+                  Stripe Live Publishable Key
                 </label>
                 <input
-                  type="text"
+                  type="password"
                   value={settings.stripePublishableKeyLive}
                   onChange={(e) => setSettings({ ...settings, stripePublishableKeyLive: e.target.value })}
                   placeholder="pk_live_..."
                   className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" style={{ border: '1px solid rgba(255, 255, 255, 0.2)', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'white' }}
                 />
                 <p className="mt-1 text-xs text-zinc-400">
-                  Live publishable key voor frontend
+                  Live publishable key voor productieomgeving
                 </p>
               </div>
               <button
@@ -529,10 +445,11 @@ export default function SettingsPage() {
                 disabled={settingsLoading}
                 className="px-6 py-2 bg-gradient-to-r from-[#2E47FF] to-[#00F0EE] text-white rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {settingsLoading ? "Opslaan..." : "Stripe Instellingen opslaan"}
+                {settingsLoading ? "Opslaan..." : "Instellingen opslaan"}
               </button>
             </div>
           </div>
+
 
           {/* Discount Codes Section */}
           <div className="mt-8 rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>

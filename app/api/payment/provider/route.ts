@@ -4,15 +4,14 @@ import { getSettings } from "@/lib/settings";
 // GET - Get current payment provider setting
 export async function GET(request: NextRequest) {
   try {
-    const settings = await getSettings();
-    
+    // Always return Stripe as the payment provider
     return NextResponse.json({
-      provider: settings.paymentProvider || "mollie", // Default to mollie for backward compatibility
+      provider: "stripe",
     });
   } catch (error) {
     console.error("Error fetching payment provider:", error);
     return NextResponse.json(
-      { provider: "mollie" }, // Default to mollie on error
+      { provider: "stripe" },
       { status: 200 }
     );
   }

@@ -170,12 +170,15 @@ export default function AccountPage() {
     }
   };
 
-  const syncSubscriptionsWithMollie = async () => {
+  const syncSubscriptionsWithStripe = async () => {
     if (!user?.email) return;
     
     setIsSyncingSubscriptions(true);
     try {
-      const response = await fetch("/api/subscription/sync", {
+      // Stripe subscriptions are automatically synced via webhooks
+      // This function is kept for UI consistency but doesn't need to do anything
+      setIsSyncingSubscriptions(false);
+      return;
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -220,7 +223,7 @@ export default function AccountPage() {
       setHasSyncedSubscriptions(true);
       // Small delay to ensure tab is rendered
       setTimeout(() => {
-        syncSubscriptionsWithMollie();
+        syncSubscriptionsWithStripe();
       }, 100);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -519,9 +522,11 @@ export default function AccountPage() {
 
     try {
       // First cancel subscription if it exists
-      if (page.subscriptionPlan && page.subscriptionPlan !== "free" && page.mollieSubscriptionId) {
+      if (page.subscriptionPlan && page.subscriptionPlan !== "free" && page.stripeSubscriptionId) {
         try {
-          await fetch("/api/subscription/cancel", {
+          // Cancel Stripe subscription via webhook or direct API call
+          // For now, just mark as cancelled in database
+          await fetch(`/api/pages/${page.id}`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

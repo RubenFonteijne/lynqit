@@ -11,7 +11,6 @@
     "migrate-to-supabase": "tsx scripts/migrate-to-supabase.ts"
   },
   "dependencies": {
-    "@mollie/api-client": "^4.3.3",
     "@stripe/react-stripe-js": "^5.4.1",
     "@stripe/stripe-js": "^8.6.0",
     "@supabase/supabase-js": "^2.39.0",

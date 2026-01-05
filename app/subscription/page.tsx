@@ -138,7 +138,7 @@ function SubscriptionContent() {
           return;
         }
 
-        // Redirect to Mollie payment page (first payment for SEPA mandate)
+        // Redirect to Stripe payment page
         if (data.paymentUrl) {
           window.location.href = data.paymentUrl;
         } else {
