@@ -816,7 +816,7 @@ function RegisterContent() {
                   </h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
-                      <span>Abonnement ({selectedPlan === "start" ? "Start" : "Pro"})</span>
+                      <span>Abonnement ({pricing.selectedProduct ? pricing.selectedProduct.plan.charAt(0).toUpperCase() + pricing.selectedProduct.plan.slice(1) : selectedPlan})</span>
                       <span>€{pricing.priceWithBTW.toFixed(2)}/maand</span>
                     </div>
                     {pricing.discount > 0 && discountCodeValid && (
