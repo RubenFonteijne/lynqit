@@ -197,7 +197,7 @@ export default function PublicLynqitPage() {
       
       {/* Header with Background - 16:9 aspect ratio */}
       {page.header.url && (
-        <div className="relative w-full overflow-hidden aspect-video">
+        <div className="relative w-full overflow-hidden aspect-video max-h-[600px]">
           <div className="absolute inset-0" style={{ overflow: "hidden" }}>
             {page.header.type === "video" ? (
               (() => {
