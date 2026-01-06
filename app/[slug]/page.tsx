@@ -195,9 +195,9 @@ export default function PublicLynqitPage() {
       {/* Admin Bar - Only visible for admin users */}
       <AdminBar />
       
-      {/* Header with Background - responsive height */}
+      {/* Header with Background - 16:9 aspect ratio */}
       {page.header.url && (
-        <div className="relative w-full overflow-hidden h-[200px] md:h-[250px]">
+        <div className="relative w-full overflow-hidden aspect-video">
           <div className="absolute inset-0" style={{ overflow: "hidden" }}>
             {page.header.type === "video" ? (
               (() => {
