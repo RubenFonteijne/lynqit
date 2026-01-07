@@ -2312,7 +2312,7 @@ export default function EditPagePage() {
                                     className="relative"
                                     style={{
                                       borderRadius: "8px 8px 0 0",
-                                      height: "120px",
+                                      height: "160px",
                                       ...(link.image && link.image.trim()
                                         ? {
                                             backgroundImage: `url(${link.image})`,
@@ -2324,12 +2324,12 @@ export default function EditPagePage() {
                                           }),
                                     }}
                                   >
-                                    {/* Overlay: achtergrondkleur-transparant onder-boven */}
+                                    {/* Overlay: achtergrondkleur-transparant onder-boven tot 50% */}
                                     <div
                                       className="absolute inset-0"
                                       style={{
                                         borderRadius: "8px 8px 0 0",
-                                        background: `linear-gradient(to top, ${hexToRgba(bgColor, 1)} 0%, ${hexToRgba(bgColor, 0)} 100%)`,
+                                        background: `linear-gradient(to top, ${hexToRgba(bgColor, 1)} 0%, ${hexToRgba(bgColor, 0)} 50%)`,
                                       }}
                                     />
                                   </div>
