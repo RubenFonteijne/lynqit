@@ -56,10 +56,27 @@ export default function DashboardPage() {
         let error = null;
         
         try {
-          const sessionData = await supabase.auth.getSession();
+          // Try to get session - on production, we might need to wait a bit for it to be available
+          let sessionData = await supabase.auth.getSession();
           session = sessionData.data?.session || null;
           error = sessionData.error || null;
-          console.log("[Dashboard] Supabase session:", session ? { hasUser: !!session.user, hasEmail: !!session.user?.email, hasAccessToken: !!session.access_token } : null);
+          
+          // If no session, try refreshing the session (might be needed on production)
+          if (!session && !error) {
+            console.log("[Dashboard] No session found, trying to refresh...");
+            const { data: refreshData } = await supabase.auth.refreshSession();
+            if (refreshData?.session) {
+              session = refreshData.session;
+              console.log("[Dashboard] Session refreshed successfully");
+            }
+          }
+          
+          console.log("[Dashboard] Supabase session:", session ? { 
+            hasUser: !!session.user, 
+            hasEmail: !!session.user?.email, 
+            hasAccessToken: !!session.access_token,
+            tokenLength: session.access_token?.length || 0,
+          } : null);
         } catch (e) {
           error = e as any;
           console.error("[Dashboard] Error getting Supabase session:", e);
@@ -200,7 +217,14 @@ export default function DashboardPage() {
           // Log error for debugging
           if (pagesResponse.status !== 200) {
             const errorData = await pagesResponse.json().catch(() => ({ error: "Unknown error" }));
-            console.error("Error fetching pages:", pagesResponse.status, errorData);
+            console.error("[Dashboard] Error fetching pages:", pagesResponse.status, errorData);
+            console.error("[Dashboard] Response details:", {
+              status: pagesResponse.status,
+              statusText: pagesResponse.statusText,
+              url: pagesUrl,
+              hasToken: !!session?.access_token,
+              userEmail,
+            });
           }
           // Still set pages to empty array to show empty state
           if (isMounted) {
