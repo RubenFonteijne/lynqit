@@ -16,10 +16,12 @@ function PaymentSuccessContent() {
   }, []);
 
   useEffect(() => {
+    const sessionId = searchParams.get("session_id");
     const subscriptionId = searchParams.get("subscriptionId");
     const pageId = searchParams.get("pageId");
     
-    if (email && plan) {
+    // For Stripe checkout, we can get email from session or use the email param
+    if (sessionId || (email && plan)) {
       // Wait for webhook to process payment and create account/page
       // Retry multiple times in case webhook is slow
       let retries = 0;
