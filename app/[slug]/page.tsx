@@ -155,6 +155,16 @@ export default function PublicLynqitPage() {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   };
 
+  // Helper function to convert hex to rgb
+  const hexToRgb = (hex: string): string => {
+    if (!hex) return "rgb(0, 0, 0)";
+    const cleanHex = hex.replace("#", "");
+    const r = parseInt(cleanHex.substring(0, 2), 16);
+    const g = parseInt(cleanHex.substring(2, 4), 16);
+    const b = parseInt(cleanHex.substring(4, 6), 16);
+    return `rgb(${r}, ${g}, ${b})`;
+  };
+
   const socialPlatforms: Record<string, { icon: string; label: string }> = {
     linkedin: { icon: "fab fa-linkedin-in", label: "LinkedIn" },
     instagram: { icon: "fab fa-instagram", label: "Instagram" },
@@ -473,7 +483,7 @@ export default function PublicLynqitPage() {
                     backgroundPosition: "center",
                   }
                 : {
-                    background: "linear-gradient(135deg, rgb(6,147,227) 0%, rgb(155,81,224) 100%)",
+                    background: `linear-gradient(135deg, ${hexToRgb(bgColor)} 0%, rgb(155,81,224) 100%)`,
                   }),
             }}
           />
