@@ -2272,12 +2272,18 @@ export default function EditPagePage() {
                                   key={index}
                                   className="block w-full px-4 py-3 transition-colors flex items-center justify-between"
                                   style={{
-                                    backgroundColor: "#00000033",
-                                    color: "#FFFFFF",
+                                    backgroundColor: hasCustomBackground ? (isDark ? "rgba(0, 0, 0, 0.15)" : "rgba(0, 0, 0, 0.05)") : (isDark ? "#3F3F3F" : "#EEEEEE"),
+                                    color: textColor,
                                     borderRadius: "50px",
                                     fontSize: "16px",
                                     fontFamily: "'PT Sans', sans-serif",
                                     fontWeight: "bold",
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = hasCustomBackground ? (isDark ? "rgba(0, 0, 0, 0.25)" : "rgba(0, 0, 0, 0.15)") : (isDark ? "#4F4F4F" : "#DDDDDD");
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = hasCustomBackground ? (isDark ? "rgba(0, 0, 0, 0.15)" : "rgba(0, 0, 0, 0.05)") : (isDark ? "#3F3F3F" : "#EEEEEE");
                                   }}
                                 >
                                   <span>{link.text}</span>
