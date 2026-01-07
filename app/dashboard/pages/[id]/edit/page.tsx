@@ -2302,7 +2302,7 @@ export default function EditPagePage() {
                               return (
                                 <div
                                   key={index}
-                                  className="block overflow-hidden transition-colors"
+                                  className="block overflow-hidden transition-colors relative"
                                   style={{
                                     borderRadius: "8px",
                                   }}
