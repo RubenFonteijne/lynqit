@@ -221,7 +221,7 @@ export default function PagesManagementPage() {
       const pagesUrl = session?.access_token 
         ? `/api/pages`
         : `/api/pages?email=${encodeURIComponent(userEmail)}`;
-      const pagesHeaders = session?.access_token
+      const pagesHeaders: Record<string, string> = session?.access_token
         ? { "Authorization": `Bearer ${session.access_token}` }
         : {};
 

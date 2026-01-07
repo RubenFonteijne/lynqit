@@ -201,7 +201,7 @@ export default function InsightsPage() {
       const pagesUrl = accessToken 
         ? `/api/pages`
         : `/api/pages?email=${encodeURIComponent(userEmail || "")}`;
-      const pagesHeaders = accessToken
+      const pagesHeaders: Record<string, string> = accessToken
         ? { "Authorization": `Bearer ${accessToken}` }
         : {};
       
