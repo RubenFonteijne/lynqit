@@ -551,35 +551,43 @@ export default function PublicLynqitPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => trackClick(`featured_${index + 1}`, link.link)}
-                    className="block overflow-hidden transition-colors"
+                    className="block overflow-hidden transition-colors relative"
                     style={{
-                      backgroundColor: isDark ? "#1a1a1a" : "#f0f0f0",
                       borderRadius: "8px",
                       border: isDark ? "1px solid rgba(255, 255, 255, 0.05)" : "1px solid rgba(0, 0, 0, 0.15)",
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = isDark ? "#2a2a2a" : "#e0e0e0";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = isDark ? "#1a1a1a" : "#f0f0f0";
-                    }}
                   >
-                    {link.image && (
-                      <div className="aspect-square bg-gray-800 overflow-hidden">
-                        <img
-                          src={link.image}
-                          alt={link.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = "none";
-                          }}
-                        />
-                      </div>
-                    )}
-                    <div className="p-3">
+                    {/* Background Image or Gradient */}
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        borderRadius: "8px",
+                        ...(link.image && link.image.trim()
+                          ? {
+                              backgroundImage: `url(${link.image})`,
+                              backgroundSize: "cover",
+                              backgroundPosition: "center",
+                            }
+                          : {
+                              background: `linear-gradient(135deg, ${hexToRgb(bgColor)} 0%, rgb(155,81,224) 100%)`,
+                            }),
+                      }}
+                    />
+                    
+                    {/* Overlay: achtergrondkleur-transparant onder-boven */}
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        borderRadius: "8px",
+                        background: `linear-gradient(to top, ${hexToRgba(bgColor, 1)} 0%, ${hexToRgba(bgColor, 0)} 100%)`,
+                      }}
+                    />
+                    
+                    {/* Content */}
+                    <div className="relative p-3" style={{ minHeight: "120px" }}>
                       <h3
                         className="text-sm font-medium text-center"
-                        style={{ color: textColor }}
+                        style={{ color: isDark ? "#FFF" : "#000" }}
                       >
                         {link.title}
                       </h3>
