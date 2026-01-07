@@ -59,8 +59,10 @@ export default function DashboardPage() {
           const sessionData = await supabase.auth.getSession();
           session = sessionData.data?.session || null;
           error = sessionData.error || null;
+          console.log("[Dashboard] Supabase session:", session ? { hasUser: !!session.user, hasEmail: !!session.user?.email, hasAccessToken: !!session.access_token } : null);
         } catch (e) {
           error = e as any;
+          console.error("[Dashboard] Error getting Supabase session:", e);
         }
         
         // Fallback: check localStorage for user data if Supabase session is not available
@@ -125,7 +127,7 @@ export default function DashboardPage() {
 
         // Fetch user info and pages in parallel
         // Get user email from session or localStorage (fallback)
-        let userEmail = session.user.email || "";
+        let userEmail = session?.user?.email || "";
         if (!userEmail) {
           const cachedUser = localStorage.getItem("lynqit_user");
           if (cachedUser) {
@@ -138,13 +140,24 @@ export default function DashboardPage() {
           }
         }
         
-        const pagesUrl = session.access_token 
+        // Ensure we have a userEmail before making API calls
+        if (!userEmail) {
+          console.error("[Dashboard] No user email available for API calls");
+          if (!isMounted) return;
+          setIsLoading(false);
+          router.push("/");
+          return;
+        }
+        
+        const pagesUrl = session?.access_token 
           ? `/api/pages`
           : `/api/pages?email=${encodeURIComponent(userEmail)}`;
         
-        const pagesFetchOptions: RequestInit = session.access_token
+        const pagesFetchOptions: RequestInit = session?.access_token
           ? { headers: { "Authorization": `Bearer ${session.access_token}` } }
           : {};
+        
+        console.log("[Dashboard] Fetching pages:", { url: pagesUrl, hasToken: !!session?.access_token, userEmail });
         
         const [userResponse, pagesResponse] = await Promise.all([
           fetch(`/api/user?email=${encodeURIComponent(userEmail)}`),

@@ -57,16 +57,20 @@ export default function LoginPage() {
           });
           
           if (sessionError) {
-            console.error("Error setting Supabase session:", sessionError);
+            console.error("[Login] Error setting Supabase session:", sessionError);
             // Fallback: store in localStorage as backup
             localStorage.setItem("supabase.auth.token", JSON.stringify({
               access_token: data.session.access_token,
               refresh_token: data.session.refresh_token,
               expires_at: data.session.expires_at,
             }));
+          } else {
+            // Verify session was set correctly
+            const { data: { session: verifySession } } = await supabase.auth.getSession();
+            console.log("[Login] Session set successfully:", verifySession ? { hasUser: !!verifySession.user, hasEmail: !!verifySession.user?.email, hasAccessToken: !!verifySession.access_token } : null);
           }
         } catch (e) {
-          console.error("Error setting session:", e);
+          console.error("[Login] Error setting session:", e);
           // Fallback: store in localStorage as backup
           if (data.session) {
             try {
@@ -81,6 +85,9 @@ export default function LoginPage() {
           }
         }
       }
+
+      // Small delay to ensure session is persisted before redirect
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Redirect to dashboard
       router.push("/dashboard");
