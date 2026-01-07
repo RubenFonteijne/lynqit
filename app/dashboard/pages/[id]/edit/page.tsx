@@ -2423,7 +2423,7 @@ export default function EditPagePage() {
                                     key={platform}
                                     className="py-3 font-medium transition-colors flex items-center justify-center"
                                     style={{
-                                      backgroundColor: hasCustomBackground ? "rgba(0, 0, 0, 0.15)" : (isDark ? "#3F3F3F" : "#EEEEEE"),
+                                      backgroundColor: hasCustomBackground ? (isDark ? "rgba(0, 0, 0, 0.15)" : "rgba(0, 0, 0, 0.05)") : (isDark ? "#3F3F3F" : "#EEEEEE"),
                                       color: textColor,
                                       borderRadius: "50px",
                                       flex: "0 1 calc(25% - 9px)",
