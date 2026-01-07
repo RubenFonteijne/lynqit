@@ -1420,13 +1420,14 @@ export default function EditPagePage() {
               </div>
             )}
 
-            {/* Links - Fourth for free plan */}
-            {(!page.subscriptionPlan || page.subscriptionPlan === "free") && (
-              <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <h2 className="text-xl font-semibold text-zinc-50 mb-4">
-                  Links
+            {/* Links - Available for all plans */}
+            <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+              <h2 className="text-xl font-semibold text-zinc-50 mb-4">
+                Links
+                {(!page.subscriptionPlan || page.subscriptionPlan === "free") && (
                   <span className="text-sm font-normal text-zinc-500 ml-2">(Maximaal 5)</span>
-                </h2>
+                )}
+              </h2>
               <div className="space-y-4">
                 {(page.customLinks || []).slice(0, (!page.subscriptionPlan || page.subscriptionPlan === "free") ? 5 : undefined).map((link, index) => {
                   const isCollapsed = collapsedLinks.has(index);
@@ -1581,7 +1582,7 @@ export default function EditPagePage() {
                     }}
                     className="w-full px-4 py-2 border-2 border-dashed border-zinc-700 rounded-lg text-zinc-300 hover:border-zinc-600 transition-colors"
                   >
-                    + Nieuwe link toevoegen
+                    + Nieuw link toevoegen
                   </button>
                 )}
                 {(!page.subscriptionPlan || page.subscriptionPlan === "free") && (page.customLinks || []).length >= 5 && (
@@ -1591,7 +1592,6 @@ export default function EditPagePage() {
                 )}
               </div>
             </div>
-            )}
 
             {/* Social Media - For all plans */}
             <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
