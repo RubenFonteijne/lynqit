@@ -210,6 +210,7 @@ export default function InsightsPage() {
       if (response.ok) {
         const data = await response.json();
         const pagesData = data.pages || [];
+        console.log(`[Insights] Loaded ${pagesData.length} pages`);
         setPages(pagesData);
         
         // Cache pages for next time

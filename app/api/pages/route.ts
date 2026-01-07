@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
 
     // Use the existing getPagesByUser function (it's already optimized)
     const pages = await getPagesByUser(userEmail);
+    console.log(`[API /api/pages] Fetched ${pages.length} pages for user: ${userEmail}`);
     return NextResponse.json({ pages });
   } catch (error) {
     console.error("Error fetching pages:", error);

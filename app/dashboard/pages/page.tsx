@@ -141,9 +141,10 @@ export default function PagesManagementPage() {
             }
             
             // Fetch user's pages with access token or email fallback
+            const userEmail = session.user.email || "";
             const pagesUrl = session.access_token 
               ? `/api/pages`
-              : `/api/pages?email=${encodeURIComponent(session.user.email || "")}`;
+              : `/api/pages?email=${encodeURIComponent(userEmail)}`;
             const pagesHeaders = session.access_token
               ? { "Authorization": `Bearer ${session.access_token}` }
               : {};
@@ -152,10 +153,15 @@ export default function PagesManagementPage() {
             if (isMounted && pagesResponse.ok) {
               const pagesData = await pagesResponse.json();
               const freshPages = pagesData.pages || [];
+              console.log(`[Pages] Loaded ${freshPages.length} pages`);
               setPages(freshPages);
               // Cache pages for next time
               localStorage.setItem("lynqit_pages", JSON.stringify(freshPages));
               localStorage.setItem("lynqit_pages_timestamp", Date.now().toString());
+            } else if (isMounted && !pagesResponse.ok) {
+              // Log error for debugging
+              const errorData = await pagesResponse.json().catch(() => ({ error: "Unknown error" }));
+              console.error("Error fetching pages:", pagesResponse.status, errorData);
             }
           }
         } else {

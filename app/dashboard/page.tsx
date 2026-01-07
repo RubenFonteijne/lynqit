@@ -150,6 +150,7 @@ export default function DashboardPage() {
         if (pagesResponse.ok && isMounted) {
           const pagesData = await pagesResponse.json();
           const freshPages = pagesData.pages || [];
+          console.log(`[Dashboard] Loaded ${freshPages.length} pages`);
           setPages(freshPages);
           // Cache pages for next time
           localStorage.setItem("lynqit_pages", JSON.stringify(freshPages));
@@ -157,10 +158,11 @@ export default function DashboardPage() {
 
           // Fetch dashboard analytics if user has pages
           if (freshPages.length > 0) {
+            const analyticsHeaders = session.access_token
+              ? { "Authorization": `Bearer ${session.access_token}` }
+              : {};
             const analyticsResponse = await fetch(`/api/analytics/dashboard`, {
-              headers: {
-                "Authorization": `Bearer ${session.access_token}`,
-              },
+              headers: analyticsHeaders,
             });
 
             if (analyticsResponse.ok && isMounted) {
@@ -169,7 +171,15 @@ export default function DashboardPage() {
             }
           }
           setIsLoadingAnalytics(false);
-        } else if (!userResponse.ok) {
+        } else {
+          // Log error for debugging
+          if (pagesResponse.status !== 200) {
+            const errorData = await pagesResponse.json().catch(() => ({ error: "Unknown error" }));
+            console.error("Error fetching pages:", pagesResponse.status, errorData);
+          }
+        }
+        
+        if (!userResponse.ok) {
           setIsLoading(false);
           router.push("/");
           return;
@@ -199,15 +209,33 @@ export default function DashboardPage() {
       const supabase = createClientClient();
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session || !session.user || !session.user.email) {
+      // Get user email from session or localStorage
+      let userEmail = session?.user?.email;
+      if (!userEmail) {
+        const cachedUser = localStorage.getItem("lynqit_user");
+        if (cachedUser) {
+          try {
+            const user = JSON.parse(cachedUser);
+            userEmail = user.email;
+          } catch (e) {
+            // Invalid cache
+          }
+        }
+      }
+      
+      if (!userEmail) {
         return;
       }
 
-      const pagesResponse = await fetch(`/api/pages`, {
-        headers: {
-          "Authorization": `Bearer ${session.access_token}`,
-        },
-      });
+      // Use access token if available, otherwise use email parameter
+      const pagesUrl = session?.access_token 
+        ? `/api/pages`
+        : `/api/pages?email=${encodeURIComponent(userEmail)}`;
+      const pagesHeaders = session?.access_token
+        ? { "Authorization": `Bearer ${session.access_token}` }
+        : {};
+
+      const pagesResponse = await fetch(pagesUrl, { headers: pagesHeaders });
 
       if (pagesResponse.ok) {
         const pagesData = await pagesResponse.json();
@@ -216,6 +244,10 @@ export default function DashboardPage() {
         // Update cache
         localStorage.setItem("lynqit_pages", JSON.stringify(freshPages));
         localStorage.setItem("lynqit_pages_timestamp", Date.now().toString());
+      } else {
+        // Log error for debugging
+        const errorData = await pagesResponse.json().catch(() => ({ error: "Unknown error" }));
+        console.error("Error fetching pages:", pagesResponse.status, errorData);
       }
     } catch (error) {
       console.error("Error fetching pages:", error);
