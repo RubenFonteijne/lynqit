@@ -568,9 +568,13 @@ function RegisterContent() {
                   {/* Free plan */}
                   <button
                     type="button"
-                    onClick={() => setSelectedPlan("free")}
+                    onClick={() => {
+                      setSelectedPlan("free");
+                      setSelectedStripeProduct(null);
+                      localStorage.removeItem("selected_stripe_product");
+                    }}
                     className={`px-4 py-3 rounded-lg border-2 transition-colors text-left ${
-                      selectedPlan === "free"
+                      selectedPlan === "free" && !selectedStripeProduct
                         ? "border-[#2E47FF] bg-blue-50 dark:bg-blue-900/20"
                         : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
                     }`}
@@ -618,6 +622,10 @@ function RegisterContent() {
                               productId: product.id,
                               priceId: product.price?.id,
                             }));
+                            // Deselect free plan if a paid plan is selected
+                            if (selectedPlan === "free") {
+                              setSelectedPlan(plan);
+                            }
                           }}
                           className={`px-4 py-3 rounded-lg border-2 transition-colors text-left ${
                             selectedStripeProduct?.productId === product.id
