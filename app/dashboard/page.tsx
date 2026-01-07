@@ -236,11 +236,12 @@ export default function DashboardPage() {
       const pagesUrl = session?.access_token 
         ? `/api/pages`
         : `/api/pages?email=${encodeURIComponent(userEmail)}`;
-      const pagesHeaders = session?.access_token
-        ? { "Authorization": `Bearer ${session.access_token}` }
+      
+      const pagesFetchOptions: RequestInit = session?.access_token
+        ? { headers: { "Authorization": `Bearer ${session.access_token}` } }
         : {};
 
-      const pagesResponse = await fetch(pagesUrl, { headers: pagesHeaders });
+      const pagesResponse = await fetch(pagesUrl, pagesFetchOptions);
 
       if (pagesResponse.ok) {
         const pagesData = await pagesResponse.json();
