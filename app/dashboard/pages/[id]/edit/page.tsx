@@ -2292,9 +2292,7 @@ export default function EditPagePage() {
                               className="absolute inset-0"
                               style={{
                                 borderRadius: "10px",
-                                background: isDark
-                                  ? `linear-gradient(to right, ${hexToRgba(bgColor, 1)} 0%, ${hexToRgba(bgColor, 0.4)} 50%, ${hexToRgba(bgColor, 0)} 100%)`
-                                  : `linear-gradient(to right, ${hexToRgba(bgColor, 0.9)} 0%, ${hexToRgba(bgColor, 0.5)} 50%, ${hexToRgba(bgColor, 0)} 100%)`,
+                                background: `linear-gradient(to right, ${hexToRgba(bgColor, 1)} 0%, ${hexToRgba(bgColor, 0)} 100%)`,
                               }}
                             />
                             
