@@ -2412,7 +2412,6 @@ export default function EditPagePage() {
                                     borderRadius: "50px",
                                     fontSize: "16px",
                                     fontFamily: "'PT Sans', sans-serif",
-                                    fontWeight: "bold",
                                   }}
                                   onMouseEnter={(e) => {
                                     e.currentTarget.style.backgroundColor = hasCustomBackground ? (isDark ? "rgba(0, 0, 0, 0.25)" : "rgba(0, 0, 0, 0.15)") : (isDark ? "#4F4F4F" : "#DDDDDD");

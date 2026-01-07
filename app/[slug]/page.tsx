@@ -772,7 +772,7 @@ export default function PublicLynqitPage() {
                   key={index}
                   href={link.url}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="noopener"
                   onClick={() => trackClick(`custom_link_${index}`, link.url)}
                   className="block w-full px-4 py-3 transition-colors flex items-center justify-between"
                   style={{
@@ -781,7 +781,6 @@ export default function PublicLynqitPage() {
                     borderRadius: "50px",
                     fontSize: "16px",
                     fontFamily: "'PT Sans', sans-serif",
-                    fontWeight: "bold",
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = hasCustomBackground ? (isDark ? "rgba(0, 0, 0, 0.25)" : "rgba(0, 0, 0, 0.15)") : (isDark ? "#4F4F4F" : "#DDDDDD");
