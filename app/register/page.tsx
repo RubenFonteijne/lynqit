@@ -564,22 +564,29 @@ function RegisterContent() {
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                   Abonnement
                 </label>
-                <div className="grid gap-3 grid-cols-1">
+                <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
                   {/* Free plan */}
                   <button
                     type="button"
                     onClick={() => setSelectedPlan("free")}
-                    className={`px-4 py-3 rounded-lg border-2 transition-colors ${
+                    className={`px-4 py-3 rounded-lg border-2 transition-colors text-left ${
                       selectedPlan === "free"
                         ? "border-[#2E47FF] bg-blue-50 dark:bg-blue-900/20"
                         : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
                     }`}
                   >
-                    <div className="text-sm font-semibold text-black dark:text-zinc-50">
-                      Basis
-                    </div>
-                    <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-                      Gratis
+                    <div className="flex flex-col">
+                      <div className="text-sm font-semibold text-black dark:text-zinc-50 mb-1">
+                        Basis
+                      </div>
+                      <div className="mt-auto">
+                        <div className="text-sm font-semibold text-black dark:text-zinc-50">
+                          €0,00
+                        </div>
+                        <div className="text-xs text-zinc-600 dark:text-zinc-400">
+                          Gratis
+                        </div>
+                      </div>
                     </div>
                   </button>
 
@@ -592,8 +599,7 @@ function RegisterContent() {
                     </div>
                   ) : stripeProducts.length > 0 ? (
                     stripeProducts.map((product) => {
-                      const priceInEuros = (product.price?.amount || 0) / 100;
-                      const priceWithBTW = priceInEuros * 1.21; // 21% BTW
+                      const priceInEuros = (product.price?.amount || 0) / 100; // Price ex BTW
                       const intervalText = product.price?.interval === 'month' ? 'per maand' : product.price?.interval === 'year' ? 'per jaar' : '';
                       
                       return (
@@ -619,23 +625,21 @@ function RegisterContent() {
                               : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
                           }`}
                         >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <div className="text-sm font-semibold text-black dark:text-zinc-50">
-                                {product.name}
-                              </div>
-                              {product.description && (
-                                <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-                                  {product.description}
-                                </div>
-                              )}
+                          <div className="flex flex-col">
+                            <div className="text-sm font-semibold text-black dark:text-zinc-50 mb-1">
+                              {product.name}
                             </div>
-                            <div className="text-right">
+                            {product.description && (
+                              <div className="text-xs text-zinc-600 dark:text-zinc-400 mb-2">
+                                {product.description}
+                              </div>
+                            )}
+                            <div className="mt-auto">
                               <div className="text-sm font-semibold text-black dark:text-zinc-50">
-                                €{priceWithBTW.toFixed(2)}
+                                €{priceInEuros.toFixed(2)}
                               </div>
                               <div className="text-xs text-zinc-600 dark:text-zinc-400">
-                                {intervalText}
+                                {intervalText} ex. BTW
                               </div>
                             </div>
                           </div>
