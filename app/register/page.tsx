@@ -117,12 +117,14 @@ function RegisterContent() {
           const response = await fetch("/api/stripe/products");
           if (response.ok) {
             const data = await response.json();
+            console.log("[Register] Stripe products fetched:", data.products);
             setStripeProducts(data.products || []);
           } else {
-            console.error("Error fetching Stripe products:", response.status);
+            const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+            console.error("[Register] Error fetching Stripe products:", response.status, errorData);
           }
         } catch (error) {
-          console.error("Error fetching Stripe products:", error);
+          console.error("[Register] Error fetching Stripe products:", error);
         } finally {
           setIsLoadingProducts(false);
         }
@@ -588,7 +590,7 @@ function RegisterContent() {
                         Laden...
                       </div>
                     </div>
-                  ) : (
+                  ) : stripeProducts.length > 0 ? (
                     stripeProducts.map((product) => {
                       const priceInEuros = (product.price?.amount || 0) / 100;
                       const priceWithBTW = priceInEuros * 1.21; // 21% BTW
@@ -640,6 +642,12 @@ function RegisterContent() {
                         </button>
                       );
                     })
+                  ) : (
+                    <div className="px-4 py-3 rounded-lg border-2 border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800">
+                      <div className="text-xs text-zinc-500 dark:text-zinc-500">
+                        Geen betaalde abonnementen beschikbaar
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>

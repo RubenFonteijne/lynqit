@@ -6,17 +6,23 @@ export async function GET(request: NextRequest) {
   try {
     const stripe = await getStripeClient();
     
+    console.log("[API /api/stripe/products] Fetching products from Stripe...");
+    
     // Get all active products
     const products = await stripe.products.list({
       active: true,
       limit: 100,
     });
 
+    console.log(`[API /api/stripe/products] Found ${products.data.length} products`);
+
     // Get all active prices
     const prices = await stripe.prices.list({
       active: true,
       limit: 100,
     });
+
+    console.log(`[API /api/stripe/products] Found ${prices.data.length} prices`);
 
     // Combine products with their prices
     const productsWithPrices = products.data.map((product) => {
@@ -62,6 +68,8 @@ export async function GET(request: NextRequest) {
       const amountB = b.price?.amount || 0;
       return amountA - amountB;
     });
+
+    console.log(`[API /api/stripe/products] Returning ${productsWithPrices.length} products with prices`);
 
     return NextResponse.json({ products: productsWithPrices });
   } catch (error) {
