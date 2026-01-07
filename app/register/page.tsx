@@ -27,7 +27,6 @@ function RegisterContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [slug, setSlug] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<"free" | "start" | "pro">(planParam || "free");
-  const [currentStep, setCurrentStep] = useState(1);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "unavailable">("idle");
@@ -109,9 +108,9 @@ function RegisterContent() {
     return () => clearTimeout(timeoutId);
   }, [slug]);
 
-  // Fetch Stripe products when step 2 is reached
+  // Fetch Stripe products on component mount
   useEffect(() => {
-    if (currentStep === 2 && stripeProducts.length === 0) {
+    if (stripeProducts.length === 0) {
       const fetchStripeProducts = async () => {
         setIsLoadingProducts(true);
         try {
@@ -130,7 +129,7 @@ function RegisterContent() {
       };
       fetchStripeProducts();
     }
-  }, [currentStep, stripeProducts.length]);
+  }, [stripeProducts.length]);
 
 
   // Calculate pricing - only free plan supported
@@ -182,21 +181,22 @@ function RegisterContent() {
     return true;
   };
 
-  const handleNextStep = async () => {
-    setError("");
-    
-    // Validate email first
-    if (!email || !email.trim()) {
-      setError("Email is verplicht");
-      return;
-    }
 
-    // Validate other step 1 fields
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError("");
+
+    // Validate all fields
     if (!validateStep1()) {
       return;
     }
 
     // Check if account already exists
+    if (!email || !email.trim()) {
+      setError("Email is verplicht");
+      return;
+    }
+
     setIsLoading(true);
     try {
       const checkResponse = await fetch(`/api/auth/check?email=${encodeURIComponent(email.toLowerCase())}`);
@@ -215,31 +215,12 @@ function RegisterContent() {
       setIsLoading(false);
     }
 
-    // If validation passes and account doesn't exist, proceed to step 2
-    setCurrentStep(2);
-  };
-
-  const handlePreviousStep = () => {
-    setCurrentStep(1);
-    setError("");
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError("");
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
+    // Continue with registration
+    setIsLoading(true);
 
     if (!slug || slug.trim() === "") {
       setError("Lynqit pagina slug is verplicht");
+      setIsLoading(false);
       return;
     }
 
@@ -459,150 +440,124 @@ function RegisterContent() {
         <div className="w-full max-w-md">
           <div className="p-0">
             <div className="mb-8">
-              <div className="flex items-center gap-2 mb-4">
-                <div className={`flex-1 h-1 rounded-full ${currentStep >= 1 ? 'bg-[#2E47FF]' : 'bg-zinc-700'}`}></div>
-                <div className={`flex-1 h-1 rounded-full ${currentStep >= 2 ? 'bg-[#2E47FF]' : 'bg-zinc-700'}`}></div>
-              </div>
               <h1 className="text-3xl font-semibold text-black dark:text-zinc-50 mb-2">
-                {currentStep === 1 ? "Accountgegevens" : "Abonnement & Betaling"}
+                Maak je account aan
               </h1>
               <p className="text-zinc-600 dark:text-zinc-400">
-                {currentStep === 1 ? "Stap 1 van 2: Maak je account aan" : "Stap 2 van 2: Kies je abonnement"}
+                Vul je gegevens in om te beginnen
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* STEP 1: Account Information */}
-              {currentStep === 1 && (
-                <>
-                  <div>
-                    <label
-                      htmlFor="slug"
-                      className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
-                    >
-                      Lynqit pagina slug
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-zinc-500 dark:text-zinc-400">lynqit.nl/</span>
-                      <input
-                        id="slug"
-                        type="text"
-                        value={slug}
-                        onChange={(e) => {
-                          let value = e.target.value.toLowerCase().replace(/\s+/g, "-");
-                          value = value.replace(/[^a-z0-9-]/g, "");
-                          value = value.replace(/-+/g, "-");
-                          setSlug(value);
-                        }}
-                        required
-                        pattern="[a-z0-9-]+"
-                        className="flex-1 px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors"
-                        placeholder="jouw-pagina-naam"
-                      />
-                    </div>
-                    {slugMessage && (
-                      <p className={`mt-1 text-xs ${
-                        slugStatus === "available" 
-                          ? "text-green-600 dark:text-green-400" 
-                          : slugStatus === "unavailable"
-                          ? "text-red-600 dark:text-red-400"
-                          : "text-zinc-500 dark:text-zinc-400"
-                      }`}>
-                        {slugMessage}
-                      </p>
-                    )}
-                    {!slugMessage && (
-                      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                        Alleen kleine letters, cijfers en streepjes toegestaan
-                      </p>
-                    )}
+              {/* All fields in one step */}
+              <div>
+                <label
+                  htmlFor="slug"
+                  className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                >
+                  Lynqit pagina slug
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-zinc-500 dark:text-zinc-400">lynqit.nl/</span>
+                  <input
+                    id="slug"
+                    type="text"
+                    value={slug}
+                    onChange={(e) => {
+                      let value = e.target.value.toLowerCase().replace(/\s+/g, "-");
+                      value = value.replace(/[^a-z0-9-]/g, "");
+                      value = value.replace(/-+/g, "-");
+                      setSlug(value);
+                    }}
+                    required
+                    pattern="[a-z0-9-]+"
+                    className="flex-1 px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors"
+                    placeholder="jouw-pagina-naam"
+                  />
+                </div>
+                {slugMessage && (
+                  <p className={`mt-1 text-xs ${
+                    slugStatus === "available" 
+                      ? "text-green-600 dark:text-green-400" 
+                      : slugStatus === "unavailable"
+                      ? "text-red-600 dark:text-red-400"
+                      : "text-zinc-500 dark:text-zinc-400"
+                  }`}>
+                    {slugMessage}
+                  </p>
+                )}
+                {!slugMessage && (
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    Alleen kleine letters, cijfers en streepjes toegestaan
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                >
+                  Email address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={!!prefillEmail}
+                  className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="you@example.com"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                >
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors pr-10"
+                    placeholder="Enter your password"
+                  />
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
                   </div>
+                </div>
+              </div>
 
-                  <div>
-                    <label
-                      htmlFor="email"
-                      className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
-                    >
-                      Email address
-                    </label>
-                    <input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      disabled={!!prefillEmail}
-                      className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      placeholder="you@example.com"
-                    />
-                  </div>
+              <div>
+                <label
+                  htmlFor="confirmPassword"
+                  className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+                >
+                  Confirm Password
+                </label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors"
+                  placeholder="Confirm your password"
+                />
+              </div>
 
-                  <div>
-                    <label
-                      htmlFor="password"
-                      className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
-                    >
-                      Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        minLength={6}
-                        className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors pr-10"
-                        placeholder="Enter your password"
-                      />
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="confirmPassword"
-                      className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
-                    >
-                      Confirm Password
-                    </label>
-                    <input
-                      id="confirmPassword"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                      minLength={6}
-                      className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-zinc-50 focus:border-transparent transition-colors"
-                      placeholder="Confirm your password"
-                    />
-                  </div>
-
-                  {error && (
-                    <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-                      <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={handleNextStep}
-                    disabled={isLoading}
-                    className="w-full py-3 px-4 rounded-lg bg-[#2E47FF] text-white font-medium hover:bg-[#1E37E6] focus:outline-none focus:ring-2 focus:ring-[#2E47FF] focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isLoading ? "Controleren..." : "Volgende"}
-                  </button>
-                </>
-              )}
-
-              {/* STEP 2: Subscription & Payment */}
-              {currentStep === 2 && (
-                <>
-                  {/* Plan Selection - Free plan + Stripe products */}
+              {/* Plan Selection - Free plan + Stripe products */}
               <div>
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                   Abonnement
@@ -695,24 +650,13 @@ function RegisterContent() {
                 </div>
               )}
 
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handlePreviousStep}
-                  className="flex-1 py-3 px-4 rounded-lg border-2 border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium hover:bg-zinc-50 dark:hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-500 transition-colors"
-                >
-                  Terug
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="flex-1 py-3 px-4 rounded-lg bg-[#2E47FF] text-white font-medium hover:bg-[#1E37E6] focus:outline-none focus:ring-2 focus:ring-[#2E47FF] focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? "Account aanmaken..." : "Account aanmaken"}
-                </button>
-              </div>
-                </>
-              )}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3 px-4 rounded-lg bg-[#2E47FF] text-white font-medium hover:bg-[#1E37E6] focus:outline-none focus:ring-2 focus:ring-[#2E47FF] focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? "Account aanmaken..." : "Account aanmaken"}
+              </button>
             </form>
 
             <div className="mt-6 text-center">
