@@ -73,36 +73,47 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Combine all products and prices
-    const allProducts: Stripe.Product[] = [];
-    const allPrices: Stripe.Price[] = [];
-    
-    allProductsData.forEach(({ products, prices }) => {
-      allProducts.push(...products);
-      allPrices.push(...prices);
-    });
-    
-    console.log(`[API /api/stripe/products] Total: ${allProducts.length} products and ${allPrices.length} prices from all modes`);
+    console.log(`[API /api/stripe/products] Processing products from ${allProductsData.length} mode(s)`);
 
-    // Combine products with their prices
+    // Combine products with their prices, deduplicating by name
     // Use a Map to deduplicate products by name (in case same product exists in both modes)
-    const productsMap = new Map<string, { product: Stripe.Product; prices: Stripe.Price[] }>();
+    // Prefer live mode products over test mode products
+    const productsMap = new Map<string, { product: Stripe.Product; prices: Stripe.Price[]; mode: 'test' | 'live' }>();
     
-    allProducts.forEach((product) => {
-      const productPrices = allPrices.filter(
-        (price) => price.product === product.id && price.type === 'recurring'
-      );
-      
-      // Use product name as key for deduplication
-      const key = product.name.toLowerCase();
-      if (!productsMap.has(key) || productPrices.length > 0) {
-        // Keep the product with prices, or the first one if no prices
-        const existing = productsMap.get(key);
-        if (!existing || (productPrices.length > 0 && existing.prices.length === 0)) {
-          productsMap.set(key, { product, prices: productPrices });
-        }
-      }
+    // Sort to process test mode first, then live mode (so live overwrites test)
+    const sortedData = allProductsData.sort((a, b) => {
+      if (a.mode === 'test' && b.mode === 'live') return -1;
+      if (a.mode === 'live' && b.mode === 'test') return 1;
+      return 0;
     });
+    
+    sortedData.forEach(({ products, prices, mode }) => {
+      products.forEach((product) => {
+        const productPrices = prices.filter(
+          (price) => price.product === product.id && price.type === 'recurring'
+        );
+        
+        // Use product name as key for deduplication (normalized to lowercase and trimmed)
+        const key = product.name.toLowerCase().trim();
+        
+        const existing = productsMap.get(key);
+        
+        // If product doesn't exist yet, add it
+        if (!existing) {
+          productsMap.set(key, { product, prices: productPrices, mode });
+        } else {
+          // If product exists, prefer live mode over test mode
+          // Or if current has prices and existing doesn't, replace it
+          if (mode === 'live' && existing.mode === 'test') {
+            productsMap.set(key, { product, prices: productPrices, mode });
+          } else if (productPrices.length > 0 && existing.prices.length === 0) {
+            productsMap.set(key, { product, prices: productPrices, mode });
+          }
+        }
+      });
+    });
+    
+    console.log(`[API /api/stripe/products] After deduplication: ${productsMap.size} unique products`);
     
     const productsWithPrices = Array.from(productsMap.values()).map(({ product, prices: productPrices }) => {
 
