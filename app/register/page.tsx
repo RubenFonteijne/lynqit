@@ -629,11 +629,6 @@ function RegisterContent() {
                             <div className="text-sm font-semibold text-black dark:text-zinc-50 mb-1">
                               {product.name}
                             </div>
-                            {product.description && (
-                              <div className="text-xs text-zinc-600 dark:text-zinc-400 mb-2">
-                                {product.description}
-                              </div>
-                            )}
                             <div className="mt-auto">
                               <div className="text-sm font-semibold text-black dark:text-zinc-50">
                                 €{priceInEuros.toFixed(2)}
