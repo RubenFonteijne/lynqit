@@ -554,7 +554,6 @@ export default function PublicLynqitPage() {
                     className="block overflow-hidden transition-colors relative"
                     style={{
                       borderRadius: "8px",
-                      border: isDark ? "1px solid rgba(255, 255, 255, 0.05)" : "1px solid rgba(0, 0, 0, 0.15)",
                     }}
                   >
                     {/* Background Image or Gradient */}
