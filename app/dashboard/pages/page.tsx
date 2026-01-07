@@ -162,11 +162,16 @@ export default function PagesManagementPage() {
               // Log error for debugging
               const errorData = await pagesResponse.json().catch(() => ({ error: "Unknown error" }));
               console.error("Error fetching pages:", pagesResponse.status, errorData);
+              // Still set pages to empty array to show empty state
+              setPages([]);
             }
           }
         } else {
-          setIsLoading(false);
-          router.push("/");
+          if (isMounted) {
+            setIsLoading(false);
+            router.push("/");
+          }
+          return;
         }
       } catch (error) {
         console.error("Error loading user:", error);
