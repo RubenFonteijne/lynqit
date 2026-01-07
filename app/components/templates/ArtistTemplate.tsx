@@ -111,49 +111,6 @@ export default function ArtistTemplate({
         />
       )}
 
-      {/* Custom Links */}
-      {page.customLinks && page.customLinks.length > 0 && (
-        <div className="max-w-md mx-auto px-4 mb-6">
-          <h3
-            className="text-xl font-semibold mb-4 text-center"
-            style={{ color: textColor }}
-          >
-            Links
-          </h3>
-          <div className="space-y-3">
-            {page.customLinks
-              .filter((link) => link.enabled !== false && link.text && link.url)
-              .map((link, index) => (
-                <Link
-                  key={index}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => trackClick(`custom_link_${index}`, link.url)}
-                  className="block w-full px-4 py-3 transition-colors hover:opacity-90 flex items-center justify-between"
-                  style={{
-                    backgroundColor: "#00000033",
-                    color: "#FFFFFF",
-                    borderRadius: "50px",
-                    fontSize: "16px",
-                    fontFamily: "'PT Sans', sans-serif",
-                    fontWeight: "bold",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = "0.9";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = "1";
-                  }}
-                >
-                  <span>{link.text}</span>
-                  <i className="fas fa-angle-right"></i>
-                </Link>
-              ))}
-          </div>
-        </div>
-      )}
-
     </>
   );
 }
