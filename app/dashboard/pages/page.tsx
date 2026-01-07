@@ -140,12 +140,15 @@ export default function PagesManagementPage() {
               }
             }
             
-            // Fetch user's pages with access token
-            const pagesResponse = await fetch(`/api/pages`, {
-              headers: {
-                "Authorization": `Bearer ${session.access_token}`,
-              },
-            });
+            // Fetch user's pages with access token or email fallback
+            const pagesUrl = session.access_token 
+              ? `/api/pages`
+              : `/api/pages?email=${encodeURIComponent(session.user.email || "")}`;
+            const pagesHeaders = session.access_token
+              ? { "Authorization": `Bearer ${session.access_token}` }
+              : {};
+            
+            const pagesResponse = await fetch(pagesUrl, { headers: pagesHeaders });
             if (isMounted && pagesResponse.ok) {
               const pagesData = await pagesResponse.json();
               const freshPages = pagesData.pages || [];
@@ -184,16 +187,34 @@ export default function PagesManagementPage() {
       const supabase = createClientClient();
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session || !session.access_token) {
+      // Get user email from session or localStorage
+      let userEmail = session?.user?.email;
+      if (!userEmail) {
+        const cachedUser = localStorage.getItem("lynqit_user");
+        if (cachedUser) {
+          try {
+            const user = JSON.parse(cachedUser);
+            userEmail = user.email;
+          } catch (e) {
+            // Invalid cache
+          }
+        }
+      }
+      
+      if (!userEmail) {
         setIsLoading(false);
         return;
       }
 
-      const response = await fetch(`/api/pages`, {
-        headers: {
-          "Authorization": `Bearer ${session.access_token}`,
-        },
-      });
+      // Use access token if available, otherwise use email parameter
+      const pagesUrl = session?.access_token 
+        ? `/api/pages`
+        : `/api/pages?email=${encodeURIComponent(userEmail)}`;
+      const pagesHeaders = session?.access_token
+        ? { "Authorization": `Bearer ${session.access_token}` }
+        : {};
+
+      const response = await fetch(pagesUrl, { headers: pagesHeaders });
       if (!response.ok) {
         throw new Error(`Failed to fetch pages: ${response.status}`);
       }

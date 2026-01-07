@@ -11,21 +11,30 @@ export async function GET(request: NextRequest) {
   try {
     // Get access token from Authorization header
     const authHeader = request.headers.get('authorization');
+    const searchParams = request.nextUrl.searchParams;
+    const email = searchParams.get("email");
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      );
+    let userEmail: string | null = null;
+    
+    // Try to get user from Bearer token first
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const accessToken = authHeader.substring(7);
+      const supabase = createServerClientFromRequest(request);
+      
+      // Verify the access token and get user
+      const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
+
+      if (!userError && user && user.email) {
+        userEmail = user.email;
+      }
     }
-
-    const accessToken = authHeader.substring(7);
-    const supabase = createServerClientFromRequest(request);
     
-    // Verify the access token and get user
-    const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
-
-    if (userError || !user || !user.email) {
+    // Fallback: use email from query parameter if token auth failed
+    if (!userEmail && email) {
+      userEmail = email;
+    }
+    
+    if (!userEmail) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
@@ -33,7 +42,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Use the existing getPagesByUser function (it's already optimized)
-    const pages = await getPagesByUser(user.email);
+    const pages = await getPagesByUser(userEmail);
     return NextResponse.json({ pages });
   } catch (error) {
     console.error("Error fetching pages:", error);

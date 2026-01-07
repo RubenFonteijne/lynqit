@@ -155,7 +155,7 @@ export default function InsightsPage() {
               }
             }
             
-            // Fetch user's pages with access token
+            // Fetch user's pages with access token or email fallback
             await fetchPages(session.access_token);
           }
         } else {
@@ -182,13 +182,30 @@ export default function InsightsPage() {
     };
   }, []); // Removed router to prevent loops
 
-  const fetchPages = async (accessToken: string) => {
+  const fetchPages = async (accessToken?: string) => {
     try {
-      const response = await fetch(`/api/pages`, {
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-        },
-      });
+      // Get user email from localStorage if no token
+      let userEmail: string | undefined;
+      if (!accessToken) {
+        const cachedUser = localStorage.getItem("lynqit_user");
+        if (cachedUser) {
+          try {
+            const user = JSON.parse(cachedUser);
+            userEmail = user.email;
+          } catch (e) {
+            // Invalid cache
+          }
+        }
+      }
+      
+      const pagesUrl = accessToken 
+        ? `/api/pages`
+        : `/api/pages?email=${encodeURIComponent(userEmail || "")}`;
+      const pagesHeaders = accessToken
+        ? { "Authorization": `Bearer ${accessToken}` }
+        : {};
+      
+      const response = await fetch(pagesUrl, { headers: pagesHeaders });
       
       if (response.ok) {
         const data = await response.json();

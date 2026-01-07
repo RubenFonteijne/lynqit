@@ -124,13 +124,17 @@ export default function DashboardPage() {
         }
 
         // Fetch user info and pages in parallel
+        const userEmail = session.user.email || "";
+        const pagesUrl = session.access_token 
+          ? `/api/pages`
+          : `/api/pages?email=${encodeURIComponent(userEmail)}`;
+        const pagesHeaders = session.access_token
+          ? { "Authorization": `Bearer ${session.access_token}` }
+          : {};
+        
         const [userResponse, pagesResponse] = await Promise.all([
-          fetch(`/api/user?email=${encodeURIComponent(session.user.email)}`),
-          fetch(`/api/pages`, {
-            headers: {
-              "Authorization": `Bearer ${session.access_token}`,
-            },
-          }),
+          fetch(`/api/user?email=${encodeURIComponent(userEmail)}`),
+          fetch(pagesUrl, { headers: pagesHeaders }),
         ]);
 
         if (!isMounted) return;
