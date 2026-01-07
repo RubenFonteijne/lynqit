@@ -159,12 +159,10 @@ export default function DashboardPage() {
 
           // Fetch dashboard analytics if user has pages
           if (freshPages.length > 0) {
-            const analyticsHeaders = session.access_token
-              ? { "Authorization": `Bearer ${session.access_token}` }
+            const analyticsFetchOptions: RequestInit = session.access_token
+              ? { headers: { "Authorization": `Bearer ${session.access_token}` } }
               : {};
-            const analyticsResponse = await fetch(`/api/analytics/dashboard`, {
-              headers: analyticsHeaders,
-            });
+            const analyticsResponse = await fetch(`/api/analytics/dashboard`, analyticsFetchOptions);
 
             if (analyticsResponse.ok && isMounted) {
               const analyticsData = await analyticsResponse.json();
