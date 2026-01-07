@@ -506,14 +506,14 @@ export default function PublicLynqitPage() {
             }}
           />
           
-          {/* Overlay: wit-transparant links-rechts (licht) of zwart-transparant (donker) */}
+          {/* Overlay: achtergrondkleur-transparant links-rechts */}
           <div
             className="absolute inset-0"
             style={{
               borderRadius: "10px",
               background: isDark
-                ? "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0) 100%)"
-                : "linear-gradient(to right, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0) 100%)",
+                ? `linear-gradient(to right, ${hexToRgba(bgColor, 1)} 0%, ${hexToRgba(bgColor, 0.4)} 50%, ${hexToRgba(bgColor, 0)} 100%)`
+                : `linear-gradient(to right, ${hexToRgba(bgColor, 0.9)} 0%, ${hexToRgba(bgColor, 0.5)} 50%, ${hexToRgba(bgColor, 0)} 100%)`,
             }}
           />
           
