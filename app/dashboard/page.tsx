@@ -177,11 +177,17 @@ export default function DashboardPage() {
             const errorData = await pagesResponse.json().catch(() => ({ error: "Unknown error" }));
             console.error("Error fetching pages:", pagesResponse.status, errorData);
           }
+          // Still set pages to empty array to show empty state
+          if (isMounted) {
+            setPages([]);
+          }
         }
         
         if (!userResponse.ok) {
-          setIsLoading(false);
-          router.push("/");
+          if (isMounted) {
+            setIsLoading(false);
+            router.push("/");
+          }
           return;
         }
       } catch (error) {
