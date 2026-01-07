@@ -27,6 +27,7 @@ function RegisterContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [slug, setSlug] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<"free" | "start" | "pro">(planParam || "free");
+  // Initialize with first free product from Stripe if available, otherwise default to "free"
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "unavailable">("idle");
@@ -596,35 +597,6 @@ function RegisterContent() {
                   Abonnement
                 </label>
                 <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
-                  {/* Free plan */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedPlan("free");
-                      setSelectedStripeProduct(null);
-                      localStorage.removeItem("selected_stripe_product");
-                    }}
-                    className={`px-4 py-3 rounded-lg border-2 transition-colors text-left ${
-                      selectedPlan === "free" && !selectedStripeProduct
-                        ? "border-[#2E47FF] bg-blue-50 dark:bg-blue-900/20"
-                        : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
-                    }`}
-                  >
-                    <div className="flex flex-col">
-                      <div className="text-sm font-semibold text-black dark:text-zinc-50 mb-1">
-                        Basis
-                      </div>
-                      <div className="mt-auto">
-                        <div className="text-sm font-semibold text-black dark:text-zinc-50">
-                          €0,00
-                        </div>
-                        <div className="text-xs text-zinc-600 dark:text-zinc-400">
-                          Gratis
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-
                   {/* Stripe products */}
                   {isLoadingProducts ? (
                     <div className="px-4 py-3 rounded-lg border-2 border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800">
@@ -636,6 +608,8 @@ function RegisterContent() {
                     stripeProducts.map((product) => {
                       const priceInEuros = (product.price?.amount || 0) / 100; // Price ex BTW
                       const intervalText = product.price?.interval === 'month' ? 'per maand' : product.price?.interval === 'year' ? 'per jaar' : '';
+                      const isFree = priceInEuros === 0;
+                      const plan = isFree ? "free" : (product.metadata.plan as "start" | "pro" || "start");
                       
                       return (
                         <button
@@ -643,23 +617,23 @@ function RegisterContent() {
                           type="button"
                           onClick={() => {
                             // Store selected product info for later use
-                            const plan = product.metadata.plan as "start" | "pro" || "start";
                             setSelectedPlan(plan);
-                            setSelectedStripeProduct({
-                              productId: product.id,
-                              priceId: product.price?.id || "",
-                            });
-                            localStorage.setItem("selected_stripe_product", JSON.stringify({
-                              productId: product.id,
-                              priceId: product.price?.id,
-                            }));
-                            // Deselect free plan if a paid plan is selected
-                            if (selectedPlan === "free") {
-                              setSelectedPlan(plan);
+                            if (isFree) {
+                              setSelectedStripeProduct(null);
+                              localStorage.removeItem("selected_stripe_product");
+                            } else {
+                              setSelectedStripeProduct({
+                                productId: product.id,
+                                priceId: product.price?.id || "",
+                              });
+                              localStorage.setItem("selected_stripe_product", JSON.stringify({
+                                productId: product.id,
+                                priceId: product.price?.id,
+                              }));
                             }
                           }}
                           className={`px-4 py-3 rounded-lg border-2 transition-colors text-left ${
-                            selectedStripeProduct?.productId === product.id
+                            (selectedStripeProduct?.productId === product.id) || (isFree && selectedPlan === "free" && !selectedStripeProduct)
                               ? "border-[#2E47FF] bg-blue-50 dark:bg-blue-900/20"
                               : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
                           }`}
@@ -673,7 +647,7 @@ function RegisterContent() {
                                 €{priceInEuros.toFixed(2)}
                               </div>
                               <div className="text-xs text-zinc-600 dark:text-zinc-400">
-                                {intervalText} ex. BTW
+                                {isFree ? "Gratis" : `${intervalText} ex. BTW`}
                               </div>
                             </div>
                           </div>
