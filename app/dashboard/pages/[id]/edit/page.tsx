@@ -2312,7 +2312,7 @@ export default function EditPagePage() {
                                     className="relative"
                                     style={{
                                       borderRadius: "8px 8px 0 0",
-                                      height: "160px",
+                                      height: "200px",
                                       ...(link.image && link.image.trim()
                                         ? {
                                             backgroundImage: `url(${link.image})`,
@@ -2329,19 +2329,19 @@ export default function EditPagePage() {
                                       className="absolute inset-0"
                                       style={{
                                         borderRadius: "8px 8px 0 0",
-                                        background: `linear-gradient(to top, ${hexToRgba(bgColor, 1)} 0%, ${hexToRgba(bgColor, 0)} 50%)`,
+                                        background: `linear-gradient(to top, ${hexToRgba(bgColor, 1)} 0%, ${hexToRgba(bgColor, 0)} 30%)`,
                                       }}
                                     />
-                                  </div>
-                                  
-                                  {/* Content - Onder de afbeelding met negative margin-top */}
-                                  <div className="p-3" style={{ marginTop: "-8px" }}>
-                                    <h3
-                                      className="text-sm font-medium text-center"
-                                      style={{ color: textColor }}
-                                    >
-                                      {link.title}
-                                    </h3>
+                                    
+                                    {/* Content - Bovenop de afbeelding aan de onderkant */}
+                                    <div className="absolute bottom-0 left-0 right-0 p-3" style={{ zIndex: 10 }}>
+                                      <h3
+                                        className="text-sm font-medium text-center"
+                                        style={{ color: isDark ? "#FFF" : "#000" }}
+                                      >
+                                        {link.title}
+                                      </h3>
+                                    </div>
                                   </div>
                                 </div>
                               );
