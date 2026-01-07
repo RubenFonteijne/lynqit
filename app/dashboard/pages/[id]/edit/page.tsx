@@ -371,75 +371,72 @@ export default function EditPagePage() {
                 </div>
                 {page.subscriptionPlan && page.subscriptionPlan !== "free" && (
                   <>
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-300 mb-2">
-                        CTA Button Kleur
-                      </label>
-                      <div className="flex gap-3 items-center">
-                        <input
-                          type="color"
-                          value={page.brandColor || "#2E47FF"}
-                          onChange={(e) => updatePage({ brandColor: e.target.value })}
-                          className="w-20 h-10 rounded-lg border border-zinc-300 dark:border-zinc-700 cursor-pointer"
-                        />
-                        <input
-                          type="text"
-                          value={page.brandColor || "#2E47FF"}
-                          onChange={(e) => updatePage({ brandColor: e.target.value })}
-                          placeholder="#2E47FF"
-                          className="flex-1 px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50 font-mono"
-                        />
+                    {/* Drie kleuren naast elkaar */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">
+                          Achtergrond-kleur
+                        </label>
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="color"
+                            value={page.backgroundColor || ""}
+                            onChange={(e) => updatePage({ backgroundColor: e.target.value })}
+                            className="w-16 h-10 rounded-lg border border-zinc-300 dark:border-zinc-700 cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={page.backgroundColor || ""}
+                            onChange={(e) => updatePage({ backgroundColor: e.target.value })}
+                            placeholder="#000000"
+                            className="flex-1 px-2 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50 font-mono text-xs"
+                          />
+                        </div>
                       </div>
-                      <p className="text-xs text-zinc-500 mt-1">
-                        Deze kleur wordt gebruikt voor de CTA button, promobanner knop, events knoppen en shows knoppen
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-300 mb-2">
-                        Tekst Kleur op CTA Kleur
-                      </label>
-                      <div className="flex gap-3 items-center">
-                        <input
-                          type="color"
-                          value={page.ctaTextColor || "#FFFFFF"}
-                          onChange={(e) => updatePage({ ctaTextColor: e.target.value })}
-                          className="w-20 h-10 rounded-lg border border-zinc-300 dark:border-zinc-700 cursor-pointer"
-                        />
-                        <input
-                          type="text"
-                          value={page.ctaTextColor || "#FFFFFF"}
-                          onChange={(e) => updatePage({ ctaTextColor: e.target.value })}
-                          placeholder="#FFFFFF"
-                          className="flex-1 px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50 font-mono"
-                        />
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">
+                          CTA Button Kleur
+                        </label>
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="color"
+                            value={page.brandColor || "#2E47FF"}
+                            onChange={(e) => updatePage({ brandColor: e.target.value })}
+                            className="w-16 h-10 rounded-lg border border-zinc-300 dark:border-zinc-700 cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={page.brandColor || "#2E47FF"}
+                            onChange={(e) => updatePage({ brandColor: e.target.value })}
+                            placeholder="#2E47FF"
+                            className="flex-1 px-2 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50 font-mono text-xs"
+                          />
+                        </div>
                       </div>
-                      <p className="text-xs text-zinc-500 mt-1">
-                        Deze kleur wordt gebruikt voor de tekst op de CTA button, promobanner knop, events knoppen en shows knoppen
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-300 mb-2">
-                        Achtergrond-kleur
-                      </label>
-                      <div className="flex gap-3 items-center">
-                        <input
-                          type="color"
-                          value={page.backgroundColor || ""}
-                          onChange={(e) => updatePage({ backgroundColor: e.target.value })}
-                          className="w-20 h-10 rounded-lg border border-zinc-300 dark:border-zinc-700 cursor-pointer"
-                        />
-                        <input
-                          type="text"
-                          value={page.backgroundColor || ""}
-                          onChange={(e) => updatePage({ backgroundColor: e.target.value })}
-                          placeholder="#000000"
-                          className="flex-1 px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50 font-mono"
-                        />
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">
+                          Tekstkleur op CTA
+                        </label>
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="color"
+                            value={page.ctaTextColor || "#FFFFFF"}
+                            onChange={(e) => updatePage({ ctaTextColor: e.target.value })}
+                            className="w-16 h-10 rounded-lg border border-zinc-300 dark:border-zinc-700 cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={page.ctaTextColor || "#FFFFFF"}
+                            onChange={(e) => updatePage({ ctaTextColor: e.target.value })}
+                            placeholder="#FFFFFF"
+                            className="flex-1 px-2 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50 font-mono text-xs"
+                          />
+                        </div>
                       </div>
-                      <p className="text-xs text-zinc-500 mt-1">
-                        Optionele achtergrondkleur voor de pagina. Als ingevuld, krijgen icons en knoppen zwart met 15% opacity.
-                      </p>
                     </div>
+                    <p className="text-xs text-zinc-500 mt-2">
+                      Achtergrond: Optionele achtergrondkleur voor de pagina. CTA: Kleur voor CTA button, promobanner knop, events en shows knoppen. Tekstkleur: Kleur voor tekst op CTA button en knoppen.
+                    </p>
                   </>
                 )}
               </div>
@@ -505,6 +502,160 @@ export default function EditPagePage() {
                       className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                     />
                   </div>
+                )}
+              </div>
+            </div>
+
+            {/* Logo - Direct na Header */}
+            <div className="rounded-xl shadow-sm border border-zinc-800 p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
+              <h2 className="text-xl font-semibold text-zinc-50 mb-4">
+                Logo
+              </h2>
+              <div className="space-y-4">
+                <ImageUpload
+                  value={page.logo}
+                  onChange={(url) => updatePage({ logo: url })}
+                  label="Logo"
+                />
+              </div>
+            </div>
+
+            {/* Social Media Links - Direct na Logo */}
+            <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+              <h2 className="text-xl font-semibold text-zinc-50 mb-4">
+                Social Media Links
+              </h2>
+              <div className="space-y-4">
+                {[
+                  "instagram",
+                  "facebook",
+                  "youtube",
+                  "tiktok",
+                  "linkedin",
+                  "soundcloud",
+                  "spotify",
+                  "website",
+                ].map((platform) => (
+                  <div key={platform}>
+                    <label className="block text-sm font-medium text-zinc-300 mb-2 capitalize">
+                      {platform}
+                    </label>
+                    <input
+                      type="url"
+                      value={page.socialMedia[platform as keyof typeof page.socialMedia] || ""}
+                      onChange={(e) =>
+                        updatePage({
+                          socialMedia: {
+                            ...page.socialMedia,
+                            [platform]: e.target.value,
+                          },
+                        })
+                      }
+                      placeholder="https://..."
+                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Intro, Contact & CTA - Samen in 1 card */}
+            <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+              <h2 className="text-xl font-semibold text-zinc-50 mb-4">
+                Intro, Contact & CTA
+              </h2>
+              <div className="space-y-4">
+                {/* Intro Tekst */}
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-2">
+                    Intro Tekst
+                  </label>
+                  <textarea
+                    value={page.intro || ""}
+                    onChange={(e) => updatePage({ intro: e.target.value })}
+                    rows={4}
+                    className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
+                  />
+                </div>
+                {/* Spotify Embed (only for Artist template) */}
+                {page.template === "artist" && (
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">
+                      Spotify Nummer URL
+                    </label>
+                    <input
+                      type="url"
+                      value={page.spotifyUrl || ""}
+                      onChange={(e) => updatePage({ spotifyUrl: e.target.value })}
+                      placeholder="https://open.spotify.com/track/..."
+                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
+                    />
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                      Plak hier de Spotify URL van het nummer dat je wilt embedden
+                    </p>
+                  </div>
+                )}
+                {/* Contactgegevens - Only for Start and Pro plans */}
+                {page.subscriptionPlan && page.subscriptionPlan !== "free" && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
+                        Telefoonnummer
+                      </label>
+                      <input
+                        type="text"
+                        value={page.telefoonnummer || ""}
+                        onChange={(e) => updatePage({ telefoonnummer: e.target.value })}
+                        className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
+                        E-mailadres
+                      </label>
+                      <input
+                        type="email"
+                        value={page.emailadres || ""}
+                        onChange={(e) => updatePage({ emailadres: e.target.value })}
+                        className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
+                      />
+                    </div>
+                  </>
+                )}
+                {/* CTA Button - Only for Start and Pro plans */}
+                {page.subscriptionPlan && page.subscriptionPlan !== "free" && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
+                        CTA Knop Tekst
+                      </label>
+                      <input
+                        type="text"
+                        value={page.ctaButton.text}
+                        onChange={(e) =>
+                          updatePage({
+                            ctaButton: { ...page.ctaButton, text: e.target.value },
+                          })
+                        }
+                        className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
+                        CTA Knop Link
+                      </label>
+                      <input
+                        type="text"
+                        value={page.ctaButton.link}
+                        onChange={(e) =>
+                          updatePage({
+                            ctaButton: { ...page.ctaButton, link: e.target.value },
+                          })
+                        }
+                        className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
+                      />
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -1393,364 +1544,6 @@ export default function EditPagePage() {
               </div>
             )}
 
-            {/* Logo & Intro - Third for free plan, after Header */}
-            {(!page.subscriptionPlan || page.subscriptionPlan === "free") && (
-              <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <h2 className="text-xl font-semibold text-zinc-50 mb-4">
-                  Logo & Intro
-                </h2>
-                <div className="space-y-4">
-                  <ImageUpload
-                    value={page.logo}
-                    onChange={(url) => updatePage({ logo: url })}
-                    label="Logo"
-                  />
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-300 mb-2">
-                      Intro Tekst
-                    </label>
-                    <textarea
-                      value={page.intro || ""}
-                      onChange={(e) => updatePage({ intro: e.target.value })}
-                      rows={4}
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Links - Available for all plans */}
-            <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-              <h2 className="text-xl font-semibold text-zinc-50 mb-4">
-                Links
-                {(!page.subscriptionPlan || page.subscriptionPlan === "free") && (
-                  <span className="text-sm font-normal text-zinc-500 ml-2">(Maximaal 5)</span>
-                )}
-              </h2>
-              <div className="space-y-4">
-                {(page.customLinks || []).slice(0, (!page.subscriptionPlan || page.subscriptionPlan === "free") ? 5 : undefined).map((link, index) => {
-                  const isCollapsed = collapsedLinks.has(index);
-                  const isDragging = draggedLinkIndex === index;
-                  return (
-                    <div
-                      key={index}
-                      draggable
-                      onDragStart={(e) => {
-                        setDraggedLinkIndex(index);
-                        e.dataTransfer.effectAllowed = "move";
-                      }}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = "move";
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        if (draggedLinkIndex === null || draggedLinkIndex === index) {
-                          setDraggedLinkIndex(null);
-                          return;
-                        }
-                        
-                        const newLinks = [...(page.customLinks || [])];
-                        const draggedLink = newLinks[draggedLinkIndex];
-                        newLinks.splice(draggedLinkIndex, 1);
-                        newLinks.splice(index, 0, draggedLink);
-                        
-                        // Update collapsed links indices
-                        const newCollapsed = new Set<number>();
-                        collapsedLinks.forEach((collapsedIndex) => {
-                          if (collapsedIndex === draggedLinkIndex) {
-                            newCollapsed.add(index);
-                          } else if (collapsedIndex < draggedLinkIndex && collapsedIndex >= index) {
-                            newCollapsed.add(collapsedIndex + 1);
-                          } else if (collapsedIndex > draggedLinkIndex && collapsedIndex <= index) {
-                            newCollapsed.add(collapsedIndex - 1);
-                          } else {
-                            newCollapsed.add(collapsedIndex);
-                          }
-                        });
-                        setCollapsedLinks(newCollapsed);
-                        
-                        updatePage({ customLinks: newLinks });
-                        setDraggedLinkIndex(null);
-                      }}
-                      onDragEnd={() => {
-                        setDraggedLinkIndex(null);
-                      }}
-                      className={`border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 space-y-4 cursor-move transition-opacity ${
-                        isDragging ? "opacity-50" : "opacity-100"
-                      } hover:border-zinc-300 dark:hover:border-zinc-600`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <i className="fas fa-grip-vertical text-zinc-400 dark:text-zinc-500"></i>
-                          <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                            {link.text || `Link ${index + 1}`}
-                          </h3>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={link.enabled !== false}
-                              onChange={(e) => {
-                                const newLinks = [...(page.customLinks || [])];
-                                newLinks[index] = { ...link, enabled: e.target.checked };
-                                updatePage({ customLinks: newLinks });
-                              }}
-                              className="sr-only peer"
-                            />
-                            <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-zinc-600 peer-checked:bg-[#2E47FF]"></div>
-                          </label>
-                          <button
-                            onClick={() => {
-                              const newCollapsed = new Set(collapsedLinks);
-                              if (isCollapsed) {
-                                newCollapsed.delete(index);
-                              } else {
-                                newCollapsed.add(index);
-                              }
-                              setCollapsedLinks(newCollapsed);
-                            }}
-                            className="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 text-sm p-2"
-                            title={isCollapsed ? "Uitklappen" : "Inklappen"}
-                          >
-                            <i className={`fas ${isCollapsed ? "fa-chevron-down" : "fa-chevron-up"}`}></i>
-                          </button>
-                          <button
-                            onClick={() => {
-                              const newLinks = [...(page.customLinks || [])];
-                              newLinks.splice(index, 1);
-                              updatePage({ customLinks: newLinks });
-                            }}
-                            className="text-red-500 hover:text-red-700 text-sm p-2"
-                            title="Verwijderen"
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
-                        </div>
-                      </div>
-                      {!isCollapsed && (
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-zinc-300 mb-2">
-                              Tekst
-                            </label>
-                            <input
-                              type="text"
-                              value={link.text}
-                              onChange={(e) => {
-                                const newLinks = [...(page.customLinks || [])];
-                                newLinks[index] = { ...link, text: e.target.value };
-                                updatePage({ customLinks: newLinks });
-                              }}
-                              placeholder="Tekst"
-                              className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-zinc-300 mb-2">
-                              URL
-                            </label>
-                            <input
-                              type="text"
-                              value={link.url}
-                              onChange={(e) => {
-                                const newLinks = [...(page.customLinks || [])];
-                                newLinks[index] = { ...link, url: e.target.value };
-                                updatePage({ customLinks: newLinks });
-                              }}
-                              placeholder="https://..."
-                              className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {((!page.subscriptionPlan || page.subscriptionPlan === "free") ? (page.customLinks || []).length < 5 : true) && (
-                  <button
-                    onClick={() => {
-                      const newLinks = [...(page.customLinks || [])];
-                      newLinks.push({
-                        text: "",
-                        url: "",
-                        enabled: true,
-                      });
-                      updatePage({ customLinks: newLinks });
-                    }}
-                    className="w-full px-4 py-2 border-2 border-dashed border-zinc-700 rounded-lg text-zinc-300 hover:border-zinc-600 transition-colors"
-                  >
-                    + Nieuw link toevoegen
-                  </button>
-                )}
-                {(!page.subscriptionPlan || page.subscriptionPlan === "free") && (page.customLinks || []).length >= 5 && (
-                  <p className="text-sm text-zinc-500 text-center">
-                    Maximum van 5 links bereikt voor gratis plan
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Social Media - For all plans */}
-            <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-              <h2 className="text-xl font-semibold text-zinc-50 mb-4">
-                Social Media Links
-              </h2>
-              <div className="space-y-4">
-                {[
-                  "instagram",
-                  "facebook",
-                  "youtube",
-                  "tiktok",
-                  "linkedin",
-                  "soundcloud",
-                  "spotify",
-                  "website",
-                ].map((platform) => (
-                  <div key={platform}>
-                    <label className="block text-sm font-medium text-zinc-300 mb-2 capitalize">
-                      {platform}
-                    </label>
-                    <input
-                      type="url"
-                      value={page.socialMedia[platform as keyof typeof page.socialMedia] || ""}
-                      onChange={(e) =>
-                        updatePage({
-                          socialMedia: {
-                            ...page.socialMedia,
-                            [platform]: e.target.value,
-                          },
-                        })
-                      }
-                      placeholder="https://..."
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Contact Info - Only for Start and Pro plans */}
-            {page.subscriptionPlan && page.subscriptionPlan !== "free" && (
-              <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <h2 className="text-xl font-semibold text-zinc-50 mb-4">
-                  Contactgegevens
-                </h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-300 mb-2">
-                      Telefoonnummer
-                    </label>
-                    <input
-                      type="text"
-                      value={page.telefoonnummer || ""}
-                      onChange={(e) => updatePage({ telefoonnummer: e.target.value })}
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-300 mb-2">
-                      E-mailadres
-                    </label>
-                    <input
-                      type="email"
-                      value={page.emailadres || ""}
-                      onChange={(e) => updatePage({ emailadres: e.target.value })}
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* CTA Button - Only for Start and Pro plans */}
-            {page.subscriptionPlan && page.subscriptionPlan !== "free" && (
-              <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <h2 className="text-xl font-semibold text-zinc-50 mb-4">
-                  CTA Knop
-                </h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-300 mb-2">
-                      Tekst
-                    </label>
-                    <input
-                      type="text"
-                      value={page.ctaButton.text}
-                      onChange={(e) =>
-                        updatePage({
-                          ctaButton: { ...page.ctaButton, text: e.target.value },
-                        })
-                      }
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-300 mb-2">
-                      Link
-                    </label>
-                    <input
-                      type="text"
-                      value={page.ctaButton.link}
-                      onChange={(e) =>
-                        updatePage({
-                          ctaButton: { ...page.ctaButton, link: e.target.value },
-                        })
-                      }
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Logo & Intro - For Start and Pro plans */}
-            {(!page.subscriptionPlan || page.subscriptionPlan !== "free") && (
-              <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <h2 className="text-xl font-semibold text-zinc-50 mb-4">
-                  Logo & Intro
-                </h2>
-                <div className="space-y-4">
-                  <ImageUpload
-                    value={page.logo}
-                    onChange={(url) => updatePage({ logo: url })}
-                    label="Logo"
-                  />
-                  {/* Spotify Embed (only for Artist template) */}
-                  {page.template === "artist" && (
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-300 mb-2">
-                        Spotify Nummer URL
-                      </label>
-                      <input
-                        type="url"
-                        value={page.spotifyUrl || ""}
-                        onChange={(e) => updatePage({ spotifyUrl: e.target.value })}
-                        placeholder="https://open.spotify.com/track/..."
-                        className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
-                      />
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                        Plak hier de Spotify URL van het nummer dat je wilt embedden
-                      </p>
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-300 mb-2">
-                      Intro Tekst
-                    </label>
-                    <textarea
-                      value={page.intro || ""}
-                      onChange={(e) => updatePage({ intro: e.target.value })}
-                      rows={4}
-                      className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Featured Links - Only for Start and Pro plans */}
             {page.subscriptionPlan && page.subscriptionPlan !== "free" && (
               <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
@@ -1927,6 +1720,179 @@ export default function EditPagePage() {
               </div>
             </div>
             )}
+
+            {/* Custom Links - Available for all plans */}
+            <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+              <h2 className="text-xl font-semibold text-zinc-50 mb-4">
+                Links
+                {(!page.subscriptionPlan || page.subscriptionPlan === "free") && (
+                  <span className="text-sm font-normal text-zinc-500 ml-2">(Maximaal 5)</span>
+                )}
+              </h2>
+              <div className="space-y-4">
+                {(page.customLinks || []).slice(0, (!page.subscriptionPlan || page.subscriptionPlan === "free") ? 5 : undefined).map((link, index) => {
+                  const isCollapsed = collapsedLinks.has(index);
+                  const isDragging = draggedLinkIndex === index;
+                  return (
+                    <div
+                      key={index}
+                      draggable
+                      onDragStart={(e) => {
+                        setDraggedLinkIndex(index);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (draggedLinkIndex === null || draggedLinkIndex === index) {
+                          setDraggedLinkIndex(null);
+                          return;
+                        }
+                        
+                        const newLinks = [...(page.customLinks || [])];
+                        const draggedLink = newLinks[draggedLinkIndex];
+                        newLinks.splice(draggedLinkIndex, 1);
+                        newLinks.splice(index, 0, draggedLink);
+                        
+                        // Update collapsed links indices
+                        const newCollapsed = new Set<number>();
+                        collapsedLinks.forEach((collapsedIndex) => {
+                          if (collapsedIndex === draggedLinkIndex) {
+                            newCollapsed.add(index);
+                          } else if (collapsedIndex < draggedLinkIndex && collapsedIndex >= index) {
+                            newCollapsed.add(collapsedIndex + 1);
+                          } else if (collapsedIndex > draggedLinkIndex && collapsedIndex <= index) {
+                            newCollapsed.add(collapsedIndex - 1);
+                          } else {
+                            newCollapsed.add(collapsedIndex);
+                          }
+                        });
+                        setCollapsedLinks(newCollapsed);
+                        
+                        updatePage({ customLinks: newLinks });
+                        setDraggedLinkIndex(null);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedLinkIndex(null);
+                      }}
+                      className={`border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 space-y-4 cursor-move transition-opacity ${
+                        isDragging ? "opacity-50" : "opacity-100"
+                      } hover:border-zinc-300 dark:hover:border-zinc-600`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <i className="fas fa-grip-vertical text-zinc-400 dark:text-zinc-500"></i>
+                          <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                            {link.text || `Link ${index + 1}`}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={link.enabled !== false}
+                              onChange={(e) => {
+                                const newLinks = [...(page.customLinks || [])];
+                                newLinks[index] = { ...link, enabled: e.target.checked };
+                                updatePage({ customLinks: newLinks });
+                              }}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-zinc-600 peer-checked:bg-[#2E47FF]"></div>
+                          </label>
+                          <button
+                            onClick={() => {
+                              const newCollapsed = new Set(collapsedLinks);
+                              if (isCollapsed) {
+                                newCollapsed.delete(index);
+                              } else {
+                                newCollapsed.add(index);
+                              }
+                              setCollapsedLinks(newCollapsed);
+                            }}
+                            className="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 text-sm p-2"
+                            title={isCollapsed ? "Uitklappen" : "Inklappen"}
+                          >
+                            <i className={`fas ${isCollapsed ? "fa-chevron-down" : "fa-chevron-up"}`}></i>
+                          </button>
+                          <button
+                            onClick={() => {
+                              const newLinks = [...(page.customLinks || [])];
+                              newLinks.splice(index, 1);
+                              updatePage({ customLinks: newLinks });
+                            }}
+                            className="text-red-500 hover:text-red-700 text-sm p-2"
+                            title="Verwijderen"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                      {!isCollapsed && (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-zinc-300 mb-2">
+                              Tekst
+                            </label>
+                            <input
+                              type="text"
+                              value={link.text}
+                              onChange={(e) => {
+                                const newLinks = [...(page.customLinks || [])];
+                                newLinks[index] = { ...link, text: e.target.value };
+                                updatePage({ customLinks: newLinks });
+                              }}
+                              placeholder="Tekst"
+                              className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-zinc-300 mb-2">
+                              URL
+                            </label>
+                            <input
+                              type="text"
+                              value={link.url}
+                              onChange={(e) => {
+                                const newLinks = [...(page.customLinks || [])];
+                                newLinks[index] = { ...link, url: e.target.value };
+                                updatePage({ customLinks: newLinks });
+                              }}
+                              placeholder="https://..."
+                              className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {((!page.subscriptionPlan || page.subscriptionPlan === "free") ? (page.customLinks || []).length < 5 : true) && (
+                  <button
+                    onClick={() => {
+                      const newLinks = [...(page.customLinks || [])];
+                      newLinks.push({
+                        text: "",
+                        url: "",
+                        enabled: true,
+                      });
+                      updatePage({ customLinks: newLinks });
+                    }}
+                    className="w-full px-4 py-2 border-2 border-dashed border-zinc-700 rounded-lg text-zinc-300 hover:border-zinc-600 transition-colors"
+                  >
+                    + Nieuw link toevoegen
+                  </button>
+                )}
+                {(!page.subscriptionPlan || page.subscriptionPlan === "free") && (page.customLinks || []).length >= 5 && (
+                  <p className="text-sm text-zinc-500 text-center">
+                    Maximum van 5 links bereikt voor gratis plan
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Right Column - Sticky Preview (30%) */}
@@ -2411,7 +2377,7 @@ export default function EditPagePage() {
 
                       {/* Custom Links - Laatste element voor footer */}
                       {page.customLinks && page.customLinks.length > 0 && (
-                        <div className="max-w-md mx-auto px-4 mb-6">
+                        <div className="max-w-md mx-auto px-4 my-6">
                           <h3
                             className="text-xl font-semibold mb-4 text-center"
                             style={{ color: textColor }}

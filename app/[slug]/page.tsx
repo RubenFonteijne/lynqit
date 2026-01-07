@@ -751,7 +751,7 @@ export default function PublicLynqitPage() {
       {page.customLinks && page.customLinks.length > 0 && (
         <div className="max-w-md mx-auto px-4 mb-6">
           <h3
-            className="text-xl font-semibold mb-4 text-center"
+            className="text-xl font-semibold my-4 text-center"
             style={{ color: textColor }}
           >
             Links
