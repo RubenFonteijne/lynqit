@@ -274,12 +274,43 @@ function RegisterContent() {
 
       // Check if a Stripe product is selected
       if (selectedStripeProduct && selectedPlan !== "free") {
-        // Redirect to payment flow for Stripe products
-        // For now, we'll still create the account but note that payment is required
-        // TODO: Implement Stripe checkout flow
-        setError("Betalingsfunctionaliteit voor betaalde abonnementen wordt binnenkort toegevoegd. Kies voorlopig het gratis plan.");
-        setIsLoading(false);
-        return;
+        // Create Stripe checkout session
+        try {
+          const checkoutResponse = await fetch("/api/stripe/checkout/create", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: email.toLowerCase(),
+              priceId: selectedStripeProduct.priceId,
+              slug: finalSlug,
+            }),
+          });
+
+          const checkoutData = await checkoutResponse.json();
+
+          if (!checkoutResponse.ok) {
+            setError(checkoutData.error || "Kon betalingslink niet genereren");
+            setIsLoading(false);
+            return;
+          }
+
+          // Redirect to Stripe checkout
+          if (checkoutData.checkoutUrl) {
+            window.location.href = checkoutData.checkoutUrl;
+            return;
+          } else {
+            setError("Kon betalingslink niet genereren");
+            setIsLoading(false);
+            return;
+          }
+        } catch (err) {
+          console.error("Error creating checkout:", err);
+          setError("Er is een fout opgetreden bij het aanmaken van de betalingslink.");
+          setIsLoading(false);
+          return;
+        }
       }
 
       // Handle free plan - register user and create page
