@@ -464,49 +464,6 @@ export default function PublicLynqitPage() {
         </div>
       </div>
 
-      {/* Custom Links - Direct onder CTA knop */}
-      {page.customLinks && page.customLinks.length > 0 && (
-        <div className="max-w-md mx-auto px-4 mb-6">
-          <h3
-            className="text-xl font-semibold mb-4 text-center"
-            style={{ color: textColor }}
-          >
-            Links
-          </h3>
-          <div className="space-y-3">
-            {page.customLinks
-              .filter((link) => link.enabled !== false && link.text && link.url)
-              .map((link, index) => (
-                <Link
-                  key={index}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => trackClick(`custom_link_${index}`, link.url)}
-                  className="block w-full px-4 py-3 transition-colors flex items-center justify-between"
-                  style={{
-                    backgroundColor: hasCustomBackground ? (isDark ? "rgba(0, 0, 0, 0.15)" : "rgba(0, 0, 0, 0.05)") : (isDark ? "#3F3F3F" : "#EEEEEE"),
-                    color: textColor,
-                    borderRadius: "50px",
-                    fontSize: "16px",
-                    fontFamily: "'PT Sans', sans-serif",
-                    fontWeight: "bold",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = hasCustomBackground ? (isDark ? "rgba(0, 0, 0, 0.25)" : "rgba(0, 0, 0, 0.15)") : (isDark ? "#4F4F4F" : "#DDDDDD");
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = hasCustomBackground ? (isDark ? "rgba(0, 0, 0, 0.15)" : "rgba(0, 0, 0, 0.05)") : (isDark ? "#3F3F3F" : "#EEEEEE");
-                  }}
-                >
-                  <span>{link.text}</span>
-                  <i className="fas fa-angle-right"></i>
-                </Link>
-              ))}
-          </div>
-        </div>
-      )}
-
       {/* Promo Banner - Direct onder CTA knop */}
       {page.promoBanner.enabled && (
         <div className="max-w-md mx-auto px-4">
@@ -786,6 +743,49 @@ export default function PublicLynqitPage() {
                   </a>
                 );
               })}
+          </div>
+        </div>
+      )}
+
+      {/* Custom Links - Laatste element voor footer */}
+      {page.customLinks && page.customLinks.length > 0 && (
+        <div className="max-w-md mx-auto px-4 mb-6">
+          <h3
+            className="text-xl font-semibold mb-4 text-center"
+            style={{ color: textColor }}
+          >
+            Links
+          </h3>
+          <div className="space-y-3">
+            {page.customLinks
+              .filter((link) => link.enabled !== false && link.text && link.url)
+              .map((link, index) => (
+                <Link
+                  key={index}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => trackClick(`custom_link_${index}`, link.url)}
+                  className="block w-full px-4 py-3 transition-colors flex items-center justify-between"
+                  style={{
+                    backgroundColor: hasCustomBackground ? (isDark ? "rgba(0, 0, 0, 0.15)" : "rgba(0, 0, 0, 0.05)") : (isDark ? "#3F3F3F" : "#EEEEEE"),
+                    color: textColor,
+                    borderRadius: "50px",
+                    fontSize: "16px",
+                    fontFamily: "'PT Sans', sans-serif",
+                    fontWeight: "bold",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = hasCustomBackground ? (isDark ? "rgba(0, 0, 0, 0.25)" : "rgba(0, 0, 0, 0.15)") : (isDark ? "#4F4F4F" : "#DDDDDD");
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = hasCustomBackground ? (isDark ? "rgba(0, 0, 0, 0.15)" : "rgba(0, 0, 0, 0.05)") : (isDark ? "#3F3F3F" : "#EEEEEE");
+                  }}
+                >
+                  <span>{link.text}</span>
+                  <i className="fas fa-angle-right"></i>
+                </Link>
+              ))}
           </div>
         </div>
       )}
