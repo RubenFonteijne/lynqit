@@ -145,11 +145,12 @@ export default function PagesManagementPage() {
             const pagesUrl = session.access_token 
               ? `/api/pages`
               : `/api/pages?email=${encodeURIComponent(userEmail)}`;
-            const pagesHeaders: Record<string, string> = session.access_token
-              ? { "Authorization": `Bearer ${session.access_token}` }
+            
+            const pagesFetchOptions: RequestInit = session.access_token
+              ? { headers: { "Authorization": `Bearer ${session.access_token}` } }
               : {};
             
-            const pagesResponse = await fetch(pagesUrl, { headers: pagesHeaders });
+            const pagesResponse = await fetch(pagesUrl, pagesFetchOptions);
             if (isMounted && pagesResponse.ok) {
               const pagesData = await pagesResponse.json();
               const freshPages = pagesData.pages || [];
@@ -221,11 +222,12 @@ export default function PagesManagementPage() {
       const pagesUrl = session?.access_token 
         ? `/api/pages`
         : `/api/pages?email=${encodeURIComponent(userEmail)}`;
-      const pagesHeaders: Record<string, string> = session?.access_token
-        ? { "Authorization": `Bearer ${session.access_token}` }
+      
+      const fetchOptions: RequestInit = session?.access_token
+        ? { headers: { "Authorization": `Bearer ${session.access_token}` } }
         : {};
 
-      const response = await fetch(pagesUrl, { headers: pagesHeaders });
+      const response = await fetch(pagesUrl, fetchOptions);
       if (!response.ok) {
         throw new Error(`Failed to fetch pages: ${response.status}`);
       }

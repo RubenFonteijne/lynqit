@@ -201,11 +201,12 @@ export default function InsightsPage() {
       const pagesUrl = accessToken 
         ? `/api/pages`
         : `/api/pages?email=${encodeURIComponent(userEmail || "")}`;
-      const pagesHeaders: Record<string, string> = accessToken
-        ? { "Authorization": `Bearer ${accessToken}` }
+      
+      const fetchOptions: RequestInit = accessToken
+        ? { headers: { "Authorization": `Bearer ${accessToken}` } }
         : {};
       
-      const response = await fetch(pagesUrl, { headers: pagesHeaders });
+      const response = await fetch(pagesUrl, fetchOptions);
       
       if (response.ok) {
         const data = await response.json();
