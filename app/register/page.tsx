@@ -32,6 +32,24 @@ function RegisterContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "unavailable">("idle");
   const [slugMessage, setSlugMessage] = useState("");
+  const [stripeProducts, setStripeProducts] = useState<Array<{
+    id: string;
+    name: string;
+    description: string;
+    metadata: Record<string, string>;
+    price: {
+      id: string;
+      amount: number;
+      currency: string;
+      interval: string;
+      intervalCount: number;
+    } | null;
+  }>>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [selectedStripeProduct, setSelectedStripeProduct] = useState<{
+    productId: string;
+    priceId: string;
+  } | null>(null);
 
   useEffect(() => {
     if (prefillEmail) {
@@ -90,6 +108,29 @@ function RegisterContent() {
 
     return () => clearTimeout(timeoutId);
   }, [slug]);
+
+  // Fetch Stripe products when step 2 is reached
+  useEffect(() => {
+    if (currentStep === 2 && stripeProducts.length === 0) {
+      const fetchStripeProducts = async () => {
+        setIsLoadingProducts(true);
+        try {
+          const response = await fetch("/api/stripe/products");
+          if (response.ok) {
+            const data = await response.json();
+            setStripeProducts(data.products || []);
+          } else {
+            console.error("Error fetching Stripe products:", response.status);
+          }
+        } catch (error) {
+          console.error("Error fetching Stripe products:", error);
+        } finally {
+          setIsLoadingProducts(false);
+        }
+      };
+      fetchStripeProducts();
+    }
+  }, [currentStep, stripeProducts.length]);
 
 
   // Calculate pricing - only free plan supported
@@ -248,9 +289,12 @@ function RegisterContent() {
         ? sessionStorage.getItem("pending_slug")!
         : cleanedSlug.trim().toLowerCase();
 
-      // Only free plan is supported for now
-      if (selectedPlan !== "free") {
-        setError("Alleen het gratis plan is momenteel beschikbaar");
+      // Check if a Stripe product is selected
+      if (selectedStripeProduct && selectedPlan !== "free") {
+        // Redirect to payment flow for Stripe products
+        // For now, we'll still create the account but note that payment is required
+        // TODO: Implement Stripe checkout flow
+        setError("Betalingsfunctionaliteit voor betaalde abonnementen wordt binnenkort toegevoegd. Kies voorlopig het gratis plan.");
         setIsLoading(false);
         return;
       }
@@ -558,12 +602,13 @@ function RegisterContent() {
               {/* STEP 2: Subscription & Payment */}
               {currentStep === 2 && (
                 <>
-                  {/* Plan Selection - Only free plan available */}
+                  {/* Plan Selection - Free plan + Stripe products */}
               <div>
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                   Abonnement
                 </label>
                 <div className="grid gap-3 grid-cols-1">
+                  {/* Free plan */}
                   <button
                     type="button"
                     onClick={() => setSelectedPlan("free")}
@@ -580,6 +625,67 @@ function RegisterContent() {
                       Gratis
                     </div>
                   </button>
+
+                  {/* Stripe products */}
+                  {isLoadingProducts ? (
+                    <div className="px-4 py-3 rounded-lg border-2 border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800">
+                      <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                        Laden...
+                      </div>
+                    </div>
+                  ) : (
+                    stripeProducts.map((product) => {
+                      const priceInEuros = (product.price?.amount || 0) / 100;
+                      const priceWithBTW = priceInEuros * 1.21; // 21% BTW
+                      const intervalText = product.price?.interval === 'month' ? 'per maand' : product.price?.interval === 'year' ? 'per jaar' : '';
+                      
+                      return (
+                        <button
+                          key={product.id}
+                          type="button"
+                          onClick={() => {
+                            // Store selected product info for later use
+                            const plan = product.metadata.plan as "start" | "pro" || "start";
+                            setSelectedPlan(plan);
+                            setSelectedStripeProduct({
+                              productId: product.id,
+                              priceId: product.price?.id || "",
+                            });
+                            localStorage.setItem("selected_stripe_product", JSON.stringify({
+                              productId: product.id,
+                              priceId: product.price?.id,
+                            }));
+                          }}
+                          className={`px-4 py-3 rounded-lg border-2 transition-colors text-left ${
+                            selectedStripeProduct?.productId === product.id
+                              ? "border-[#2E47FF] bg-blue-50 dark:bg-blue-900/20"
+                              : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
+                          }`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="text-sm font-semibold text-black dark:text-zinc-50">
+                                {product.name}
+                              </div>
+                              {product.description && (
+                                <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
+                                  {product.description}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm font-semibold text-black dark:text-zinc-50">
+                                €{priceWithBTW.toFixed(2)}
+                              </div>
+                              <div className="text-xs text-zinc-600 dark:text-zinc-400">
+                                {intervalText}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
