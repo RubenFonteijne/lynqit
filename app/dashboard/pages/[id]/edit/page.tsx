@@ -2312,7 +2312,7 @@ export default function EditPagePage() {
                                     className="relative"
                                     style={{
                                       borderRadius: "8px 8px 0 0",
-                                      height: "220px",
+                                      height: "200px",
                                       ...(link.image && link.image.trim()
                                         ? {
                                             backgroundImage: `url(${link.image})`,
@@ -2332,16 +2332,16 @@ export default function EditPagePage() {
                                         background: `linear-gradient(to top, ${hexToRgba(bgColor, 1)} 0%, ${hexToRgba(bgColor, 0)} 30%)`,
                                       }}
                                     />
-                                    
-                                    {/* Content - Bovenop de afbeelding aan de onderkant */}
-                                    <div className="absolute bottom-4 left-0 right-0 px-3" style={{ zIndex: 10 }}>
-                                      <h3
-                                        className="text-sm font-medium text-center"
-                                        style={{ color: isDark ? "#FFF" : "#000" }}
-                                      >
-                                        {link.title}
-                                      </h3>
-                                    </div>
+                                  </div>
+                                  
+                                  {/* Content - Onder de afbeelding met negative margin-top */}
+                                  <div className="p-3 relative" style={{ marginTop: "-20px", zIndex: 100 }}>
+                                    <h3
+                                      className="text-sm font-medium text-center"
+                                      style={{ color: textColor }}
+                                    >
+                                      {link.title}
+                                    </h3>
                                   </div>
                                 </div>
                               );
