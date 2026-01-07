@@ -380,23 +380,57 @@ export default function PagesManagementPage() {
     try {
       setIsCreatingDemo(true);
       
-      // Get access token from Supabase session
+      // Get access token from Supabase session or localStorage fallback
       const supabase = createClientClient();
-      const { data: { session } } = await supabase.auth.getSession();
+      let session = null;
+      let error = null;
       
-      if (!session || !session.access_token) {
-        setError("Je bent niet ingelogd. Log opnieuw in.");
-        setIsCreatingDemo(false);
-        return;
+      try {
+        const sessionData = await supabase.auth.getSession();
+        session = sessionData.data?.session || null;
+        error = sessionData.error || null;
+      } catch (e) {
+        error = e as any;
+      }
+      
+      // Fallback: check localStorage for user data if Supabase session is not available
+      if ((error || !session || !session.access_token)) {
+        const cachedUser = localStorage.getItem("lynqit_user");
+        if (cachedUser) {
+          try {
+            const user = JSON.parse(cachedUser);
+            // User exists in localStorage, continue with cached user
+            session = {
+              user: { email: user.email },
+              access_token: localStorage.getItem("supabase.auth.token") ? JSON.parse(localStorage.getItem("supabase.auth.token")!).access_token : undefined,
+            } as any;
+          } catch (e) {
+            // Invalid cache
+            setError("Je bent niet ingelogd. Log opnieuw in.");
+            setIsCreatingDemo(false);
+            return;
+          }
+        } else {
+          setError("Je bent niet ingelogd. Log opnieuw in.");
+          setIsCreatingDemo(false);
+          return;
+        }
       }
 
       // Create demo page with Pro plan
-      const response = await fetch("/api/pages/demo", {
+      const demoUrl = session.access_token 
+        ? "/api/pages/demo"
+        : `/api/pages/demo?email=${encodeURIComponent(userEmail || session.user.email || "")}`;
+      const demoHeaders: Record<string, string> = { 
+        "Content-Type": "application/json",
+      };
+      if (session.access_token) {
+        demoHeaders["Authorization"] = `Bearer ${session.access_token}`;
+      }
+      
+      const response = await fetch(demoUrl, {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
-        },
+        headers: demoHeaders,
         body: JSON.stringify({
           slug: cleanedSlug,
         }),

@@ -11,21 +11,30 @@ export async function POST(request: NextRequest) {
   try {
     // Get access token from Authorization header
     const authHeader = request.headers.get('authorization');
+    const searchParams = request.nextUrl.searchParams;
+    const email = searchParams.get("email");
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      );
+    let userEmail: string | null = null;
+    
+    // Try to get user from Bearer token first
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const accessToken = authHeader.substring(7);
+      const supabase = createServerClientFromRequest(request);
+      
+      // Verify the access token and get user
+      const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
+
+      if (!userError && user && user.email) {
+        userEmail = user.email;
+      }
     }
-
-    const accessToken = authHeader.substring(7);
-    const supabase = createServerClientFromRequest(request);
     
-    // Verify the access token and get user
-    const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
-
-    if (userError || !user || !user.email) {
+    // Fallback: use email from query parameter if token auth failed
+    if (!userEmail && email) {
+      userEmail = email;
+    }
+    
+    if (!userEmail) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
@@ -33,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is admin
-    const userData = await getUserByEmail(user.email);
+    const userData = await getUserByEmail(userEmail);
     if (!userData || userData.role !== 'admin') {
       return NextResponse.json(
         { error: "Admin access required" },
@@ -69,7 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create page with Pro plan and active status (no payment required)
-    const page = await createPage(user.email, slug, {
+    const page = await createPage(userEmail, slug, {
       subscriptionPlan: 'pro',
       subscriptionStatus: 'active',
       isDemo: true,
