@@ -562,7 +562,7 @@ export default function PublicLynqitPage() {
                       className="relative"
                       style={{
                         borderRadius: "8px 8px 0 0",
-                        height: "160px",
+                        height: "200px",
                         ...(link.image && link.image.trim()
                           ? {
                               backgroundImage: `url(${link.image})`,
