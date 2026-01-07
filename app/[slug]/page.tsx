@@ -551,7 +551,7 @@ export default function PublicLynqitPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => trackClick(`featured_${index + 1}`, link.link)}
-                    className="block overflow-hidden transition-colors relative"
+                    className="block overflow-hidden transition-colors"
                     style={{
                       borderRadius: "8px",
                       border: isDark ? "1px solid rgba(255, 255, 255, 0.05)" : "1px solid rgba(0, 0, 0, 0.15)",
@@ -559,9 +559,10 @@ export default function PublicLynqitPage() {
                   >
                     {/* Background Image or Gradient */}
                     <div
-                      className="absolute inset-0"
+                      className="relative"
                       style={{
-                        borderRadius: "8px",
+                        borderRadius: "8px 8px 0 0",
+                        height: "120px",
                         ...(link.image && link.image.trim()
                           ? {
                               backgroundImage: `url(${link.image})`,
@@ -572,22 +573,22 @@ export default function PublicLynqitPage() {
                               background: `linear-gradient(135deg, ${hexToRgb(bgColor)} 0%, rgb(155,81,224) 100%)`,
                             }),
                       }}
-                    />
+                    >
+                      {/* Overlay: achtergrondkleur-transparant onder-boven */}
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          borderRadius: "8px 8px 0 0",
+                          background: `linear-gradient(to top, ${hexToRgba(bgColor, 1)} 0%, ${hexToRgba(bgColor, 0)} 100%)`,
+                        }}
+                      />
+                    </div>
                     
-                    {/* Overlay: achtergrondkleur-transparant onder-boven */}
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        borderRadius: "8px",
-                        background: `linear-gradient(to top, ${hexToRgba(bgColor, 1)} 0%, ${hexToRgba(bgColor, 0)} 100%)`,
-                      }}
-                    />
-                    
-                    {/* Content */}
-                    <div className="relative p-3" style={{ minHeight: "120px" }}>
+                    {/* Content - Onder de afbeelding met negative margin-top */}
+                    <div className="p-3" style={{ marginTop: "-8px" }}>
                       <h3
                         className="text-sm font-medium text-center"
-                        style={{ color: isDark ? "#FFF" : "#000" }}
+                        style={{ color: textColor }}
                       >
                         {link.title}
                       </h3>
