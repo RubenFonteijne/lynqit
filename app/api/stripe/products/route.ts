@@ -1,34 +1,110 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStripeClient } from "@/lib/stripe";
+import Stripe from "stripe";
+import { getSettings } from "@/lib/settings";
 
-// GET - Get all active Stripe products with their prices
+// Helper function to create Stripe client with specific API key
+function createStripeClient(apiKey: string): Stripe {
+  return new Stripe(apiKey, {
+    apiVersion: '2025-12-15.clover',
+    typescript: true,
+  });
+}
+
+// Helper function to fetch products from a Stripe client
+async function fetchProductsFromStripe(stripe: Stripe, mode: 'test' | 'live') {
+  console.log(`[API /api/stripe/products] Fetching products from Stripe ${mode} mode...`);
+  
+  const products = await stripe.products.list({
+    active: true,
+    limit: 100,
+  });
+
+  const prices = await stripe.prices.list({
+    active: true,
+    limit: 100,
+  });
+
+  console.log(`[API /api/stripe/products] Found ${products.data.length} products and ${prices.data.length} prices in ${mode} mode`);
+
+  return { products: products.data, prices: prices.data, mode };
+}
+
+// GET - Get all active Stripe products with their prices from both test and live modes
 export async function GET(request: NextRequest) {
   try {
-    const stripe = await getStripeClient();
+    const settings = await getSettings();
     
-    console.log("[API /api/stripe/products] Fetching products from Stripe...");
+    // Get products from both test and live modes
+    const allProductsData: Array<{ products: Stripe.Product[]; prices: Stripe.Price[]; mode: 'test' | 'live' }> = [];
     
-    // Get all active products
-    const products = await stripe.products.list({
-      active: true,
-      limit: 100,
+    // Fetch from test mode if API key is available
+    if (settings.stripeSecretKeyTest || process.env.STRIPE_SECRET_KEY_TEST) {
+      try {
+        const testApiKey = settings.stripeSecretKeyTest || process.env.STRIPE_SECRET_KEY_TEST;
+        if (testApiKey) {
+          const testStripe = createStripeClient(testApiKey);
+          const testData = await fetchProductsFromStripe(testStripe, 'test');
+          allProductsData.push(testData);
+        }
+      } catch (error) {
+        console.error("[API /api/stripe/products] Error fetching from test mode:", error);
+      }
+    }
+    
+    // Fetch from live mode if API key is available
+    if (settings.stripeSecretKeyLive || process.env.STRIPE_SECRET_KEY_LIVE) {
+      try {
+        const liveApiKey = settings.stripeSecretKeyLive || process.env.STRIPE_SECRET_KEY_LIVE;
+        if (liveApiKey) {
+          const liveStripe = createStripeClient(liveApiKey);
+          const liveData = await fetchProductsFromStripe(liveStripe, 'live');
+          allProductsData.push(liveData);
+        }
+      } catch (error) {
+        console.error("[API /api/stripe/products] Error fetching from live mode:", error);
+      }
+    }
+    
+    if (allProductsData.length === 0) {
+      console.error("[API /api/stripe/products] No Stripe API keys configured");
+      return NextResponse.json(
+        { error: "Stripe API keys are not configured" },
+        { status: 500 }
+      );
+    }
+    
+    // Combine all products and prices
+    const allProducts: Stripe.Product[] = [];
+    const allPrices: Stripe.Price[] = [];
+    
+    allProductsData.forEach(({ products, prices }) => {
+      allProducts.push(...products);
+      allPrices.push(...prices);
     });
-
-    console.log(`[API /api/stripe/products] Found ${products.data.length} products`);
-
-    // Get all active prices
-    const prices = await stripe.prices.list({
-      active: true,
-      limit: 100,
-    });
-
-    console.log(`[API /api/stripe/products] Found ${prices.data.length} prices`);
+    
+    console.log(`[API /api/stripe/products] Total: ${allProducts.length} products and ${allPrices.length} prices from all modes`);
 
     // Combine products with their prices
-    const productsWithPrices = products.data.map((product) => {
-      const productPrices = prices.data.filter(
+    // Use a Map to deduplicate products by name (in case same product exists in both modes)
+    const productsMap = new Map<string, { product: Stripe.Product; prices: Stripe.Price[] }>();
+    
+    allProducts.forEach((product) => {
+      const productPrices = allPrices.filter(
         (price) => price.product === product.id && price.type === 'recurring'
       );
+      
+      // Use product name as key for deduplication
+      const key = product.name.toLowerCase();
+      if (!productsMap.has(key) || productPrices.length > 0) {
+        // Keep the product with prices, or the first one if no prices
+        const existing = productsMap.get(key);
+        if (!existing || (productPrices.length > 0 && existing.prices.length === 0)) {
+          productsMap.set(key, { product, prices: productPrices });
+        }
+      }
+    });
+    
+    const productsWithPrices = Array.from(productsMap.values()).map(({ product, prices: productPrices }) => {
 
       // Sort prices by amount (ascending)
       productPrices.sort((a, b) => {
@@ -60,7 +136,7 @@ export async function GET(request: NextRequest) {
           intervalCount: price.recurring?.interval_count || 1,
         })),
       };
-    }).filter((product) => product.price !== null); // Only return products with prices
+    }).filter((item) => item.price !== null); // Only return products with prices
 
     // Sort products by price amount (ascending)
     productsWithPrices.sort((a, b) => {
