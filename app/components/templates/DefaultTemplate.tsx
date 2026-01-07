@@ -49,7 +49,7 @@ export default function DefaultTemplate({
                     onClick={() => trackClick(`social_${platform}`, url)}
                     className="py-3 font-medium transition-colors flex items-center justify-center"
                     style={{
-                      backgroundColor: hasCustomBackground ? "rgba(0, 0, 0, 0.15)" : (isDark ? "#3F3F3F" : "#EEEEEE"),
+                      backgroundColor: hasCustomBackground ? (isDark ? "rgba(0, 0, 0, 0.15)" : "rgba(0, 0, 0, 0.05)") : (isDark ? "#3F3F3F" : "#EEEEEE"),
                       color: textColor,
                       borderRadius: "50px",
                       flex: "0 1 calc(25% - 9px)",
@@ -59,10 +59,10 @@ export default function DefaultTemplate({
                       fontFamily: "'PT Sans', sans-serif",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = hasCustomBackground ? "rgba(0, 0, 0, 0.25)" : (isDark ? "#4F4F4F" : "#DDDDDD");
+                      e.currentTarget.style.backgroundColor = hasCustomBackground ? (isDark ? "rgba(0, 0, 0, 0.25)" : "rgba(0, 0, 0, 0.15)") : (isDark ? "#4F4F4F" : "#DDDDDD");
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = hasCustomBackground ? "rgba(0, 0, 0, 0.15)" : (isDark ? "#3F3F3F" : "#EEEEEE");
+                      e.currentTarget.style.backgroundColor = hasCustomBackground ? (isDark ? "rgba(0, 0, 0, 0.15)" : "rgba(0, 0, 0, 0.05)") : (isDark ? "#3F3F3F" : "#EEEEEE");
                     }}
                     title={platformInfo?.label || platform}
                   >
