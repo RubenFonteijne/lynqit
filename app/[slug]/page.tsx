@@ -489,12 +489,12 @@ export default function PublicLynqitPage() {
       {page.promoBanner.enabled && (
         <div className="max-w-md mx-auto px-4">
           <div className="relative w-full overflow-hidden" style={{ borderRadius: "10px" }}>
-          {/* Background Image */}
+          {/* Background Image or Gradient */}
           <div
             className="absolute inset-0"
             style={{
               borderRadius: "10px",
-              ...(page.promoBanner.backgroundImage
+              ...(page.promoBanner.backgroundImage && page.promoBanner.backgroundImage.trim()
                 ? {
                     backgroundImage: `url(${page.promoBanner.backgroundImage})`,
                     backgroundSize: "cover",
