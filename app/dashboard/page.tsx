@@ -124,7 +124,20 @@ export default function DashboardPage() {
         }
 
         // Fetch user info and pages in parallel
-        const userEmail = session.user.email || "";
+        // Get user email from session or localStorage (fallback)
+        let userEmail = session.user.email || "";
+        if (!userEmail) {
+          const cachedUser = localStorage.getItem("lynqit_user");
+          if (cachedUser) {
+            try {
+              const user = JSON.parse(cachedUser);
+              userEmail = user.email || "";
+            } catch (e) {
+              // Invalid cache
+            }
+          }
+        }
+        
         const pagesUrl = session.access_token 
           ? `/api/pages`
           : `/api/pages?email=${encodeURIComponent(userEmail)}`;

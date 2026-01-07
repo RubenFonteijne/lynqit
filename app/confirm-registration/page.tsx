@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { createClientClient } from "@/lib/supabase-client";
 
 function ConfirmRegistrationContent() {
   useEffect(() => {
@@ -50,9 +51,44 @@ function ConfirmRegistrationContent() {
         return;
       }
 
-      // Store session in localStorage
-      if (data.session) {
+      // Store user info in localStorage
+      if (data.user) {
         localStorage.setItem("lynqit_user", JSON.stringify(data.user));
+      }
+
+      // Set session in Supabase client so it persists correctly
+      if (data.session) {
+        try {
+          const supabase = createClientClient();
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
+          
+          if (sessionError) {
+            console.error("Error setting Supabase session:", sessionError);
+            // Fallback: store in localStorage as backup
+            localStorage.setItem("supabase.auth.token", JSON.stringify({
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token,
+              expires_at: data.session.expires_at,
+            }));
+          }
+        } catch (e) {
+          console.error("Error setting session:", e);
+          // Fallback: store in localStorage as backup
+          if (data.session) {
+            try {
+              localStorage.setItem("supabase.auth.token", JSON.stringify({
+                access_token: data.session.access_token,
+                refresh_token: data.session.refresh_token,
+                expires_at: data.session.expires_at,
+              }));
+            } catch (localStorageError) {
+              // Ignore localStorage errors
+            }
+          }
+        }
       }
 
       setVerificationSuccess(true);

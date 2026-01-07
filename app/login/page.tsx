@@ -47,18 +47,38 @@ export default function LoginPage() {
         localStorage.setItem("lynqit_user", JSON.stringify(data.user));
       }
 
-      // Store session token in localStorage for API calls
-      // Note: We don't set session in Supabase client to avoid "Failed to fetch" errors
-      // Dashboard pages will use localStorage fallback for authentication
+      // Set session in Supabase client so it persists correctly
       if (data.session) {
         try {
-          localStorage.setItem("supabase.auth.token", JSON.stringify({
+          const supabase = createClientClient();
+          const { error: sessionError } = await supabase.auth.setSession({
             access_token: data.session.access_token,
             refresh_token: data.session.refresh_token,
-            expires_at: data.session.expires_at,
-          }));
+          });
+          
+          if (sessionError) {
+            console.error("Error setting Supabase session:", sessionError);
+            // Fallback: store in localStorage as backup
+            localStorage.setItem("supabase.auth.token", JSON.stringify({
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token,
+              expires_at: data.session.expires_at,
+            }));
+          }
         } catch (e) {
-          // Ignore localStorage errors
+          console.error("Error setting session:", e);
+          // Fallback: store in localStorage as backup
+          if (data.session) {
+            try {
+              localStorage.setItem("supabase.auth.token", JSON.stringify({
+                access_token: data.session.access_token,
+                refresh_token: data.session.refresh_token,
+                expires_at: data.session.expires_at,
+              }));
+            } catch (localStorageError) {
+              // Ignore localStorage errors
+            }
+          }
         }
       }
 
