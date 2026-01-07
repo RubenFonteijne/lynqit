@@ -146,13 +146,35 @@ export default function PublicLynqitPage() {
   };
 
   // Helper function to convert hex to rgba
-  const hexToRgba = (hex: string, alpha: number): string => {
-    if (!hex) return `rgba(0, 0, 0, ${alpha})`;
-    const cleanHex = hex.replace("#", "");
-    const r = parseInt(cleanHex.substring(0, 2), 16);
-    const g = parseInt(cleanHex.substring(2, 4), 16);
-    const b = parseInt(cleanHex.substring(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  const hexToRgba = (color: string, alpha: number): string => {
+    if (!color) return `rgba(0, 0, 0, ${alpha})`;
+    
+    // If already in rgb() or rgba() format, extract RGB values
+    const rgbMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (rgbMatch) {
+      const r = parseInt(rgbMatch[1]);
+      const g = parseInt(rgbMatch[2]);
+      const b = parseInt(rgbMatch[3]);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+    
+    // If it's a hex color, convert it
+    const cleanHex = color.replace("#", "");
+    if (cleanHex.length === 6 || cleanHex.length === 3) {
+      const r = cleanHex.length === 6 
+        ? parseInt(cleanHex.substring(0, 2), 16)
+        : parseInt(cleanHex.substring(0, 1) + cleanHex.substring(0, 1), 16);
+      const g = cleanHex.length === 6
+        ? parseInt(cleanHex.substring(2, 4), 16)
+        : parseInt(cleanHex.substring(1, 2) + cleanHex.substring(1, 2), 16);
+      const b = cleanHex.length === 6
+        ? parseInt(cleanHex.substring(4, 6), 16)
+        : parseInt(cleanHex.substring(2, 3) + cleanHex.substring(2, 3), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+    
+    // Fallback
+    return `rgba(0, 0, 0, ${alpha})`;
   };
 
   // Helper function to convert hex to rgb
