@@ -562,7 +562,7 @@ export default function PublicLynqitPage() {
                       className="relative"
                       style={{
                         borderRadius: "8px 8px 0 0",
-                        height: "160px",
+                        height: "180px",
                         ...(link.image && link.image.trim()
                           ? {
                               backgroundImage: `url(${link.image})`,
@@ -584,7 +584,7 @@ export default function PublicLynqitPage() {
                       />
                       
                       {/* Content - Bovenop de afbeelding aan de onderkant */}
-                      <div className="absolute bottom-0 left-0 right-0 p-3" style={{ zIndex: 10 }}>
+                      <div className="absolute bottom-4 left-0 right-0 px-3" style={{ zIndex: 10 }}>
                         <h3
                           className="text-sm font-medium text-center"
                           style={{ color: isDark ? "#FFF" : "#000" }}
