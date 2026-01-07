@@ -30,12 +30,66 @@ function RegisterContent() {
   const [currentStep, setCurrentStep] = useState(1);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "unavailable">("idle");
+  const [slugMessage, setSlugMessage] = useState("");
 
   useEffect(() => {
     if (prefillEmail) {
       setEmail(prefillEmail);
     }
   }, [prefillEmail]);
+
+  // Check slug availability when slug changes (with debounce)
+  useEffect(() => {
+    const checkSlugAvailability = async () => {
+      const cleanedSlug = slug.trim().toLowerCase().replace(/^-+|-+$/g, "");
+      
+      // Reset status if slug is empty
+      if (!cleanedSlug) {
+        setSlugStatus("idle");
+        setSlugMessage("");
+        return;
+      }
+
+      // Validate format first
+      if (!/^[a-z0-9-]+$/.test(cleanedSlug)) {
+        setSlugStatus("unavailable");
+        setSlugMessage("Alleen kleine letters, cijfers en streepjes toegestaan");
+        return;
+      }
+
+      if (cleanedSlug.startsWith("-") || cleanedSlug.endsWith("-")) {
+        setSlugStatus("unavailable");
+        setSlugMessage("Mag niet beginnen of eindigen met een streepje");
+        return;
+      }
+
+      // Check availability
+      setSlugStatus("checking");
+      setSlugMessage("Controleren...");
+
+      try {
+        const response = await fetch(`/api/pages/check-slug?slug=${encodeURIComponent(cleanedSlug)}`);
+        const data = await response.json();
+
+        if (data.available) {
+          setSlugStatus("available");
+          setSlugMessage("✓ Deze slug is beschikbaar");
+        } else {
+          setSlugStatus("unavailable");
+          setSlugMessage("✗ Deze slug is al bezet");
+        }
+      } catch (error) {
+        setSlugStatus("idle");
+        setSlugMessage("");
+      }
+    };
+
+    // Debounce: wait 500ms after user stops typing
+    const timeoutId = setTimeout(checkSlugAvailability, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [slug]);
 
 
   // Calculate pricing - only free plan supported
@@ -402,9 +456,22 @@ function RegisterContent() {
                         placeholder="jouw-pagina-naam"
                       />
                     </div>
-                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                      Alleen kleine letters, cijfers en streepjes toegestaan
-                    </p>
+                    {slugMessage && (
+                      <p className={`mt-1 text-xs ${
+                        slugStatus === "available" 
+                          ? "text-green-600 dark:text-green-400" 
+                          : slugStatus === "unavailable"
+                          ? "text-red-600 dark:text-red-400"
+                          : "text-zinc-500 dark:text-zinc-400"
+                      }`}>
+                        {slugMessage}
+                      </p>
+                    )}
+                    {!slugMessage && (
+                      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                        Alleen kleine letters, cijfers en streepjes toegestaan
+                      </p>
+                    )}
                   </div>
 
                   <div>
