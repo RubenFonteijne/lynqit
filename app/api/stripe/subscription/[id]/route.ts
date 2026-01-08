@@ -75,21 +75,21 @@ export async function GET(
       );
     }
 
-    // Ensure subscription is properly typed (TypeScript narrowing)
-    const typedSubscription: Stripe.Subscription = subscription;
+    // Explicit type assertion to ensure TypeScript recognizes all Subscription properties
+    const sub = subscription as Stripe.Subscription;
 
     // Format subscription data for frontend (only requested fields)
     const subscriptionData = {
-      id: typedSubscription.id,
-      status: typedSubscription.status,
+      id: sub.id,
+      status: sub.status,
       mode,
-      customerDetails: typeof typedSubscription.customer === 'object' && typedSubscription.customer !== null && !('deleted' in typedSubscription.customer && typedSubscription.customer.deleted) ? {
-        id: typedSubscription.customer.id,
-        email: typedSubscription.customer.email || null,
-        name: typedSubscription.customer.name || null,
-        phone: typedSubscription.customer.phone || null,
+      customerDetails: typeof sub.customer === 'object' && sub.customer !== null && !('deleted' in sub.customer && sub.customer.deleted) ? {
+        id: sub.customer.id,
+        email: sub.customer.email || null,
+        name: sub.customer.name || null,
+        phone: sub.customer.phone || null,
       } : null,
-      items: typedSubscription.items.data.map(item => ({
+      items: sub.items.data.map(item => ({
         id: item.id,
         price: {
           id: item.price.id,
@@ -104,28 +104,28 @@ export async function GET(
         },
         quantity: item.quantity,
       })),
-      current_period_start: typedSubscription.current_period_start,
-      current_period_end: typedSubscription.current_period_end,
-      cancel_at_period_end: typedSubscription.cancel_at_period_end,
-      canceled_at: typedSubscription.canceled_at,
-      cancel_at: typedSubscription.cancel_at,
-      default_payment_method_details: typeof typedSubscription.default_payment_method === 'object' && typedSubscription.default_payment_method !== null ? {
-        type: typedSubscription.default_payment_method.type,
-        card: typedSubscription.default_payment_method.card ? {
-          brand: typedSubscription.default_payment_method.card.brand,
-          last4: typedSubscription.default_payment_method.card.last4,
-          exp_month: typedSubscription.default_payment_method.card.exp_month,
-          exp_year: typedSubscription.default_payment_method.card.exp_year,
+      current_period_start: sub.current_period_start,
+      current_period_end: sub.current_period_end,
+      cancel_at_period_end: sub.cancel_at_period_end,
+      canceled_at: sub.canceled_at,
+      cancel_at: sub.cancel_at,
+      default_payment_method_details: typeof sub.default_payment_method === 'object' && sub.default_payment_method !== null ? {
+        type: sub.default_payment_method.type,
+        card: sub.default_payment_method.card ? {
+          brand: sub.default_payment_method.card.brand,
+          last4: sub.default_payment_method.card.last4,
+          exp_month: sub.default_payment_method.card.exp_month,
+          exp_year: sub.default_payment_method.card.exp_year,
         } : null,
       } : null,
-      latest_invoice_details: typeof typedSubscription.latest_invoice === 'object' && typedSubscription.latest_invoice !== null ? {
-        id: typedSubscription.latest_invoice.id,
-        amount_due: typedSubscription.latest_invoice.amount_due,
-        amount_paid: typedSubscription.latest_invoice.amount_paid,
-        currency: typedSubscription.latest_invoice.currency,
-        status: typedSubscription.latest_invoice.status,
-        hosted_invoice_url: typedSubscription.latest_invoice.hosted_invoice_url,
-        invoice_pdf: typedSubscription.latest_invoice.invoice_pdf,
+      latest_invoice_details: typeof sub.latest_invoice === 'object' && sub.latest_invoice !== null ? {
+        id: sub.latest_invoice.id,
+        amount_due: sub.latest_invoice.amount_due,
+        amount_paid: sub.latest_invoice.amount_paid,
+        currency: sub.latest_invoice.currency,
+        status: sub.latest_invoice.status,
+        hosted_invoice_url: sub.latest_invoice.hosted_invoice_url,
+        invoice_pdf: sub.latest_invoice.invoice_pdf,
       } : null,
     };
 
