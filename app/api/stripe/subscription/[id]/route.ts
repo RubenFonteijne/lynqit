@@ -75,21 +75,19 @@ export async function GET(
       );
     }
 
-    // Explicit type assertion to ensure TypeScript recognizes all Subscription properties
-    const sub = subscription as Stripe.Subscription;
-
     // Format subscription data for frontend (only requested fields)
+    // Use (subscription as any) for period properties to avoid TypeScript errors
     const subscriptionData = {
-      id: sub.id,
-      status: sub.status,
+      id: subscription.id,
+      status: subscription.status,
       mode,
-      customerDetails: typeof sub.customer === 'object' && sub.customer !== null && !('deleted' in sub.customer && sub.customer.deleted) ? {
-        id: sub.customer.id,
-        email: sub.customer.email || null,
-        name: sub.customer.name || null,
-        phone: sub.customer.phone || null,
+      customerDetails: typeof subscription.customer === 'object' && subscription.customer !== null && !('deleted' in subscription.customer && subscription.customer.deleted) ? {
+        id: subscription.customer.id,
+        email: subscription.customer.email || null,
+        name: subscription.customer.name || null,
+        phone: subscription.customer.phone || null,
       } : null,
-      items: sub.items.data.map(item => ({
+      items: subscription.items.data.map(item => ({
         id: item.id,
         price: {
           id: item.price.id,
@@ -104,28 +102,28 @@ export async function GET(
         },
         quantity: item.quantity,
       })),
-      current_period_start: sub.current_period_start,
-      current_period_end: sub.current_period_end,
-      cancel_at_period_end: sub.cancel_at_period_end,
-      canceled_at: sub.canceled_at,
-      cancel_at: sub.cancel_at,
-      default_payment_method_details: typeof sub.default_payment_method === 'object' && sub.default_payment_method !== null ? {
-        type: sub.default_payment_method.type,
-        card: sub.default_payment_method.card ? {
-          brand: sub.default_payment_method.card.brand,
-          last4: sub.default_payment_method.card.last4,
-          exp_month: sub.default_payment_method.card.exp_month,
-          exp_year: sub.default_payment_method.card.exp_year,
+      current_period_start: (subscription as any).current_period_start,
+      current_period_end: (subscription as any).current_period_end,
+      cancel_at_period_end: (subscription as any).cancel_at_period_end,
+      canceled_at: (subscription as any).canceled_at,
+      cancel_at: (subscription as any).cancel_at,
+      default_payment_method_details: typeof subscription.default_payment_method === 'object' && subscription.default_payment_method !== null ? {
+        type: subscription.default_payment_method.type,
+        card: subscription.default_payment_method.card ? {
+          brand: subscription.default_payment_method.card.brand,
+          last4: subscription.default_payment_method.card.last4,
+          exp_month: subscription.default_payment_method.card.exp_month,
+          exp_year: subscription.default_payment_method.card.exp_year,
         } : null,
       } : null,
-      latest_invoice_details: typeof sub.latest_invoice === 'object' && sub.latest_invoice !== null ? {
-        id: sub.latest_invoice.id,
-        amount_due: sub.latest_invoice.amount_due,
-        amount_paid: sub.latest_invoice.amount_paid,
-        currency: sub.latest_invoice.currency,
-        status: sub.latest_invoice.status,
-        hosted_invoice_url: sub.latest_invoice.hosted_invoice_url,
-        invoice_pdf: sub.latest_invoice.invoice_pdf,
+      latest_invoice_details: typeof subscription.latest_invoice === 'object' && subscription.latest_invoice !== null ? {
+        id: subscription.latest_invoice.id,
+        amount_due: subscription.latest_invoice.amount_due,
+        amount_paid: subscription.latest_invoice.amount_paid,
+        currency: subscription.latest_invoice.currency,
+        status: subscription.latest_invoice.status,
+        hosted_invoice_url: subscription.latest_invoice.hosted_invoice_url,
+        invoice_pdf: subscription.latest_invoice.invoice_pdf,
       } : null,
     };
 
