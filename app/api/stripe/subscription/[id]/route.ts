@@ -77,15 +77,20 @@ export async function GET(
 
     // Format subscription data for frontend (only requested fields)
     // Use (subscription as any) for period properties to avoid TypeScript errors
+    // Check if customer is not deleted before accessing properties
+    const customer = typeof subscription.customer === 'object' && subscription.customer !== null && !('deleted' in subscription.customer && subscription.customer.deleted) 
+      ? subscription.customer 
+      : null;
+    
     const subscriptionData = {
       id: subscription.id,
       status: subscription.status,
       mode,
-      customerDetails: typeof subscription.customer === 'object' && subscription.customer !== null && !('deleted' in subscription.customer && subscription.customer.deleted) ? {
-        id: subscription.customer.id,
-        email: subscription.customer.email || null,
-        name: subscription.customer.name || null,
-        phone: subscription.customer.phone || null,
+      customerDetails: customer ? {
+        id: customer.id,
+        email: customer.email || null,
+        name: customer.name || null,
+        phone: customer.phone || null,
       } : null,
       items: subscription.items.data.map(item => ({
         id: item.id,

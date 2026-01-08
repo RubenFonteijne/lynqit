@@ -72,7 +72,8 @@ export async function GET(request: NextRequest) {
           // Filter subscriptions by customer email or metadata
           const matchingSubscriptions = allSubscriptions.data.filter(sub => {
             if (typeof sub.customer === 'object' && sub.customer && !('deleted' in sub.customer && sub.customer.deleted)) {
-              const customerEmail = sub.customer.email?.toLowerCase();
+              const customer = sub.customer as Stripe.Customer;
+              const customerEmail = customer.email?.toLowerCase();
               if (customerEmail === searchEmail) {
                 return true;
               }
@@ -134,7 +135,8 @@ export async function GET(request: NextRequest) {
           // Filter subscriptions by customer email or metadata
           const matchingSubscriptions = allSubscriptions.data.filter(sub => {
             if (typeof sub.customer === 'object' && sub.customer && !('deleted' in sub.customer && sub.customer.deleted)) {
-              const customerEmail = sub.customer.email?.toLowerCase();
+              const customer = sub.customer as Stripe.Customer;
+              const customerEmail = customer.email?.toLowerCase();
               if (customerEmail === searchEmail) {
                 return true;
               }
