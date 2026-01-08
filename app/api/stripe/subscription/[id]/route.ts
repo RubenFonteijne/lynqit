@@ -93,11 +93,11 @@ export async function GET(
           unit_amount: item.price.unit_amount,
           currency: item.price.currency,
           recurring: item.price.recurring,
-          product: typeof item.price.product === 'object' ? {
+          product: typeof item.price.product === 'object' && item.price.product !== null && !item.price.product.deleted ? {
             id: item.price.product.id,
-            name: item.price.product.name,
-            description: item.price.product.description,
-          } : item.price.product,
+            name: item.price.product.name || null,
+            description: item.price.product.description || null,
+          } : (typeof item.price.product === 'string' ? item.price.product : null),
         },
         quantity: item.quantity,
       })),
