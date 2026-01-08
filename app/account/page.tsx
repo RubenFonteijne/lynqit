@@ -1125,9 +1125,6 @@ export default function AccountPage() {
                   <h2 className="text-2xl font-semibold text-white mb-2">
                     Abonnement(en) beheren
                   </h2>
-                  <p className="text-zinc-400 text-sm">
-                    Beheer je abonnementen en bekijk alle Stripe details
-                  </p>
                 </div>
               </div>
 
