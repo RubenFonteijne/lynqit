@@ -32,7 +32,7 @@ export default function AccountPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<"profile" | "invoices" | "settings" | "subscriptions">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "invoices" | "subscriptions">("profile");
   const [subscriptionMessage, setSubscriptionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isProcessingSubscription, setIsProcessingSubscription] = useState<string | null>(null);
   const [isSyncingSubscriptions, setIsSyncingSubscriptions] = useState(false);
@@ -611,54 +611,6 @@ export default function AccountPage() {
     }
   };
 
-  const handleUpgradeFromFree = async (newPlan: "start" | "pro") => {
-    if (!user) return;
-
-    setIsProcessingSubscription("upgrade-from-free");
-    setSubscriptionMessage(null);
-
-    try {
-      const targetProduct = stripeProducts.find((p: any) => {
-        const metaPlan = String(p?.metadata?.plan || "").toLowerCase();
-        const name = String(p?.name || "").toLowerCase();
-        return metaPlan === newPlan || name.includes(newPlan);
-      });
-
-      const priceId = targetProduct?.price?.id;
-      if (!priceId) {
-        setSubscriptionMessage({ type: "error", text: "Kon het geselecteerde plan niet vinden in Stripe producten." });
-        setIsProcessingSubscription(null);
-        return;
-      }
-
-      const response = await fetch("/api/stripe/checkout/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: user.email,
-          priceId,
-          plan: newPlan,
-        }),
-      });
-
-      const data = await response.json();
-      if (response.ok && data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-        return;
-      }
-
-      setSubscriptionMessage({
-        type: "error",
-        text: data.error || data.details || "Fout bij het maken van checkout sessie",
-      });
-      setIsProcessingSubscription(null);
-    } catch (error) {
-      console.error("Error upgrading from free:", error);
-      setSubscriptionMessage({ type: "error", text: "Er is een fout opgetreden bij het upgraden" });
-      setIsProcessingSubscription(null);
-    }
-  };
-
   const handleCancelSubscription = async (subscriptionId: string, pageId?: string) => {
     if (!user) return;
 
@@ -826,16 +778,6 @@ export default function AccountPage() {
                 }`}
               >
                 Facturen
-              </button>
-              <button
-                onClick={() => setActiveTab("settings")}
-                className={`pb-4 px-1 border-b-2 font-medium transition-colors ${
-                  activeTab === "settings"
-                    ? "border-[#2E47FF] text-[#2E47FF] dark:text-[#00F0EE]"
-                    : "border-transparent text-zinc-400 hover:text-white"
-                }`}
-              >
-                Instellingen
               </button>
               <button
                 onClick={() => setActiveTab("subscriptions")}
@@ -1015,68 +957,6 @@ export default function AccountPage() {
                   >
                     {isChangingPassword ? "Wijzigen..." : "Wachtwoord wijzigen"}
                   </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Settings Tab */}
-          {activeTab === "settings" && (
-            <div className="rounded-xl shadow-sm border p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-              <h2 className="text-xl font-semibold text-white mb-6">
-                Instellingen
-              </h2>
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-3">
-                    Dashboard Thema
-                  </label>
-                  <div className="space-y-3">
-                    {(["light", "dark", "auto"] as const).map((theme) => (
-                      <label
-                        key={theme}
-                        className="flex items-center gap-3 p-4 border border-zinc-800 rounded-lg cursor-pointer hover:bg-zinc-800 transition-colors"
-                      >
-                        <input
-                          type="radio"
-                          name="theme"
-                          value={theme}
-                          checked={themePreference === theme}
-                          onChange={(e) => {
-                            const newTheme = e.target.value as "light" | "dark" | "auto";
-                            setThemePreference(newTheme);
-                            localStorage.setItem("lynqit_dashboard_theme", newTheme);
-                            
-                            // Apply theme immediately
-                            const root = document.documentElement;
-                            root.classList.remove("light", "dark");
-                            
-                            if (newTheme === "auto") {
-                              // Use system preference
-                              const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-                              if (prefersDark) {
-                                root.classList.add("dark");
-                              } else {
-                                root.classList.add("light");
-                              }
-                            } else {
-                              root.classList.add(newTheme);
-                            }
-                            
-                            // Trigger a custom event to update other components
-                            window.dispatchEvent(new Event("themechange"));
-                          }}
-                          className="w-4 h-4 text-[#2E47FF] focus:ring-[#2E47FF]"
-                        />
-                        <span className="text-sm font-medium text-white">
-                          {theme === "light" ? "Light Mode" : theme === "dark" ? "Dark Mode" : "Auto (systeem voorkeur)"}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                  <p className="text-xs text-zinc-400 mt-2">
-                    Kies je voorkeur voor de dashboard omgeving. Auto gebruikt de voorkeur van je systeem.
-                  </p>
                 </div>
               </div>
             </div>
@@ -1286,46 +1166,12 @@ export default function AccountPage() {
                   <p className="text-zinc-400 mb-4">
                     Je hebt nog geen Stripe abonnementen.
                   </p>
-
-                  {pages.some((p) => !p.subscriptionPlan || p.subscriptionPlan === "free") && stripeProducts.length > 0 ? (
-                    <div className="flex flex-col items-center gap-3">
-                      <p className="text-zinc-500 text-sm">
-                        Je gebruikt momenteel het Free plan. Upgrade direct naar Start of Pro.
-                      </p>
-                      <div className="flex flex-wrap gap-2 justify-center">
-                        {["start", "pro"].map((plan) => {
-                          const planKey = plan as "start" | "pro";
-                          const product = stripeProducts.find((p: any) => {
-                            const metaPlan = String(p?.metadata?.plan || "").toLowerCase();
-                            const name = String(p?.name || "").toLowerCase();
-                            return metaPlan === planKey || name.includes(planKey);
-                          });
-                          if (!product?.price?.id) return null;
-
-                          const amount = product.price?.amount || 0;
-                          return (
-                            <button
-                              key={planKey}
-                              onClick={() => handleUpgradeFromFree(planKey)}
-                              disabled={isProcessingSubscription === "upgrade-from-free"}
-                              className="px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {isProcessingSubscription === "upgrade-from-free"
-                                ? "Verwerken..."
-                                : `Upgrade naar ${product.name} (€${(amount / 100).toFixed(2)}/maand ex. BTW)`}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : (
-                    <Link
-                      href="/register"
-                      className="inline-block px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors"
-                    >
-                      Maak een abonnement aan
-                    </Link>
-                  )}
+                  <Link
+                    href="/register"
+                    className="inline-block px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors"
+                  >
+                    Maak een abonnement aan
+                  </Link>
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -1342,7 +1188,7 @@ export default function AccountPage() {
                     
                     // Find available upgrade/downgrade options
                     const availableProducts = stripeProducts.filter((p: any) => {
-                      const pPrice = p.price?.amount || 0;
+                      const pPrice = p.prices?.[0]?.unit_amount || 0;
                       return pPrice !== productPrice; // Different price means different plan
                     });
 
@@ -1390,9 +1236,9 @@ export default function AccountPage() {
                               {stripeData.status === 'active' && !stripeData.cancel_at_period_end && availableProducts.length > 0 && (
                                 <>
                                   {availableProducts.map((product: any) => {
-                                    const newPriceId = product.price?.id;
+                                    const newPriceId = product.prices?.[0]?.id;
                                     if (!newPriceId) return null;
-                                    const isUpgrade = (product.price?.amount || 0) > productPrice;
+                                    const isUpgrade = (product.prices?.[0]?.unit_amount || 0) > productPrice;
                                     return (
                                       <button
                                         key={product.id}
