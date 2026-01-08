@@ -75,25 +75,28 @@ export async function GET(
       );
     }
 
+    // Ensure subscription is properly typed (TypeScript narrowing)
+    const typedSubscription: Stripe.Subscription = subscription;
+
     // Format subscription data for frontend (only requested fields)
     const subscriptionData = {
-      id: subscription.id,
-      status: subscription.status,
+      id: typedSubscription.id,
+      status: typedSubscription.status,
       mode,
-      customerDetails: typeof subscription.customer === 'object' && subscription.customer !== null && !subscription.customer.deleted ? {
-        id: subscription.customer.id,
-        email: subscription.customer.email || null,
-        name: subscription.customer.name || null,
-        phone: subscription.customer.phone || null,
+      customerDetails: typeof typedSubscription.customer === 'object' && typedSubscription.customer !== null && !('deleted' in typedSubscription.customer && typedSubscription.customer.deleted) ? {
+        id: typedSubscription.customer.id,
+        email: typedSubscription.customer.email || null,
+        name: typedSubscription.customer.name || null,
+        phone: typedSubscription.customer.phone || null,
       } : null,
-      items: subscription.items.data.map(item => ({
+      items: typedSubscription.items.data.map(item => ({
         id: item.id,
         price: {
           id: item.price.id,
           unit_amount: item.price.unit_amount,
           currency: item.price.currency,
           recurring: item.price.recurring,
-          product: typeof item.price.product === 'object' && item.price.product !== null && !item.price.product.deleted ? {
+          product: typeof item.price.product === 'object' && item.price.product !== null && !('deleted' in item.price.product && item.price.product.deleted) ? {
             id: item.price.product.id,
             name: item.price.product.name || null,
             description: item.price.product.description || null,
@@ -101,28 +104,28 @@ export async function GET(
         },
         quantity: item.quantity,
       })),
-      current_period_start: subscription.current_period_start,
-      current_period_end: subscription.current_period_end,
-      cancel_at_period_end: subscription.cancel_at_period_end,
-      canceled_at: subscription.canceled_at,
-      cancel_at: subscription.cancel_at,
-      default_payment_method_details: typeof subscription.default_payment_method === 'object' && subscription.default_payment_method !== null ? {
-        type: subscription.default_payment_method.type,
-        card: subscription.default_payment_method.card ? {
-          brand: subscription.default_payment_method.card.brand,
-          last4: subscription.default_payment_method.card.last4,
-          exp_month: subscription.default_payment_method.card.exp_month,
-          exp_year: subscription.default_payment_method.card.exp_year,
+      current_period_start: typedSubscription.current_period_start,
+      current_period_end: typedSubscription.current_period_end,
+      cancel_at_period_end: typedSubscription.cancel_at_period_end,
+      canceled_at: typedSubscription.canceled_at,
+      cancel_at: typedSubscription.cancel_at,
+      default_payment_method_details: typeof typedSubscription.default_payment_method === 'object' && typedSubscription.default_payment_method !== null ? {
+        type: typedSubscription.default_payment_method.type,
+        card: typedSubscription.default_payment_method.card ? {
+          brand: typedSubscription.default_payment_method.card.brand,
+          last4: typedSubscription.default_payment_method.card.last4,
+          exp_month: typedSubscription.default_payment_method.card.exp_month,
+          exp_year: typedSubscription.default_payment_method.card.exp_year,
         } : null,
       } : null,
-      latest_invoice_details: typeof subscription.latest_invoice === 'object' && subscription.latest_invoice !== null ? {
-        id: subscription.latest_invoice.id,
-        amount_due: subscription.latest_invoice.amount_due,
-        amount_paid: subscription.latest_invoice.amount_paid,
-        currency: subscription.latest_invoice.currency,
-        status: subscription.latest_invoice.status,
-        hosted_invoice_url: subscription.latest_invoice.hosted_invoice_url,
-        invoice_pdf: subscription.latest_invoice.invoice_pdf,
+      latest_invoice_details: typeof typedSubscription.latest_invoice === 'object' && typedSubscription.latest_invoice !== null ? {
+        id: typedSubscription.latest_invoice.id,
+        amount_due: typedSubscription.latest_invoice.amount_due,
+        amount_paid: typedSubscription.latest_invoice.amount_paid,
+        currency: typedSubscription.latest_invoice.currency,
+        status: typedSubscription.latest_invoice.status,
+        hosted_invoice_url: typedSubscription.latest_invoice.hosted_invoice_url,
+        invoice_pdf: typedSubscription.latest_invoice.invoice_pdf,
       } : null,
     };
 
