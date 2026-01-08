@@ -24,6 +24,10 @@ export default function TemplateRouter(props: TemplateRouterProps) {
   const template = props.page.template || "default";
 
   switch (template) {
+    case "mobile_app":
+      // Mobile App uses the Default layout, but has different "contact" rendering
+      // (handled in the page + live preview wrapper)
+      return <DefaultTemplate {...props} />;
     case "events":
       return <EventsTemplate {...props} />;
     case "artist":

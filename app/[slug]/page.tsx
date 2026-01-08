@@ -386,54 +386,102 @@ export default function PublicLynqitPage() {
 
         {/* Contact Information & CTA - Evenredig gespaced */}
         <div className="mb-6 space-y-3">
-          {/* Telefoonnummer - width 100%, border-radius 50px */}
-          {page.telefoonnummer && (
-            <a
-              href={`tel:${page.telefoonnummer}`}
-              onClick={() => trackClick("phone", `tel:${page.telefoonnummer}`)}
-              className="block w-full px-4 py-3 transition-colors text-center"
-              style={{
-                backgroundColor: isDark ? "#3F3F3F" : "#EEEEEE",
-                color: textColor,
-                borderRadius: "50px",
-                fontSize: "16px",
-                fontFamily: "'PT Sans', sans-serif",
-                fontWeight: "bold",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = isDark ? "#4F4F4F" : "#DDDDDD";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = isDark ? "#3F3F3F" : "#EEEEEE";
-              }}
-            >
-              {page.telefoonnummer}
-            </a>
-          )}
+          {page.template === "mobile_app" ? (
+            <div className="grid grid-cols-2 gap-3">
+              {/* App Store badge */}
+              {page.telefoonnummer && (
+                <a
+                  href={page.telefoonnummer}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => trackClick("app_store", page.telefoonnummer)}
+                  className="block w-full hover:opacity-90 transition-opacity"
+                  aria-label="Download on the App Store"
+                >
+                  <img
+                    src="https://zafemwpgbkciuozaxtgs.supabase.co/storage/v1/object/public/lynqit-uploads/uploads/6915e76e49ccddc95172397e_appstore-black.svg"
+                    alt="Download on the App Store"
+                    style={{ width: "100%", height: "auto", maxHeight: "60px", objectFit: "contain" }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                </a>
+              )}
 
-          {/* Emailadres - width 100%, border-radius 50px */}
-          {page.emailadres && (
-            <a
-              href={`mailto:${page.emailadres}`}
-              onClick={() => trackClick("email", `mailto:${page.emailadres}`)}
-              className="block w-full px-4 py-3 transition-colors text-center"
-              style={{
-                backgroundColor: isDark ? "#3F3F3F" : "#EEEEEE",
-                color: textColor,
-                borderRadius: "50px",
-                fontSize: "16px",
-                fontFamily: "'PT Sans', sans-serif",
-                fontWeight: "bold",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = isDark ? "#4F4F4F" : "#DDDDDD";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = isDark ? "#3F3F3F" : "#EEEEEE";
-              }}
-            >
-              {page.emailadres}
-            </a>
+              {/* Google Play badge */}
+              {page.emailadres && (
+                <a
+                  href={page.emailadres}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => trackClick("google_play", page.emailadres)}
+                  className="block w-full hover:opacity-90 transition-opacity"
+                  aria-label="Get it on Google Play"
+                >
+                  <img
+                    src="https://zafemwpgbkciuozaxtgs.supabase.co/storage/v1/object/public/lynqit-uploads/uploads/6915e76e49ccddc95172397d_googleplay-black.svg"
+                    alt="Get it on Google Play"
+                    style={{ width: "100%", height: "auto", maxHeight: "60px", objectFit: "contain" }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                </a>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Telefoonnummer - width 100%, border-radius 50px */}
+              {page.telefoonnummer && (
+                <a
+                  href={`tel:${page.telefoonnummer}`}
+                  onClick={() => trackClick("phone", `tel:${page.telefoonnummer}`)}
+                  className="block w-full px-4 py-3 transition-colors text-center"
+                  style={{
+                    backgroundColor: isDark ? "#3F3F3F" : "#EEEEEE",
+                    color: textColor,
+                    borderRadius: "50px",
+                    fontSize: "16px",
+                    fontFamily: "'PT Sans', sans-serif",
+                    fontWeight: "bold",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = isDark ? "#4F4F4F" : "#DDDDDD";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = isDark ? "#3F3F3F" : "#EEEEEE";
+                  }}
+                >
+                  {page.telefoonnummer}
+                </a>
+              )}
+
+              {/* Emailadres - width 100%, border-radius 50px */}
+              {page.emailadres && (
+                <a
+                  href={`mailto:${page.emailadres}`}
+                  onClick={() => trackClick("email", `mailto:${page.emailadres}`)}
+                  className="block w-full px-4 py-3 transition-colors text-center"
+                  style={{
+                    backgroundColor: isDark ? "#3F3F3F" : "#EEEEEE",
+                    color: textColor,
+                    borderRadius: "50px",
+                    fontSize: "16px",
+                    fontFamily: "'PT Sans', sans-serif",
+                    fontWeight: "bold",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = isDark ? "#4F4F4F" : "#DDDDDD";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = isDark ? "#3F3F3F" : "#EEEEEE";
+                  }}
+                >
+                  {page.emailadres}
+                </a>
+              )}
+            </>
           )}
 
           {/* CTA Button - width 100%, border-radius 50px */}
@@ -535,12 +583,6 @@ export default function PublicLynqitPage() {
       {/* Featured Links / Services */}
         {Object.values(page.featuredLinks).some((link) => link && link.title && link.link) && (
           <div className="max-w-md mx-auto px-4 mt-4">
-            <h2
-              className="text-xl font-semibold mb-4 text-center"
-              style={{ color: textColor }}
-            >
-              Uitgelicht
-            </h2>
             <div className="grid grid-cols-2 gap-3">
               {Object.values(page.featuredLinks).map((link, index) => {
                 if (!link || !link.title || !link.link) return null;

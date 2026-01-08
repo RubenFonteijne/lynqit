@@ -317,12 +317,13 @@ export default function EditPagePage() {
                       <select
                         value={page.template || "default"}
                         onChange={(e) =>
-                          updatePage({ template: e.target.value as "default" | "events" | "artist" | "webshop" })
+                          updatePage({ template: e.target.value as "default" | "mobile_app" | "events" | "artist" | "webshop" })
                         }
                         className="w-full px-4 py-2 pr-10 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50 focus:outline-none focus:ring-2 focus:ring-[#2E47FF] appearance-none"
                         style={{ minWidth: "100%", boxSizing: "border-box" }}
                       >
                         <option value="default">Standaard</option>
+                        <option value="mobile_app">Mobile App</option>
                         <option value="events">Events</option>
                         <option value="artist">Artist</option>
                         <option value="webshop">Webshop</option>
@@ -600,23 +601,25 @@ export default function EditPagePage() {
                   <>
                     <div>
                       <label className="block text-sm font-medium text-zinc-300 mb-2">
-                        Telefoonnummer
+                        {page.template === "mobile_app" ? "App Store link" : "Telefoonnummer"}
                       </label>
                       <input
-                        type="text"
+                        type={page.template === "mobile_app" ? "url" : "text"}
                         value={page.telefoonnummer || ""}
                         onChange={(e) => updatePage({ telefoonnummer: e.target.value })}
+                        placeholder={page.template === "mobile_app" ? "https://apps.apple.com/app/id..." : undefined}
                         className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-zinc-300 mb-2">
-                        E-mailadres
+                        {page.template === "mobile_app" ? "Google Play link" : "E-mailadres"}
                       </label>
                       <input
-                        type="email"
+                        type={page.template === "mobile_app" ? "url" : "email"}
                         value={page.emailadres || ""}
                         onChange={(e) => updatePage({ emailadres: e.target.value })}
+                        placeholder={page.template === "mobile_app" ? "https://play.google.com/store/apps/details?id=..." : undefined}
                         className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                       />
                     </div>
@@ -2167,38 +2170,72 @@ export default function EditPagePage() {
 
                         {/* Contact Information & CTA - Evenredig gespaced */}
                         <div className="mb-6 space-y-3">
-                          {/* Telefoonnummer - width 100%, border-radius 50px */}
-                          {page.telefoonnummer && (
-                            <div
-                              className="block w-full px-4 py-3 transition-colors text-center"
-                              style={{
-                                backgroundColor: isDark ? "#3F3F3F" : "#EEEEEE",
-                                color: textColor,
-                                borderRadius: "50px",
-                                fontSize: "16px",
-                                fontFamily: "'PT Sans', sans-serif",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              {page.telefoonnummer}
-                            </div>
-                          )}
+                          {page.template === "mobile_app" ? (
+                            <div className="grid grid-cols-2 gap-3">
+                              {/* App Store badge */}
+                              {page.telefoonnummer && (
+                                <div className="w-full">
+                                  <img
+                                    src="https://zafemwpgbkciuozaxtgs.supabase.co/storage/v1/object/public/lynqit-uploads/uploads/6915e76e49ccddc95172397e_appstore-black.svg"
+                                    alt="Download on the App Store"
+                                    style={{ width: "100%", height: "auto", maxHeight: "60px", objectFit: "contain" }}
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).style.display = "none";
+                                    }}
+                                  />
+                                </div>
+                              )}
 
-                          {/* Emailadres - width 100%, border-radius 50px */}
-                          {page.emailadres && (
-                            <div
-                              className="block w-full px-4 py-3 transition-colors text-center"
-                              style={{
-                                backgroundColor: isDark ? "#3F3F3F" : "#EEEEEE",
-                                color: textColor,
-                                borderRadius: "50px",
-                                fontSize: "16px",
-                                fontFamily: "'PT Sans', sans-serif",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              {page.emailadres}
+                              {/* Google Play badge */}
+                              {page.emailadres && (
+                                <div className="w-full">
+                                  <img
+                                    src="https://zafemwpgbkciuozaxtgs.supabase.co/storage/v1/object/public/lynqit-uploads/uploads/6915e76e49ccddc95172397d_googleplay-black.svg"
+                                    alt="Get it on Google Play"
+                                    style={{ width: "100%", height: "auto", maxHeight: "60px", objectFit: "contain" }}
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).style.display = "none";
+                                    }}
+                                  />
+                                </div>
+                              )}
                             </div>
+                          ) : (
+                            <>
+                              {/* Telefoonnummer - width 100%, border-radius 50px */}
+                              {page.telefoonnummer && (
+                                <div
+                                  className="block w-full px-4 py-3 transition-colors text-center"
+                                  style={{
+                                    backgroundColor: isDark ? "#3F3F3F" : "#EEEEEE",
+                                    color: textColor,
+                                    borderRadius: "50px",
+                                    fontSize: "16px",
+                                    fontFamily: "'PT Sans', sans-serif",
+                                    fontWeight: "bold",
+                                  }}
+                                >
+                                  {page.telefoonnummer}
+                                </div>
+                              )}
+
+                              {/* Emailadres - width 100%, border-radius 50px */}
+                              {page.emailadres && (
+                                <div
+                                  className="block w-full px-4 py-3 transition-colors text-center"
+                                  style={{
+                                    backgroundColor: isDark ? "#3F3F3F" : "#EEEEEE",
+                                    color: textColor,
+                                    borderRadius: "50px",
+                                    fontSize: "16px",
+                                    fontFamily: "'PT Sans', sans-serif",
+                                    fontWeight: "bold",
+                                  }}
+                                >
+                                  {page.emailadres}
+                                </div>
+                              )}
+                            </>
                           )}
 
                           {/* CTA Button - width 100%, border-radius 50px */}
@@ -2290,12 +2327,6 @@ export default function EditPagePage() {
                       {/* Featured Links / Services */}
                       {Object.values(page.featuredLinks).some((link) => link && link.title && link.link) && (
                         <div className="max-w-md mx-auto px-4 mt-4">
-                          <h2
-                            className="text-xl font-semibold mb-4 text-center"
-                            style={{ color: textColor }}
-                          >
-                            Uitgelicht
-                          </h2>
                           <div className="grid grid-cols-2 gap-3">
                             {Object.values(page.featuredLinks).map((link, index) => {
                               if (!link || !link.title || !link.link) return null;

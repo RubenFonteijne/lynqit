@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS lynqit_pages (
   mollie_subscription_id TEXT,
   subscription_start_date TIMESTAMPTZ,
   subscription_end_date TIMESTAMPTZ,
-  template TEXT DEFAULT 'default' CHECK (template IN ('default', 'events', 'artist', 'webshop')),
+  template TEXT DEFAULT 'default' CHECK (template IN ('default', 'events', 'artist', 'webshop', 'mobile_app')),
   theme TEXT DEFAULT 'dark' CHECK (theme IN ('dark', 'light')),
   brand_color TEXT DEFAULT '#2E47FF',
   background_color TEXT,

@@ -14,7 +14,7 @@ function createStripeClient(apiKey: string): Stripe {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, priceId, slug, plan } = body as { email?: string; priceId?: string; slug?: string; plan?: string };
+    const { email, priceId, slug } = body;
 
     if (!email || !priceId) {
       return NextResponse.json(
@@ -40,10 +40,6 @@ export async function POST(request: NextRequest) {
 
     const stripe = createStripeClient(apiKey);
 
-    const successUrl = `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}${
-      plan ? `&plan=${encodeURIComponent(plan)}` : ""
-    }`;
-
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -56,18 +52,16 @@ export async function POST(request: NextRequest) {
       mode: 'subscription',
       customer_email: email,
       allow_promotion_codes: true,
-      success_url: successUrl,
+      success_url: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/register?email=${encodeURIComponent(email)}${slug ? `&slug=${encodeURIComponent(slug)}` : ''}`,
       metadata: {
         email,
         slug: slug || '',
-        ...(plan ? { plan } : {}),
       },
       subscription_data: {
         metadata: {
           email,
           slug: slug || '',
-          ...(plan ? { plan } : {}),
         },
       },
     });

@@ -72,7 +72,7 @@ export interface Product {
   enabled?: boolean;
 }
 
-export type TemplateType = "default" | "events" | "artist" | "webshop";
+export type TemplateType = "default" | "mobile_app" | "events" | "artist" | "webshop";
 
 export interface LynqitPage {
   id: string;
