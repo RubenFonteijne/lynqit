@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
           
           // Filter subscriptions by customer email or metadata
           const matchingSubscriptions = allSubscriptions.data.filter(sub => {
-            if (typeof sub.customer === 'object' && sub.customer) {
+            if (typeof sub.customer === 'object' && sub.customer && !('deleted' in sub.customer && sub.customer.deleted)) {
               const customerEmail = sub.customer.email?.toLowerCase();
               if (customerEmail === searchEmail) {
                 return true;
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
           
           // Filter subscriptions by customer email or metadata
           const matchingSubscriptions = allSubscriptions.data.filter(sub => {
-            if (typeof sub.customer === 'object' && sub.customer) {
+            if (typeof sub.customer === 'object' && sub.customer && !('deleted' in sub.customer && sub.customer.deleted)) {
               const customerEmail = sub.customer.email?.toLowerCase();
               if (customerEmail === searchEmail) {
                 return true;
@@ -262,16 +262,22 @@ export async function GET(request: NextRequest) {
 
     // Format subscriptions data for frontend (only requested fields)
     // Use (subscription as any) for period properties to avoid TypeScript errors
-    const subscriptionsData = subscriptions.map(subscription => ({
-      id: subscription.id,
-      status: subscription.status,
-      mode,
-      customerDetails: typeof subscription.customer === 'object' && subscription.customer !== null && !('deleted' in subscription.customer && subscription.customer.deleted) ? {
-        id: subscription.customer.id,
-        email: subscription.customer.email || null,
-        name: subscription.customer.name || null,
-        phone: subscription.customer.phone || null,
-      } : null,
+    const subscriptionsData = subscriptions.map(subscription => {
+      // Check if customer is not deleted before accessing properties
+      const customer = typeof subscription.customer === 'object' && subscription.customer !== null && !('deleted' in subscription.customer && subscription.customer.deleted) 
+        ? subscription.customer 
+        : null;
+      
+      return {
+        id: subscription.id,
+        status: subscription.status,
+        mode,
+        customerDetails: customer ? {
+          id: customer.id,
+          email: customer.email || null,
+          name: customer.name || null,
+          phone: customer.phone || null,
+        } : null,
       items: subscription.items.data.map(item => ({
         id: item.id,
         price: {
@@ -310,7 +316,8 @@ export async function GET(request: NextRequest) {
         hosted_invoice_url: subscription.latest_invoice.hosted_invoice_url,
         invoice_pdf: subscription.latest_invoice.invoice_pdf,
       } : null,
-    }));
+      };
+    });
 
     return NextResponse.json({ subscriptions: subscriptionsData });
   } catch (error) {
