@@ -167,11 +167,24 @@ export async function GET(request: NextRequest) {
       if (liveApiKey) {
         try {
           const stripe = createStripeClient(liveApiKey);
-          const invoices = await stripe.invoices.list({
-            customer_email: email.toLowerCase(),
-            limit: 100,
-            expand: ['data.subscription'],
+          // First find customers by email
+          const customers = await stripe.customers.list({
+            email: searchEmail,
+            limit: 10,
           });
+          
+          // Get invoices for all matching customers
+          const allInvoices: Stripe.Invoice[] = [];
+          for (const customer of customers.data) {
+            const customerInvoices = await stripe.invoices.list({
+              customer: customer.id,
+              limit: 100,
+              expand: ['data.subscription'],
+            });
+            allInvoices.push(...customerInvoices.data);
+          }
+          
+          const invoices = { data: allInvoices };
           
           console.log("[API /api/stripe/subscription/find-by-email] Found", invoices.data.length, "invoices in live mode");
           
@@ -215,11 +228,24 @@ export async function GET(request: NextRequest) {
       if (subscriptions.length === 0 && testApiKey) {
         try {
           const stripe = createStripeClient(testApiKey);
-          const invoices = await stripe.invoices.list({
-            customer_email: email.toLowerCase(),
-            limit: 100,
-            expand: ['data.subscription'],
+          // First find customers by email
+          const customers = await stripe.customers.list({
+            email: searchEmail,
+            limit: 10,
           });
+          
+          // Get invoices for all matching customers
+          const allInvoices: Stripe.Invoice[] = [];
+          for (const customer of customers.data) {
+            const customerInvoices = await stripe.invoices.list({
+              customer: customer.id,
+              limit: 100,
+              expand: ['data.subscription'],
+            });
+            allInvoices.push(...customerInvoices.data);
+          }
+          
+          const invoices = { data: allInvoices };
           
           console.log("[API /api/stripe/subscription/find-by-email] Found", invoices.data.length, "invoices in test mode");
           
