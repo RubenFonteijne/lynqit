@@ -51,7 +51,8 @@ export async function GET(request: NextRequest) {
           mode = 'live';
           console.log("[API /api/stripe/invoices] Found", invoices.length, "invoices in live mode");
           if (invoices.length > 0) {
-            console.log("[API /api/stripe/invoices] First invoice subscription:", invoices[0].subscription);
+            const firstInvoice = invoices[0] as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
+            console.log("[API /api/stripe/invoices] First invoice subscription:", firstInvoice.subscription);
           }
         }
       } catch (e: any) {
@@ -78,7 +79,8 @@ export async function GET(request: NextRequest) {
           mode = 'test';
           console.log("[API /api/stripe/invoices] Found", invoices.length, "invoices in test mode");
           if (invoices.length > 0) {
-            console.log("[API /api/stripe/invoices] First invoice subscription:", invoices[0].subscription);
+            const firstInvoice = invoices[0] as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
+            console.log("[API /api/stripe/invoices] First invoice subscription:", firstInvoice.subscription);
           }
         }
       } catch (e: any) {
