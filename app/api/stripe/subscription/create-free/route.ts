@@ -124,8 +124,8 @@ export async function POST(request: NextRequest) {
           subscriptionStatus: 'active',
           stripeSubscriptionId: subscription.id,
           subscriptionStartDate: new Date(subscription.created * 1000).toISOString(),
-          subscriptionEndDate: subscription.current_period_end 
-            ? new Date(subscription.current_period_end * 1000).toISOString()
+          subscriptionEndDate: (subscription as any).current_period_end 
+            ? new Date((subscription as any).current_period_end * 1000).toISOString()
             : undefined,
         });
         console.log("[API /api/stripe/subscription/create-free] Updated page with subscription ID:", subscription.id);
@@ -143,8 +143,8 @@ export async function POST(request: NextRequest) {
         page = await updatePage(page.id, {
           stripeSubscriptionId: subscription.id,
           subscriptionStartDate: new Date(subscription.created * 1000).toISOString(),
-          subscriptionEndDate: subscription.current_period_end 
-            ? new Date(subscription.current_period_end * 1000).toISOString()
+          subscriptionEndDate: (subscription as any).current_period_end 
+            ? new Date((subscription as any).current_period_end * 1000).toISOString()
             : undefined,
         });
         console.log("[API /api/stripe/subscription/create-free] Updated new page with subscription ID:", subscription.id);

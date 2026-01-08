@@ -71,8 +71,8 @@ export async function POST(request: NextRequest) {
           subscriptionStatus: updatedSubscription.status === 'active' ? 'active' : 'cancelled',
           stripeSubscriptionId: updatedSubscription.id,
           subscriptionStartDate: new Date(updatedSubscription.created * 1000).toISOString(),
-          subscriptionEndDate: updatedSubscription.current_period_end 
-            ? new Date(updatedSubscription.current_period_end * 1000).toISOString()
+          subscriptionEndDate: (updatedSubscription as any).current_period_end 
+            ? new Date((updatedSubscription as any).current_period_end * 1000).toISOString()
             : undefined,
         });
       } catch (pageError) {
