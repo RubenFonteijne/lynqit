@@ -611,6 +611,54 @@ export default function AccountPage() {
     }
   };
 
+  const handleUpgradeFromFree = async (newPlan: "start" | "pro") => {
+    if (!user) return;
+
+    setIsProcessingSubscription("upgrade-from-free");
+    setSubscriptionMessage(null);
+
+    try {
+      const targetProduct = stripeProducts.find((p: any) => {
+        const metaPlan = String(p?.metadata?.plan || "").toLowerCase();
+        const name = String(p?.name || "").toLowerCase();
+        return metaPlan === newPlan || name.includes(newPlan);
+      });
+
+      const priceId = targetProduct?.price?.id;
+      if (!priceId) {
+        setSubscriptionMessage({ type: "error", text: "Kon het geselecteerde plan niet vinden in Stripe producten." });
+        setIsProcessingSubscription(null);
+        return;
+      }
+
+      const response = await fetch("/api/stripe/checkout/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: user.email,
+          priceId,
+          plan: newPlan,
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+
+      setSubscriptionMessage({
+        type: "error",
+        text: data.error || data.details || "Fout bij het maken van checkout sessie",
+      });
+      setIsProcessingSubscription(null);
+    } catch (error) {
+      console.error("Error upgrading from free:", error);
+      setSubscriptionMessage({ type: "error", text: "Er is een fout opgetreden bij het upgraden" });
+      setIsProcessingSubscription(null);
+    }
+  };
+
   const handleCancelSubscription = async (subscriptionId: string, pageId?: string) => {
     if (!user) return;
 
@@ -1238,12 +1286,46 @@ export default function AccountPage() {
                   <p className="text-zinc-400 mb-4">
                     Je hebt nog geen Stripe abonnementen.
                   </p>
-                  <Link
-                    href="/register"
-                    className="inline-block px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors"
-                  >
-                    Maak een abonnement aan
-                  </Link>
+
+                  {pages.some((p) => !p.subscriptionPlan || p.subscriptionPlan === "free") && stripeProducts.length > 0 ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <p className="text-zinc-500 text-sm">
+                        Je gebruikt momenteel het Free plan. Upgrade direct naar Start of Pro.
+                      </p>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        {["start", "pro"].map((plan) => {
+                          const planKey = plan as "start" | "pro";
+                          const product = stripeProducts.find((p: any) => {
+                            const metaPlan = String(p?.metadata?.plan || "").toLowerCase();
+                            const name = String(p?.name || "").toLowerCase();
+                            return metaPlan === planKey || name.includes(planKey);
+                          });
+                          if (!product?.price?.id) return null;
+
+                          const amount = product.price?.amount || 0;
+                          return (
+                            <button
+                              key={planKey}
+                              onClick={() => handleUpgradeFromFree(planKey)}
+                              disabled={isProcessingSubscription === "upgrade-from-free"}
+                              className="px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isProcessingSubscription === "upgrade-from-free"
+                                ? "Verwerken..."
+                                : `Upgrade naar ${product.name} (€${(amount / 100).toFixed(2)}/maand ex. BTW)`}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <Link
+                      href="/register"
+                      className="inline-block px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors"
+                    >
+                      Maak een abonnement aan
+                    </Link>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -1260,7 +1342,7 @@ export default function AccountPage() {
                     
                     // Find available upgrade/downgrade options
                     const availableProducts = stripeProducts.filter((p: any) => {
-                      const pPrice = p.prices?.[0]?.unit_amount || 0;
+                      const pPrice = p.price?.amount || 0;
                       return pPrice !== productPrice; // Different price means different plan
                     });
 
@@ -1308,9 +1390,9 @@ export default function AccountPage() {
                               {stripeData.status === 'active' && !stripeData.cancel_at_period_end && availableProducts.length > 0 && (
                                 <>
                                   {availableProducts.map((product: any) => {
-                                    const newPriceId = product.prices?.[0]?.id;
+                                    const newPriceId = product.price?.id;
                                     if (!newPriceId) return null;
-                                    const isUpgrade = (product.prices?.[0]?.unit_amount || 0) > productPrice;
+                                    const isUpgrade = (product.price?.amount || 0) > productPrice;
                                     return (
                                       <button
                                         key={product.id}
