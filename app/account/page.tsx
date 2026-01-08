@@ -43,6 +43,11 @@ export default function AccountPage() {
     page: LynqitPage | null;
   }>({ isOpen: false, page: null });
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [stripeSubscriptions, setStripeSubscriptions] = useState<Array<any>>([]);
+  const [stripeInvoices, setStripeInvoices] = useState<Array<any>>([]);
+  const [stripeProducts, setStripeProducts] = useState<Array<any>>([]);
+  const [loadingSubscriptions, setLoadingSubscriptions] = useState(false);
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
   
   // Form states
   const [companyName, setCompanyName] = useState("");
@@ -171,36 +176,182 @@ export default function AccountPage() {
     }
   };
 
-  const fetchPages = async (accessToken: string) => {
+  const fetchPages = async (accessToken: string | null = null) => {
     try {
-      const response = await fetch(`/api/pages`, {
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-        },
+      const supabase = createClientClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Get user email from session or localStorage
+      let userEmail = session?.user?.email;
+      if (!userEmail) {
+        const cachedUser = localStorage.getItem("lynqit_user");
+        if (cachedUser) {
+          try {
+            const user = JSON.parse(cachedUser);
+            userEmail = user.email;
+          } catch (e) {
+            // Invalid cache
+          }
+        }
+      }
+      
+      if (!userEmail) {
+        console.error("[Account] No user email available for fetching pages");
+        return;
+      }
+
+      // Use access token if available, otherwise use email parameter
+      const pagesUrl = (accessToken || session?.access_token)
+        ? `/api/pages`
+        : `/api/pages?email=${encodeURIComponent(userEmail)}`;
+      
+      const fetchOptions: RequestInit = (accessToken || session?.access_token)
+        ? { headers: { "Authorization": `Bearer ${accessToken || session?.access_token}` } }
+        : {};
+
+      console.log("[Account] Fetching pages:", { 
+        hasToken: !!(accessToken || session?.access_token),
+        userEmail,
+        url: pagesUrl 
       });
+
+      const response = await fetch(pagesUrl, fetchOptions);
       if (response.ok) {
         const data = await response.json();
+        console.log("[Account] Pages fetched:", data.pages?.length || 0, "pages");
         setPages(data.pages || []);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        console.error("[Account] Error fetching pages:", response.status, errorData);
       }
     } catch (error) {
-      console.error("Error fetching pages:", error);
+      console.error("[Account] Error fetching pages:", error);
     }
   };
 
   const syncSubscriptionsWithStripe = async () => {
-    if (!user?.email) return;
+    if (!user?.email) {
+      console.warn("[Account] No user email available for syncing subscriptions");
+      return;
+    }
     
+    console.log("[Account] Starting sync with Stripe for email:", user.email);
     setIsSyncingSubscriptions(true);
+    setLoadingSubscriptions(true);
     try {
-      // Stripe subscriptions are automatically synced via webhooks
-      // This function is kept for UI consistency but doesn't need to do anything
-      // Just refresh the pages to show any updates
-      if (accessToken) {
-        await fetchPages(accessToken);
+      // First, fetch pages to get any stripeSubscriptionIds from database
+      await fetchPages(accessToken);
+      
+      // Collect all subscription IDs from pages
+      const subscriptionIdsFromPages = pages
+        .filter(page => page.stripeSubscriptionId)
+        .map(page => page.stripeSubscriptionId!);
+      
+      console.log("[Account] Found", subscriptionIdsFromPages.length, "subscription IDs from pages:", subscriptionIdsFromPages);
+      
+      // Fetch subscriptions by email
+      console.log("[Account] Fetching subscriptions from API...");
+      const subscriptionsResponse = await fetch(`/api/stripe/subscription/find-by-email?email=${encodeURIComponent(user.email)}`);
+      console.log("[Account] Subscriptions response status:", subscriptionsResponse.status);
+      
+      let subscriptionsFromEmail: any[] = [];
+      if (subscriptionsResponse.ok) {
+        const subscriptionsData = await subscriptionsResponse.json();
+        console.log("[Account] Subscriptions data received:", subscriptionsData);
+        console.log("[Account] Number of subscriptions:", subscriptionsData.subscriptions?.length || 0);
+        subscriptionsFromEmail = subscriptionsData.subscriptions || [];
+      } else {
+        const errorData = await subscriptionsResponse.json().catch(() => ({ error: "Unknown error" }));
+        console.error("[Account] Error fetching subscriptions:", subscriptionsResponse.status, errorData);
       }
+      
+      // DEBUG: Try to fetch subscription directly if we know the ID (temporary for debugging)
+      if (subscriptionsFromEmail.length === 0) {
+        console.log("[Account] DEBUG: Trying to fetch subscription directly by known ID...");
+        const knownSubscriptionIds = ['sub_1Sn5w6GfVyKVnOf9dV7yanUC']; // From Stripe dashboard
+        const directSubs = await Promise.all(
+          knownSubscriptionIds.map(async (subId) => {
+            try {
+              const response = await fetch(`/api/stripe/subscription/${subId}`);
+              if (response.ok) {
+                const data = await response.json();
+                console.log("[Account] DEBUG: Successfully fetched subscription", subId);
+                return data.subscription;
+              } else {
+                const error = await response.json().catch(() => ({ error: "Unknown" }));
+                console.log("[Account] DEBUG: Failed to fetch subscription", subId, ":", error);
+              }
+              return null;
+            } catch (error) {
+              console.error("[Account] DEBUG: Error fetching subscription", subId, ":", error);
+              return null;
+            }
+          })
+        );
+        const validDirectSubs = directSubs.filter(sub => sub !== null);
+        if (validDirectSubs.length > 0) {
+          console.log("[Account] DEBUG: Found", validDirectSubs.length, "subscriptions via direct fetch!");
+          subscriptionsFromEmail = validDirectSubs;
+        }
+      }
+      
+      // If we have subscription IDs from pages but not from email search, fetch them directly
+      if (subscriptionIdsFromPages.length > 0 && subscriptionsFromEmail.length === 0) {
+        console.log("[Account] Fetching subscriptions directly by ID...");
+        const directSubscriptions = await Promise.all(
+          subscriptionIdsFromPages.map(async (subId) => {
+            try {
+              const response = await fetch(`/api/stripe/subscription/${subId}`);
+              if (response.ok) {
+                const data = await response.json();
+                return data.subscription;
+              }
+              return null;
+            } catch (error) {
+              console.error("[Account] Error fetching subscription", subId, ":", error);
+              return null;
+            }
+          })
+        );
+        const validSubscriptions = directSubscriptions.filter(sub => sub !== null);
+        if (validSubscriptions.length > 0) {
+          console.log("[Account] Found", validSubscriptions.length, "subscriptions via direct ID fetch");
+          subscriptionsFromEmail = validSubscriptions;
+        }
+      }
+      
+      setStripeSubscriptions(subscriptionsFromEmail);
+      console.log("[Account] Loaded", subscriptionsFromEmail.length, "Stripe subscriptions total");
+
+      // Fetch all invoices
+      setLoadingInvoices(true);
+      try {
+        const invoicesResponse = await fetch(`/api/stripe/invoices?email=${encodeURIComponent(user.email)}`);
+        if (invoicesResponse.ok) {
+          const invoicesData = await invoicesResponse.json();
+          setStripeInvoices(invoicesData.invoices || []);
+          console.log("[Account] Loaded", invoicesData.invoices?.length || 0, "invoices");
+          
+        }
+      } catch (error) {
+        console.error("[Account] Error loading invoices:", error);
+      } finally {
+        setLoadingInvoices(false);
+      }
+
+      // Fetch products for upgrade/downgrade options
+      const productsResponse = await fetch(`/api/stripe/products`);
+      if (productsResponse.ok) {
+        const productsData = await productsResponse.json();
+        setStripeProducts(productsData.products || []);
+      }
+
+      // Refresh pages to sync with Stripe data
+      await fetchPages(accessToken);
+      
       setSubscriptionMessage({
         type: "success",
-        text: "Abonnementen bijgewerkt.",
+        text: "Abonnementen bijgewerkt vanuit Stripe.",
       });
       setTimeout(() => setSubscriptionMessage(null), 5000);
     } catch (error) {
@@ -212,20 +363,48 @@ export default function AccountPage() {
       setTimeout(() => setSubscriptionMessage(null), 5000);
     } finally {
       setIsSyncingSubscriptions(false);
+      setLoadingSubscriptions(false);
     }
   };
 
-  // Auto-sync subscriptions when subscriptions tab is opened
+
+  // Auto-load Stripe subscriptions when subscriptions tab is opened
   useEffect(() => {
-    if (activeTab === "subscriptions" && user?.email && !hasSyncedSubscriptions) {
-      setHasSyncedSubscriptions(true);
-      // Small delay to ensure tab is rendered
-      setTimeout(() => {
-        syncSubscriptionsWithStripe();
-      }, 100);
+    if (activeTab === "subscriptions" && user?.email) {
+      console.log("[Account] Subscriptions tab opened, hasSyncedSubscriptions:", hasSyncedSubscriptions, "stripeSubscriptions.length:", stripeSubscriptions.length);
+      if (!hasSyncedSubscriptions || stripeSubscriptions.length === 0) {
+        if (!hasSyncedSubscriptions) {
+          setHasSyncedSubscriptions(true);
+        }
+        // Small delay to ensure tab is rendered
+        setTimeout(() => {
+          console.log("[Account] Auto-loading subscriptions...");
+          syncSubscriptionsWithStripe();
+        }, 100);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, user?.email, hasSyncedSubscriptions]);
+  }, [activeTab, user?.email]);
+
+  // Auto-load invoices when invoices tab is opened
+  useEffect(() => {
+    if (activeTab === "invoices" && user?.email && stripeInvoices.length === 0 && !loadingInvoices) {
+      setLoadingInvoices(true);
+      fetch(`/api/stripe/invoices?email=${encodeURIComponent(user.email)}`)
+        .then(response => response.json())
+        .then(data => {
+          setStripeInvoices(data.invoices || []);
+        })
+        .catch(error => {
+          console.error("Error loading invoices:", error);
+        })
+        .finally(() => {
+          setLoadingInvoices(false);
+        });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, user?.email]);
+
 
   const handleSaveProfile = async () => {
     if (!user) return;
@@ -383,64 +562,40 @@ export default function AccountPage() {
   const totalBTW = totalExBTW * 0.21;
   const totalInclBTW = calculatePriceWithBTW(totalExBTW);
 
-  const handleUpgradeDowngrade = async (pageId: string, newPlan: "start" | "pro" | "free") => {
+  const handleUpgradeDowngrade = async (subscriptionId: string, newPriceId: string, pageId?: string) => {
     if (!user) return;
 
-    setIsProcessingSubscription(pageId);
+    setIsProcessingSubscription(subscriptionId);
     setSubscriptionMessage(null);
 
     try {
-      const response = await fetch("/api/subscription/change", {
+      const response = await fetch("/api/stripe/subscription/update", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: user.email,
+          subscriptionId,
+          newPriceId,
           pageId,
-          newPlan,
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        if (newPlan === "free") {
-          setSubscriptionMessage({ 
-            type: "success", 
-            text: "Abonnement succesvol gedowngraded naar Lynqit Basis (gratis)." 
-          });
-          // Refresh pages
-          if (accessToken) {
-            await fetchPages(accessToken);
-          }
-          setTimeout(() => {
-            setSubscriptionMessage(null);
-            setIsProcessingSubscription(null);
-          }, 3000);
-        } else {
-          setSubscriptionMessage({ 
-            type: "success", 
-            text: `Abonnement succesvol gewijzigd naar ${newPlan === "start" ? "Lynqit Start" : "Lynqit Pro"}. Je wordt doorgestuurd naar de betalingspagina...` 
-          });
-          // Refresh pages
-          if (accessToken) {
-            await fetchPages(accessToken);
-          }
-          // Redirect to payment if payment URL is provided
-          if (data.paymentUrl) {
-            setTimeout(() => {
-              window.location.href = data.paymentUrl;
-            }, 2000);
-          } else {
-            setTimeout(() => {
-              setSubscriptionMessage(null);
-              setIsProcessingSubscription(null);
-            }, 3000);
-          }
-        }
+        setSubscriptionMessage({ 
+          type: "success", 
+          text: "Abonnement succesvol bijgewerkt." 
+        });
+        // Refresh Stripe subscriptions
+        await syncSubscriptionsWithStripe();
+        setTimeout(() => {
+          setSubscriptionMessage(null);
+          setIsProcessingSubscription(null);
+        }, 3000);
       } else {
-        setSubscriptionMessage({ type: "error", text: data.error || "Fout bij het wijzigen van abonnement" });
+        setSubscriptionMessage({ type: "error", text: data.error || data.details || "Fout bij het wijzigen van abonnement" });
         setTimeout(() => {
           setSubscriptionMessage(null);
           setIsProcessingSubscription(null);
@@ -456,42 +611,41 @@ export default function AccountPage() {
     }
   };
 
-  const handleCancelSubscription = async (pageId: string) => {
+  const handleCancelSubscription = async (subscriptionId: string, pageId?: string) => {
     if (!user) return;
 
-    if (!confirm("Weet je zeker dat je dit abonnement wilt opzeggen? De pagina blijft beschikbaar tot het einde van de facturatieperiode.")) {
+    if (!confirm("Weet je zeker dat je dit abonnement wilt annuleren? De pagina blijft beschikbaar tot het einde van de facturatieperiode.")) {
       return;
     }
 
-    setIsProcessingSubscription(pageId);
+    setIsProcessingSubscription(subscriptionId);
     setSubscriptionMessage(null);
 
     try {
-      const response = await fetch("/api/subscription/cancel", {
+      const response = await fetch("/api/stripe/subscription/cancel", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: user.email,
+          subscriptionId,
           pageId,
+          cancelImmediately: false, // Cancel at period end
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setSubscriptionMessage({ type: "success", text: "Abonnement succesvol opgezegd. De pagina blijft beschikbaar tot het einde van de facturatieperiode." });
-        // Refresh pages
-        if (accessToken) {
-          await fetchPages(accessToken);
-        }
+        setSubscriptionMessage({ type: "success", text: "Abonnement succesvol geannuleerd. De pagina blijft beschikbaar tot het einde van de facturatieperiode." });
+        // Refresh Stripe subscriptions
+        await syncSubscriptionsWithStripe();
         setTimeout(() => {
           setSubscriptionMessage(null);
           setIsProcessingSubscription(null);
         }, 5000);
       } else {
-        setSubscriptionMessage({ type: "error", text: data.error || "Fout bij het opzeggen van abonnement" });
+        setSubscriptionMessage({ type: "error", text: data.error || data.details || "Fout bij het annuleren van abonnement" });
         setTimeout(() => {
           setSubscriptionMessage(null);
           setIsProcessingSubscription(null);
@@ -499,7 +653,7 @@ export default function AccountPage() {
       }
     } catch (error) {
       console.error("Error cancelling subscription:", error);
-      setSubscriptionMessage({ type: "error", text: "Er is een fout opgetreden bij het opzeggen van abonnement" });
+      setSubscriptionMessage({ type: "error", text: "Er is een fout opgetreden bij het annuleren van abonnement" });
       setTimeout(() => {
         setSubscriptionMessage(null);
         setIsProcessingSubscription(null);
@@ -882,92 +1036,154 @@ export default function AccountPage() {
 
           {/* Invoices Tab */}
           {activeTab === "invoices" && (
-            <div className="rounded-xl shadow-sm border p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-zinc-50">
-                  Facturen
-                </h2>
-                {paidPages.length > 0 && (
-                  <button
-                    onClick={handleDownloadInvoice}
-                    className="px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors"
-                  >
-                    Factuur downloaden
-                  </button>
-                )}
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-semibold text-white mb-2">
+                    Facturen
+                  </h2>
+                  <p className="text-zinc-400 text-sm">
+                    Bekijk en download al je Stripe facturen
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (user?.email) {
+                      setLoadingInvoices(true);
+                      try {
+                        const invoicesResponse = await fetch(`/api/stripe/invoices?email=${encodeURIComponent(user.email)}`);
+                        if (invoicesResponse.ok) {
+                          const invoicesData = await invoicesResponse.json();
+                          setStripeInvoices(invoicesData.invoices || []);
+                        }
+                      } catch (error) {
+                        console.error("Error loading invoices:", error);
+                      } finally {
+                        setLoadingInvoices(false);
+                      }
+                    }
+                  }}
+                  disabled={loadingInvoices}
+                  className="px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {loadingInvoices ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Laden...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Ververs facturen
+                    </>
+                  )}
+                </button>
               </div>
 
-              {paidPages.length === 0 ? (
-                <p className="text-zinc-400">
-                  Je hebt nog geen betaalde abonnementen. Facturen worden hier beschikbaar gesteld zodra je een betaald plan hebt.
-                </p>
+              {loadingInvoices ? (
+                <div className="flex items-center justify-center py-12">
+                  <svg className="animate-spin h-8 w-8 text-[#2E47FF]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span className="ml-3 text-zinc-400">Facturen laden vanuit Stripe...</span>
+                </div>
+              ) : stripeInvoices.length === 0 ? (
+                <div className="rounded-xl shadow-sm border p-8 text-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                  <p className="text-zinc-400">
+                    Je hebt nog geen facturen. Facturen worden hier automatisch getoond vanuit Stripe zodra je een betaald abonnement hebt.
+                  </p>
+                </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="border border-zinc-800 rounded-lg p-4">
-                    <h3 className="text-lg font-semibold text-white mb-4">
-                      Huidige abonnementen
-                    </h3>
-                    <div className="space-y-3 mb-4">
-                      {paidPages.map((page) => {
-                        const planPrice =
-                          page.subscriptionPlan === "start"
-                            ? SUBSCRIPTION_PRICES.start
-                            : SUBSCRIPTION_PRICES.pro;
-
-                        return (
-                          <div
-                            key={page.id}
-                            className="flex justify-between items-center p-3 bg-zinc-800 rounded-lg"
-                          >
-                            <div>
-                              <p className="font-medium text-white">
-                                {formatPageTitle(page.slug)}
-                              </p>
-                              <p className="text-sm text-zinc-400">
-                                {page.subscriptionPlan === "start"
-                                  ? "Lynqit Start"
-                                  : "Lynqit Pro"}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-medium text-white">
-                                €{planPrice.toFixed(2)}/maand
-                              </p>
-                              <p className="text-xs text-zinc-400">
-                                ex. BTW
-                              </p>
-                            </div>
+                  {stripeInvoices.map((invoice: any) => (
+                    <div
+                      key={invoice.id}
+                      className="rounded-xl shadow-sm border p-6" 
+                      style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }}
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-semibold text-white">
+                              Factuur {invoice.number || invoice.id}
+                            </h3>
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              invoice.status === 'paid' ? 'bg-green-500/20 text-green-400' :
+                              invoice.status === 'open' ? 'bg-yellow-500/20 text-yellow-400' :
+                              invoice.status === 'void' ? 'bg-gray-500/20 text-gray-400' :
+                              'bg-red-500/20 text-red-400'
+                            }`}>
+                              {invoice.status}
+                            </span>
                           </div>
-                        );
-                      })}
+                          <p className="text-sm text-zinc-400">
+                            {new Date(invoice.created * 1000).toLocaleDateString("nl-NL", { 
+                              day: "numeric", 
+                              month: "long",
+                              year: "numeric"
+                            })}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-semibold text-white">
+                            €{(invoice.amount_due / 100).toFixed(2)}
+                          </p>
+                          <p className="text-xs text-zinc-400 uppercase">
+                            {invoice.currency}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {invoice.line_items && invoice.line_items.length > 0 && (
+                        <div className="mb-4">
+                          <h4 className="text-sm font-semibold text-zinc-300 mb-2">Items:</h4>
+                          <div className="space-y-2">
+                            {invoice.line_items.map((item: any, idx: number) => (
+                              <div key={idx} className="flex justify-between text-sm">
+                                <span className="text-zinc-400">{item.description || 'Abonnement'}</span>
+                                <span className="text-zinc-300">€{(item.amount / 100).toFixed(2)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        {invoice.hosted_invoice_url && (
+                          <a
+                            href={invoice.hosted_invoice_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors inline-flex items-center gap-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                            Bekijk in Stripe
+                          </a>
+                        )}
+                        {invoice.invoice_pdf && (
+                          <a
+                            href={invoice.invoice_pdf}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-4 py-2 bg-zinc-700 text-white rounded-lg text-sm font-medium hover:bg-zinc-600 transition-colors inline-flex items-center gap-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Download PDF
+                          </a>
+                        )}
+                      </div>
                     </div>
-                    <div className="border-t border-zinc-800 pt-4 mt-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-zinc-400">
-                          Subtotaal (ex. BTW)
-                        </span>
-                        <span className="text-sm font-medium text-white">
-                          €{totalExBTW.toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-zinc-400">
-                          BTW (21%)
-                        </span>
-                        <span className="text-sm font-medium text-white">
-                          €{totalBTW.toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                        <span className="text-base font-semibold text-white">
-                          Totaal (incl. BTW)
-                        </span>
-                        <span className="text-base font-semibold text-white">
-                          €{totalInclBTW.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -975,11 +1191,16 @@ export default function AccountPage() {
 
           {/* Subscriptions Tab */}
           {activeTab === "subscriptions" && (
-            <div className="rounded-xl shadow-sm border p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-white">
-                  Abonnement(en) beheren
-                </h2>
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-semibold text-white mb-2">
+                    Abonnement(en) beheren
+                  </h2>
+                  <p className="text-zinc-400 text-sm">
+                    Beheer je abonnementen en bekijk alle Stripe details
+                  </p>
+                </div>
                 <button
                   onClick={syncSubscriptionsWithStripe}
                   disabled={isSyncingSubscriptions}
@@ -1004,123 +1225,376 @@ export default function AccountPage() {
                 </button>
               </div>
 
-              {pages.length === 0 ? (
-                <p className="text-zinc-400">
-                  Je hebt nog geen pagina's. Maak eerst een pagina aan via het dashboard.
-                </p>
+              {loadingSubscriptions ? (
+                <div className="flex items-center justify-center py-12">
+                  <svg className="animate-spin h-8 w-8 text-[#2E47FF]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span className="ml-3 text-zinc-400">Stripe abonnementen laden...</span>
+                </div>
+              ) : stripeSubscriptions.length === 0 ? (
+                <div className="rounded-xl shadow-sm border p-8 text-center" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                  <p className="text-zinc-400 mb-4">
+                    Je hebt nog geen Stripe abonnementen.
+                  </p>
+                  <Link
+                    href="/register"
+                    className="inline-block px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors"
+                  >
+                    Maak een abonnement aan
+                  </Link>
+                </div>
               ) : (
-                <div className="space-y-4">
-                  {pages.map((page) => {
-                    const currentPlan = page.subscriptionPlan || "free";
-                    const isActive = page.subscriptionStatus === "active";
-                    const planPrice = currentPlan === "start" 
-                      ? SUBSCRIPTION_PRICES.start 
-                      : currentPlan === "pro" 
-                      ? SUBSCRIPTION_PRICES.pro 
-                      : 0;
+                <div className="space-y-6">
+                  {stripeSubscriptions.map((subscription: any) => {
+                    // Find associated page if exists
+                    const associatedPage = pages.find(p => p.stripeSubscriptionId === subscription.id);
+                    const isLoadingStripe = false; // We already loaded it
+                    const stripeData = subscription;
+
+                    // Get product name and price from subscription items
+                    const productName = stripeData.items?.[0]?.price?.product?.name || "Onbekend plan";
+                    const productPrice = stripeData.items?.[0]?.price?.unit_amount || 0;
+                    const productPriceId = stripeData.items?.[0]?.price?.id;
+                    
+                    // Find available upgrade/downgrade options
+                    const availableProducts = stripeProducts.filter((p: any) => {
+                      const pPrice = p.prices?.[0]?.unit_amount || 0;
+                      return pPrice !== productPrice; // Different price means different plan
+                    });
 
                     return (
                       <div
-                        key={page.id}
-                        className="border border-zinc-800 rounded-lg p-4"
+                        key={subscription.id}
+                        className="rounded-xl shadow-sm border overflow-hidden" 
+                        style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }}
                       >
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <h3 className="text-lg font-semibold text-zinc-50 mb-1">
-                              {formatPageTitle(page.slug)}
-                            </h3>
-                            <p className="text-sm text-zinc-400">
-                              Huidig plan: {currentPlan === "free" ? "Lynqit Basis (Gratis)" : currentPlan === "start" ? "Lynqit Start" : "Lynqit Pro"}
-                            </p>
-                            {planPrice > 0 && (
-                              <p className="text-sm text-zinc-400">
-                                €{planPrice.toFixed(2)}/maand ex. BTW
-                              </p>
-                            )}
-                            {isActive && currentPlan !== "free" && (
-                              <div className="mt-3 space-y-1">
-                                {page.subscriptionStartDate && (
-                                  <p className="text-xs text-zinc-400">
-                                    Gestart op: <span className="text-zinc-300 font-medium">{new Date(page.subscriptionStartDate).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}</span>
-                                  </p>
-                                )}
-                                {page.subscriptionEndDate && (
-                                  <p className="text-xs text-zinc-400">
-                                    Volgende facturatie: <span className="text-zinc-300 font-medium">{new Date(page.subscriptionEndDate).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}</span>
-                                  </p>
+                        {/* Header Section */}
+                        <div className="p-6 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-3">
+                                <h3 className="text-xl font-semibold text-white">
+                                  {associatedPage ? formatPageTitle(associatedPage.slug) : productName}
+                                </h3>
+                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                  stripeData.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                                  stripeData.status === 'canceled' ? 'bg-red-500/20 text-red-400' :
+                                  stripeData.status === 'past_due' ? 'bg-orange-500/20 text-orange-400' :
+                                  'bg-zinc-500/20 text-zinc-400'
+                                }`}>
+                                  {stripeData.status}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-4 text-sm">
+                                <div>
+                                  <span className="text-zinc-500">Plan:</span>
+                                  <span className="text-zinc-300 ml-2 font-medium">
+                                    {productName}
+                                  </span>
+                                </div>
+                                {productPrice > 0 && (
+                                  <div>
+                                    <span className="text-zinc-500">Prijs:</span>
+                                    <span className="text-zinc-300 ml-2 font-medium">
+                                      €{(productPrice / 100).toFixed(2)}/maand ex. BTW
+                                    </span>
+                                  </div>
                                 )}
                               </div>
-                            )}
-                            {!isActive && page.subscriptionEndDate && (
-                              <p className="text-xs text-zinc-500 mt-1">
-                                Loopt af op: {new Date(page.subscriptionEndDate).toLocaleDateString("nl-NL")}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex flex-row gap-2">
-                            {currentPlan === "free" && (
-                              <button
-                                onClick={() => handleDeletePage(page)}
-                                disabled={isProcessingSubscription === page.id}
-                                className="px-4 py-2 bg-red-800 text-white rounded-lg text-sm font-medium hover:bg-red-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                              >
-                                {isProcessingSubscription === page.id ? "Verwerken..." : "Pagina verwijderen"}
-                              </button>
-                            )}
-                            {currentPlan !== "pro" && currentPlan !== "free" && (
-                              <button
-                                onClick={() => handleUpgradeDowngrade(page.id, "pro")}
-                                disabled={isProcessingSubscription === page.id}
-                                className="px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                              >
-                                {isProcessingSubscription === page.id ? "Verwerken..." : "Upgraden naar Pro"}
-                              </button>
-                            )}
-                            {currentPlan === "pro" && (
-                              <>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {stripeData.status === 'active' && !stripeData.cancel_at_period_end && availableProducts.length > 0 && (
+                                <>
+                                  {availableProducts.map((product: any) => {
+                                    const newPriceId = product.prices?.[0]?.id;
+                                    if (!newPriceId) return null;
+                                    const isUpgrade = (product.prices?.[0]?.unit_amount || 0) > productPrice;
+                                    return (
+                                      <button
+                                        key={product.id}
+                                        onClick={() => handleUpgradeDowngrade(subscription.id, newPriceId, associatedPage?.id)}
+                                        disabled={isProcessingSubscription === subscription.id}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ${
+                                          isUpgrade 
+                                            ? 'bg-[#2E47FF] text-white hover:bg-[#1E37E6]'
+                                            : 'bg-orange-600 text-white hover:bg-orange-700'
+                                        }`}
+                                      >
+                                        {isProcessingSubscription === subscription.id ? "Verwerken..." : `${isUpgrade ? 'Upgrade' : 'Downgrade'} naar ${product.name}`}
+                                      </button>
+                                    );
+                                  })}
+                                </>
+                              )}
+                              {stripeData.status === 'active' && !stripeData.cancel_at_period_end && (
                                 <button
-                                  onClick={() => handleUpgradeDowngrade(page.id, "start")}
-                                  disabled={isProcessingSubscription === page.id}
-                                  className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                                  onClick={() => handleCancelSubscription(subscription.id, associatedPage?.id)}
+                                  disabled={isProcessingSubscription === subscription.id}
+                                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                                 >
-                                  {isProcessingSubscription === page.id ? "Verwerken..." : "Downgraden naar Start"}
+                                  {isProcessingSubscription === subscription.id ? "Verwerken..." : "Annuleren"}
                                 </button>
-                                <button
-                                  onClick={() => handleUpgradeDowngrade(page.id, "free")}
-                                  disabled={isProcessingSubscription === page.id}
-                                  className="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                                >
-                                  {isProcessingSubscription === page.id ? "Verwerken..." : "Downgraden naar Basis"}
-                                </button>
-                              </>
-                            )}
-                            {currentPlan === "start" && (
-                              <button
-                                onClick={() => handleUpgradeDowngrade(page.id, "free")}
-                                disabled={isProcessingSubscription === page.id}
-                                className="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                              >
-                                {isProcessingSubscription === page.id ? "Verwerken..." : "Downgraden naar Basis"}
-                              </button>
-                            )}
-                            {currentPlan !== "free" && (
-                              <button
-                                onClick={() => handleCancelSubscription(page.id)}
-                                disabled={isProcessingSubscription === page.id}
-                                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                              >
-                                {isProcessingSubscription === page.id ? "Verwerken..." : "Opzeggen"}
-                              </button>
-                            )}
-                            {currentPlan === "free" && (
-                              <Link
-                                href={`/register?plan=start&pageId=${page.id}`}
-                                className="px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors text-center whitespace-nowrap"
-                              >
-                                Upgrade naar Start
-                              </Link>
-                            )}
+                              )}
+                            </div>
                           </div>
+                        </div>
+
+                        {/* Stripe Subscription Details - Always show from Stripe */}
+                        <div className="p-6">
+                          {stripeData ? (
+                              <div className="space-y-6">
+                                {/* Main Info Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                  {/* Subscription Status Card */}
+                                  <div className="rounded-lg p-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                      <h4 className="text-sm font-semibold text-zinc-300">Status</h4>
+                                    </div>
+                                    <p className={`text-lg font-semibold capitalize ${
+                                      stripeData.status === 'active' ? 'text-green-400' :
+                                      stripeData.status === 'canceled' ? 'text-red-400' :
+                                      stripeData.status === 'past_due' ? 'text-orange-400' :
+                                      'text-zinc-300'
+                                    }`}>
+                                      {stripeData.status}
+                                    </p>
+                                    {stripeData.mode && (
+                                      <p className="text-xs text-zinc-500 mt-1">Mode: {stripeData.mode}</p>
+                                    )}
+                                  </div>
+
+                                  {/* Facturatieperiode Card */}
+                                  {stripeData.current_period_start && stripeData.current_period_end && (
+                                    <div className="rounded-lg p-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <h4 className="text-sm font-semibold text-zinc-300">Facturatieperiode</h4>
+                                      </div>
+                                      <p className="text-sm text-zinc-300">
+                                        {new Date(stripeData.current_period_start * 1000).toLocaleDateString("nl-NL", { 
+                                          day: "numeric", 
+                                          month: "short"
+                                        })}
+                                      </p>
+                                      <p className="text-sm text-zinc-300">
+                                        tot {new Date(stripeData.current_period_end * 1000).toLocaleDateString("nl-NL", { 
+                                          day: "numeric", 
+                                          month: "short",
+                                          year: "numeric"
+                                        })}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Cancel Info Card */}
+                                  {(stripeData.cancel_at_period_end || stripeData.canceled_at || stripeData.cancel_at) && (
+                                    <div className="rounded-lg p-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                        <h4 className="text-sm font-semibold text-zinc-300">Annulering</h4>
+                                      </div>
+                                      {stripeData.cancel_at_period_end && (
+                                        <p className="text-sm text-orange-400">Wordt opgezegd aan einde periode</p>
+                                      )}
+                                      {stripeData.canceled_at && (
+                                        <p className="text-sm text-red-400">
+                                          Geannuleerd: {new Date(stripeData.canceled_at * 1000).toLocaleDateString("nl-NL", { 
+                                            day: "numeric", 
+                                            month: "short",
+                                            year: "numeric"
+                                          })}
+                                        </p>
+                                      )}
+                                      {stripeData.cancel_at && (
+                                        <p className="text-sm text-orange-400">
+                                          Wordt geannuleerd: {new Date(stripeData.cancel_at * 1000).toLocaleDateString("nl-NL", { 
+                                            day: "numeric", 
+                                            month: "short",
+                                            year: "numeric"
+                                          })}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Details Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  {/* Customer Details */}
+                                  {stripeData.customerDetails && (
+                                    <div className="rounded-lg p-5" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
+                                      <h4 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
+                                        <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        Klantgegevens
+                                      </h4>
+                                      <div className="space-y-2 text-sm">
+                                        {stripeData.customerDetails.email && (
+                                          <div>
+                                            <span className="text-zinc-500">Email:</span>
+                                            <span className="text-zinc-300 ml-2">{stripeData.customerDetails.email}</span>
+                                          </div>
+                                        )}
+                                        {stripeData.customerDetails.name && (
+                                          <div>
+                                            <span className="text-zinc-500">Naam:</span>
+                                            <span className="text-zinc-300 ml-2">{stripeData.customerDetails.name}</span>
+                                          </div>
+                                        )}
+                                        {stripeData.customerDetails.phone && (
+                                          <div>
+                                            <span className="text-zinc-500">Telefoon:</span>
+                                            <span className="text-zinc-300 ml-2">{stripeData.customerDetails.phone}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Payment Method */}
+                                  {stripeData.default_payment_method_details && (
+                                    <div className="rounded-lg p-5" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
+                                      <h4 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
+                                        <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                        </svg>
+                                        Betaalmethode
+                                      </h4>
+                                      {stripeData.default_payment_method_details.type === 'card' && 
+                                       stripeData.default_payment_method_details.card && (
+                                        <div className="space-y-2 text-sm">
+                                          <div>
+                                            <span className="text-zinc-500">Type:</span>
+                                            <span className="text-zinc-300 ml-2 capitalize">{stripeData.default_payment_method_details.card.brand}</span>
+                                          </div>
+                                          <div>
+                                            <span className="text-zinc-500">Kaartnummer:</span>
+                                            <span className="text-zinc-300 ml-2 font-mono">
+                                              •••• {stripeData.default_payment_method_details.card.last4}
+                                            </span>
+                                          </div>
+                                          <div>
+                                            <span className="text-zinc-500">Vervaldatum:</span>
+                                            <span className="text-zinc-300 ml-2">
+                                              {stripeData.default_payment_method_details.card.exp_month}/{stripeData.default_payment_method_details.card.exp_year}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Subscription Items */}
+                                {stripeData.items && stripeData.items.length > 0 && (
+                                  <div className="rounded-lg p-5" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
+                                    <h4 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
+                                      <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                      </svg>
+                                      Abonnement Items
+                                    </h4>
+                                    <div className="space-y-3">
+                                      {stripeData.items.map((item: any, idx: number) => (
+                                        <div key={idx} className="flex justify-between items-start p-3 rounded border" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                          <div className="flex-1">
+                                            {typeof item.price.product === 'object' && item.price.product && (
+                                              <div className="font-medium text-zinc-300 mb-1">
+                                                {item.price.product.name}
+                                              </div>
+                                            )}
+                                            {typeof item.price.product === 'object' && item.price.product && item.price.product.description && (
+                                              <p className="text-xs text-zinc-500 mb-2">{item.price.product.description}</p>
+                                            )}
+                                            <div className="text-sm text-zinc-400">
+                                              {item.price.recurring?.interval && (
+                                                <span>Per {item.price.recurring.interval}</span>
+                                              )}
+                                              {item.quantity > 1 && (
+                                                <span className="ml-2">× {item.quantity}</span>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <div className="text-right">
+                                            <div className="text-lg font-semibold text-white">
+                                              €{(item.price.unit_amount / 100).toFixed(2)}
+                                            </div>
+                                            <div className="text-xs text-zinc-500 uppercase">
+                                              {item.price.currency}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Latest Invoice */}
+                                {stripeData.latest_invoice_details && (
+                                  <div className="rounded-lg p-5" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
+                                    <h4 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
+                                      <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                      Laatste Factuur
+                                    </h4>
+                                    <div className="space-y-3">
+                                      {stripeData.latest_invoice_details.id && (
+                                        <div>
+                                          <span className="text-xs text-zinc-500">Factuur ID:</span>
+                                          <p className="text-sm font-mono text-zinc-300 mt-1">{stripeData.latest_invoice_details.id}</p>
+                                        </div>
+                                      )}
+                                      {stripeData.latest_invoice_details.amount_due !== undefined && (
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-sm text-zinc-500">Bedrag:</span>
+                                          <div className="text-right">
+                                            <span className="text-lg font-semibold text-white">
+                                              €{(stripeData.latest_invoice_details.amount_due / 100).toFixed(2)}
+                                            </span>
+                                            <span className="text-xs text-zinc-500 ml-2 uppercase">
+                                              {stripeData.latest_invoice_details.currency}
+                                            </span>
+                                            {stripeData.latest_invoice_details.status && (
+                                              <span className={`ml-2 px-2 py-1 rounded text-xs capitalize ${
+                                                stripeData.latest_invoice_details.status === 'paid' ? 'bg-green-500/20 text-green-400' :
+                                                stripeData.latest_invoice_details.status === 'open' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                'bg-red-500/20 text-red-400'
+                                              }`}>
+                                                {stripeData.latest_invoice_details.status}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+                                      {stripeData.latest_invoice_details.hosted_invoice_url && (
+                                        <a 
+                                          href={stripeData.latest_invoice_details.hosted_invoice_url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors"
+                                        >
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                          </svg>
+                                          Bekijk factuur in Stripe
+                                        </a>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ) : null}
                         </div>
                       </div>
                     );

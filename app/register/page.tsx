@@ -274,48 +274,158 @@ function RegisterContent() {
         : cleanedSlug.trim().toLowerCase();
 
       // Check if a Stripe product is selected
-      if (selectedStripeProduct && selectedPlan !== "free") {
-        // Create Stripe checkout session
-        try {
-          const checkoutResponse = await fetch("/api/stripe/checkout/create", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              email: email.toLowerCase(),
-              priceId: selectedStripeProduct.priceId,
-              slug: finalSlug,
-            }),
-          });
+      if (selectedStripeProduct) {
+        const product = stripeProducts.find(p => p.id === selectedStripeProduct.productId);
+        const priceInEuros = product?.price?.amount 
+          ? (product.price.amount / 100)
+          : 0;
+        const isFreeProduct = priceInEuros === 0;
 
-          const checkoutData = await checkoutResponse.json();
+        console.log("[Register] Selected Stripe product:", {
+          productId: selectedStripeProduct.productId,
+          priceId: selectedStripeProduct.priceId,
+          priceInEuros,
+          isFreeProduct,
+          productName: product?.name
+        });
 
-          if (!checkoutResponse.ok) {
-            setError(checkoutData.error || "Kon betalingslink niet genereren");
+        if (isFreeProduct) {
+          // Handle free Stripe product - create subscription directly
+          // Check if user exists (use existing check or check again)
+          if (!userExists) {
+            try {
+              const checkResponse = await fetch(`/api/auth/check?email=${encodeURIComponent(email.toLowerCase())}`);
+              if (checkResponse.ok) {
+                const checkData = await checkResponse.json();
+                userExists = checkData.exists;
+                if (userExists && checkData.user) {
+                  localStorage.setItem("lynqit_user", JSON.stringify(checkData.user));
+                }
+              }
+            } catch (err) {
+              // Continue with registration if check fails
+            }
+          }
+
+          if (!userExists) {
+            // Register user first
+            const registerResponse = await fetch("/api/auth/register", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ 
+                email: email.toLowerCase(), 
+                password,
+                slug: finalSlug,
+              }),
+            });
+
+            const registerData = await registerResponse.json();
+
+            if (!registerResponse.ok) {
+              setError(registerData.error || "An error occurred during registration");
+              setIsLoading(false);
+              return;
+            }
+
+            // Store user in localStorage
+            if (registerData.user) {
+              localStorage.setItem("lynqit_user", JSON.stringify(registerData.user));
+            }
+          }
+
+          // Create free Stripe subscription
+          try {
+            const freeSubscriptionResponse = await fetch("/api/stripe/subscription/create-free", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                email: email.toLowerCase(),
+                priceId: selectedStripeProduct.priceId,
+                slug: finalSlug,
+              }),
+            });
+
+            const freeSubscriptionData = await freeSubscriptionResponse.json();
+
+            console.log("[Register] Free subscription response:", {
+              ok: freeSubscriptionResponse.ok,
+              status: freeSubscriptionResponse.status,
+              data: freeSubscriptionData
+            });
+
+            if (!freeSubscriptionResponse.ok) {
+              const errorMsg = freeSubscriptionData.error || freeSubscriptionData.details || "Kon gratis abonnement niet aanmaken";
+              console.error("[Register] Free subscription error:", errorMsg);
+              setError(errorMsg);
+              setIsLoading(false);
+              return;
+            }
+
+            console.log("[Register] Free subscription created successfully:", freeSubscriptionData.subscriptionId);
+
+            // Success - redirect to dashboard or edit page
+            const supabase = createClientClient();
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (session) {
+              router.push(`/dashboard/pages${freeSubscriptionData.page?.id ? `/${freeSubscriptionData.page.id}/edit` : ''}`);
+            } else {
+              router.push("/confirm-registration");
+            }
+            return;
+          } catch (err) {
+            console.error("[Register] Error creating free subscription:", err);
+            setError(`Er is een fout opgetreden bij het aanmaken van het gratis abonnement: ${err instanceof Error ? err.message : String(err)}`);
             setIsLoading(false);
             return;
           }
+        } else {
+          // Paid product - create Stripe checkout session
+          try {
+            const checkoutResponse = await fetch("/api/stripe/checkout/create", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                email: email.toLowerCase(),
+                priceId: selectedStripeProduct.priceId,
+                slug: finalSlug,
+              }),
+            });
 
-          // Redirect to Stripe checkout
-          if (checkoutData.checkoutUrl) {
-            window.location.href = checkoutData.checkoutUrl;
-            return;
-          } else {
-            setError("Kon betalingslink niet genereren");
+            const checkoutData = await checkoutResponse.json();
+
+            if (!checkoutResponse.ok) {
+              setError(checkoutData.error || "Kon betalingslink niet genereren");
+              setIsLoading(false);
+              return;
+            }
+
+            // Redirect to Stripe checkout
+            if (checkoutData.checkoutUrl) {
+              window.location.href = checkoutData.checkoutUrl;
+              return;
+            } else {
+              setError("Kon betalingslink niet genereren");
+              setIsLoading(false);
+              return;
+            }
+          } catch (err) {
+            console.error("Error creating checkout:", err);
+            setError("Er is een fout opgetreden bij het aanmaken van de betalingslink.");
             setIsLoading(false);
             return;
           }
-        } catch (err) {
-          console.error("Error creating checkout:", err);
-          setError("Er is een fout opgetreden bij het aanmaken van de betalingslink.");
-          setIsLoading(false);
-          return;
         }
       }
 
-      // Handle free plan - register user and create page
-      if (selectedPlan === "free") {
+      // Handle free plan (legacy - when no Stripe product is selected)
+      if (selectedPlan === "free" && !selectedStripeProduct) {
         // Register user if they don't exist (and create page in the same call)
         let accessToken: string | null = null;
         let pageId: string | null = null;
@@ -618,19 +728,15 @@ function RegisterContent() {
                           onClick={() => {
                             // Store selected product info for later use
                             setSelectedPlan(plan);
-                            if (isFree) {
-                              setSelectedStripeProduct(null);
-                              localStorage.removeItem("selected_stripe_product");
-                            } else {
-                              setSelectedStripeProduct({
-                                productId: product.id,
-                                priceId: product.price?.id || "",
-                              });
-                              localStorage.setItem("selected_stripe_product", JSON.stringify({
-                                productId: product.id,
-                                priceId: product.price?.id,
-                              }));
-                            }
+                            // Always store Stripe product info, even for free products
+                            setSelectedStripeProduct({
+                              productId: product.id,
+                              priceId: product.price?.id || "",
+                            });
+                            localStorage.setItem("selected_stripe_product", JSON.stringify({
+                              productId: product.id,
+                              priceId: product.price?.id,
+                            }));
                           }}
                           className={`px-4 py-3 rounded-lg border-2 transition-colors text-left ${
                             (selectedStripeProduct?.productId === product.id) || (isFree && selectedPlan === "free" && !selectedStripeProduct)
