@@ -11,8 +11,11 @@ export async function GET(request: NextRequest) {
   try {
     // Get access token from Authorization header
     const authHeader = request.headers.get('authorization');
-    const searchParams = request.nextUrl.searchParams;
-    const email = searchParams.get("email");
+    // NOTE: Use URL(request.url) instead of request.nextUrl for maximum compatibility
+    // (some runtimes can behave differently with nextUrl/searchParams)
+    const searchParams = new URL(request.url).searchParams;
+    const emailParam = searchParams.get("email") || searchParams.get("userId"); // accept legacy userId param too
+    const email = emailParam && emailParam.trim().length > 0 ? emailParam : null;
     
     console.log(`[API /api/pages] Request received:`, {
       hasAuthHeader: !!authHeader,
