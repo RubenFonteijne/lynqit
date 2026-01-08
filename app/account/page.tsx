@@ -1181,14 +1181,6 @@ export default function AccountPage() {
                                 <h3 className="text-xl font-semibold text-white">
                                   {associatedPage ? formatPageTitle(associatedPage.slug) : productName}
                                 </h3>
-                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                  stripeData.status === 'active' ? 'bg-green-500/20 text-green-400' :
-                                  stripeData.status === 'canceled' ? 'bg-red-500/20 text-red-400' :
-                                  stripeData.status === 'past_due' ? 'bg-orange-500/20 text-orange-400' :
-                                  'bg-zinc-500/20 text-zinc-400'
-                                }`}>
-                                  {stripeData.status}
-                                </span>
                               </div>
                               <div className="flex items-center gap-4 text-sm">
                                 <div>
@@ -1250,27 +1242,6 @@ export default function AccountPage() {
                               <div className="space-y-6">
                                 {/* Main Info Grid */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                  {/* Subscription Status Card */}
-                                  <div className="rounded-lg p-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                      </svg>
-                                      <h4 className="text-sm font-semibold text-zinc-300">Status</h4>
-                                    </div>
-                                    <p className={`text-lg font-semibold capitalize ${
-                                      stripeData.status === 'active' ? 'text-green-400' :
-                                      stripeData.status === 'canceled' ? 'text-red-400' :
-                                      stripeData.status === 'past_due' ? 'text-orange-400' :
-                                      'text-zinc-300'
-                                    }`}>
-                                      {stripeData.status}
-                                    </p>
-                                    {stripeData.mode && (
-                                      <p className="text-xs text-zinc-500 mt-1">Mode: {stripeData.mode}</p>
-                                    )}
-                                  </div>
-
                                   {/* Facturatieperiode Card */}
                                   {stripeData.current_period_start && stripeData.current_period_end && (
                                     <div className="rounded-lg p-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
@@ -1438,61 +1409,6 @@ export default function AccountPage() {
                                           </div>
                                         </div>
                                       ))}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Latest Invoice */}
-                                {stripeData.latest_invoice_details && (
-                                  <div className="rounded-lg p-5" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)' }}>
-                                    <h4 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
-                                      <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                      </svg>
-                                      Laatste Factuur
-                                    </h4>
-                                    <div className="space-y-3">
-                                      {stripeData.latest_invoice_details.id && (
-                                        <div>
-                                          <span className="text-xs text-zinc-500">Factuur ID:</span>
-                                          <p className="text-sm font-mono text-zinc-300 mt-1">{stripeData.latest_invoice_details.id}</p>
-                                        </div>
-                                      )}
-                                      {stripeData.latest_invoice_details.amount_due !== undefined && (
-                                        <div className="flex justify-between items-center">
-                                          <span className="text-sm text-zinc-500">Bedrag:</span>
-                                          <div className="text-right">
-                                            <span className="text-lg font-semibold text-white">
-                                              €{(stripeData.latest_invoice_details.amount_due / 100).toFixed(2)}
-                                            </span>
-                                            <span className="text-xs text-zinc-500 ml-2 uppercase">
-                                              {stripeData.latest_invoice_details.currency}
-                                            </span>
-                                            {stripeData.latest_invoice_details.status && (
-                                              <span className={`ml-2 px-2 py-1 rounded text-xs capitalize ${
-                                                stripeData.latest_invoice_details.status === 'paid' ? 'bg-green-500/20 text-green-400' :
-                                                stripeData.latest_invoice_details.status === 'open' ? 'bg-yellow-500/20 text-yellow-400' :
-                                                'bg-red-500/20 text-red-400'
-                                              }`}>
-                                                {stripeData.latest_invoice_details.status}
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                      )}
-                                      {stripeData.latest_invoice_details.hosted_invoice_url && (
-                                        <a 
-                                          href={stripeData.latest_invoice_details.hosted_invoice_url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#2E47FF] text-white rounded-lg text-sm font-medium hover:bg-[#1E37E6] transition-colors"
-                                        >
-                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                          </svg>
-                                          Bekijk factuur in Stripe
-                                        </a>
-                                      )}
                                     </div>
                                   </div>
                                 )}
