@@ -80,11 +80,11 @@ export async function GET(
       id: subscription.id,
       status: subscription.status,
       mode,
-      customerDetails: typeof subscription.customer === 'object' ? {
+      customerDetails: typeof subscription.customer === 'object' && subscription.customer !== null && !subscription.customer.deleted ? {
         id: subscription.customer.id,
-        email: subscription.customer.email,
-        name: subscription.customer.name,
-        phone: subscription.customer.phone,
+        email: subscription.customer.email || null,
+        name: subscription.customer.name || null,
+        phone: subscription.customer.phone || null,
       } : null,
       items: subscription.items.data.map(item => ({
         id: item.id,
