@@ -91,16 +91,18 @@ export async function GET(request: NextRequest) {
     // Format invoices for frontend
     const invoicesData = invoices.map(invoice => {
       // Extract subscription ID - can be string, object, or null
+      // Type assertion needed because subscription might not be in the type definition
+      const invoiceWithSubscription = invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
       let subscriptionId: string | null = null;
-      if (invoice.subscription) {
-        if (typeof invoice.subscription === 'string') {
-          subscriptionId = invoice.subscription;
-        } else if (typeof invoice.subscription === 'object' && invoice.subscription !== null) {
-          subscriptionId = invoice.subscription.id || null;
+      if (invoiceWithSubscription.subscription) {
+        if (typeof invoiceWithSubscription.subscription === 'string') {
+          subscriptionId = invoiceWithSubscription.subscription;
+        } else if (typeof invoiceWithSubscription.subscription === 'object' && invoiceWithSubscription.subscription !== null) {
+          subscriptionId = invoiceWithSubscription.subscription.id || null;
         }
       }
       
-      console.log("[API /api/stripe/invoices] Invoice", invoice.id, "subscription:", invoice.subscription, "extracted ID:", subscriptionId);
+      console.log("[API /api/stripe/invoices] Invoice", invoice.id, "subscription:", invoiceWithSubscription.subscription, "extracted ID:", subscriptionId);
       
       return {
         id: invoice.id,
