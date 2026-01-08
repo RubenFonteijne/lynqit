@@ -89,18 +89,16 @@ export default function ArtistTemplate({
 
       {/* Intro Text */}
       {page.intro && (
-        <div style={{ marginBottom: "24px" }}>
-          <p
-            className="leading-relaxed whitespace-pre-line text-center"
-            style={{
-              color: textColor,
-              fontSize: "16px",
-              fontFamily: "'PT Sans', sans-serif",
-            }}
-          >
-            {page.intro}
-          </p>
-        </div>
+        <div 
+          style={{ 
+            marginBottom: "24px",
+            color: textColor,
+            fontSize: "16px",
+            fontFamily: "'PT Sans', sans-serif",
+          }}
+          className="leading-relaxed whitespace-pre-line text-center"
+          dangerouslySetInnerHTML={{ __html: page.intro }}
+        />
       )}
 
       {/* Spotify Embed - Direct onder logo - Client-side only component to avoid timeout */}

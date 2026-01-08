@@ -575,8 +575,12 @@ export default function EditPagePage() {
                     value={page.intro || ""}
                     onChange={(e) => updatePage({ intro: e.target.value })}
                     rows={4}
+                    placeholder="Je kunt HTML gebruiken, bijvoorbeeld: &lt;b&gt;dikgedrukt&lt;/b&gt; of &lt;strong&gt;belangrijk&lt;/strong&gt;"
                     className="w-full px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-50"
                   />
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Je kunt HTML tags gebruiken zoals &lt;b&gt;, &lt;strong&gt;, &lt;i&gt;, &lt;em&gt;, &lt;u&gt;, &lt;br&gt; voor opmaak.
+                  </p>
                 </div>
                 {/* Spotify Embed (only for Artist template) */}
                 {page.template === "artist" && (

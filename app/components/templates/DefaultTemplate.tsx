@@ -76,18 +76,16 @@ export default function DefaultTemplate({
 
       {/* Intro Text */}
       {page.intro && (
-        <div style={{ marginBottom: "24px" }}>
-          <p
-            className="leading-relaxed whitespace-pre-line text-center"
-            style={{
-              color: textColor,
-              fontSize: "16px",
-              fontFamily: "'PT Sans', sans-serif",
-            }}
-          >
-            {page.intro}
-          </p>
-        </div>
+        <div 
+          style={{ 
+            marginBottom: "24px",
+            color: textColor,
+            fontSize: "16px",
+            fontFamily: "'PT Sans', sans-serif",
+          }}
+          className="leading-relaxed whitespace-pre-line text-center"
+          dangerouslySetInnerHTML={{ __html: page.intro || '' }}
+        />
       )}
     </>
   );
