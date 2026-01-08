@@ -64,7 +64,10 @@ export async function POST(request: NextRequest) {
           ? await stripe.products.retrieve(price.product)
           : price.product;
         
-        const plan = product.metadata?.plan as "free" | "start" | "pro" || "start";
+        // Check if product is not deleted before accessing metadata
+        const plan = (typeof product === 'object' && product !== null && !('deleted' in product && product.deleted))
+          ? (product.metadata?.plan as "free" | "start" | "pro" || "start")
+          : "start";
         
         await updatePage(pageId, {
           subscriptionPlan: plan,
