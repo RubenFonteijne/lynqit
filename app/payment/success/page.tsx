@@ -31,6 +31,10 @@ function PaymentSuccessContent() {
         try {
           // Wait for webhook to process, then check pages for active subscription
           // For new registrations, webhook will create account and page
+          if (!email) {
+            setIsLoading(false);
+            return;
+          }
           const pagesResponse = await fetch(`/api/pages?userId=${encodeURIComponent(email)}`);
           if (pagesResponse.ok) {
             const pagesData = await pagesResponse.json();
