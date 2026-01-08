@@ -191,11 +191,15 @@ export async function GET(request: NextRequest) {
           // Extract unique subscriptions from invoices
           const subscriptionIds = new Set<string>();
           for (const invoice of invoices.data) {
+            // Type assertion needed because subscription might not be in the type definition
+            const invoiceWithSubscription = invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
             let subscriptionId: string | null = null;
-            if (typeof invoice.subscription === 'string') {
-              subscriptionId = invoice.subscription;
-            } else if (invoice.subscription && typeof invoice.subscription === 'object') {
-              subscriptionId = invoice.subscription.id;
+            if (invoiceWithSubscription.subscription) {
+              if (typeof invoiceWithSubscription.subscription === 'string') {
+                subscriptionId = invoiceWithSubscription.subscription;
+              } else if (typeof invoiceWithSubscription.subscription === 'object' && invoiceWithSubscription.subscription !== null) {
+                subscriptionId = invoiceWithSubscription.subscription.id || null;
+              }
             }
             if (subscriptionId) {
               subscriptionIds.add(subscriptionId);
@@ -252,11 +256,15 @@ export async function GET(request: NextRequest) {
           // Extract unique subscriptions from invoices
           const subscriptionIds = new Set<string>();
           for (const invoice of invoices.data) {
+            // Type assertion needed because subscription might not be in the type definition
+            const invoiceWithSubscription = invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null };
             let subscriptionId: string | null = null;
-            if (typeof invoice.subscription === 'string') {
-              subscriptionId = invoice.subscription;
-            } else if (invoice.subscription && typeof invoice.subscription === 'object') {
-              subscriptionId = invoice.subscription.id;
+            if (invoiceWithSubscription.subscription) {
+              if (typeof invoiceWithSubscription.subscription === 'string') {
+                subscriptionId = invoiceWithSubscription.subscription;
+              } else if (typeof invoiceWithSubscription.subscription === 'object' && invoiceWithSubscription.subscription !== null) {
+                subscriptionId = invoiceWithSubscription.subscription.id || null;
+              }
             }
             if (subscriptionId) {
               subscriptionIds.add(subscriptionId);
