@@ -19,6 +19,11 @@ export default function ConditionalFooter() {
   if (pathname.startsWith("/admin")) {
     return null;
   }
+
+  // Hide footer on account pages
+  if (pathname.startsWith("/account")) {
+    return null;
+  }
   
   // Hide footer on public Lynqit pages ([slug] routes)
   // These are routes that don't match known routes and don't start with /dashboard, /admin, or /api
